@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:LightLauncher}",
+            "name": "Debug LightLauncher",
+            "program": "${workspaceFolder:LightLauncher}/.build/debug/LightLauncher",
+            "preLaunchTask": "swift: Build Debug LightLauncher"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:LightLauncher}",
+            "name": "Release LightLauncher",
+            "program": "${workspaceFolder:LightLauncher}/.build/release/LightLauncher",
+            "preLaunchTask": "swift: Build Release LightLauncher"
+        }
+    ]
+}
