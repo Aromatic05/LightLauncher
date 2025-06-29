@@ -120,27 +120,37 @@ class LauncherViewModel: ObservableObject {
             score = 1000 + Double(searchQuery.count) * 10
             matchType = .exactStart
         }
-        // 2. 单词开头匹配 (如搜索 "vs" 匹配 "Visual Studio Code")
+        // 2. 常见缩写匹配 (如搜索 "ps" 匹配 "Photoshop")
+        else if let abbreviationScore = calculateAbbreviationMatch(appName: appName, query: searchQuery) {
+            score = 900 + abbreviationScore
+            matchType = .exactStart
+        }
+        // 3. 单词开头匹配 (如搜索 "vs" 匹配 "Visual Studio Code")
         else if let wordStartScore = calculateWordStartMatch(appName: appName, query: searchQuery) {
             score = 800 + wordStartScore
             matchType = .wordStart
         }
-        // 3. 拼音首字母匹配 (如搜索 "wps" 匹配中文应用)
-        else if let pinyinScore = calculatePinyinMatch(appName: app.name, query: searchQuery) {
-            score = 750 + pinyinScore
+        // 4. 单词内部缩写匹配 (如搜索 "vsc" 匹配 "vscode")
+        else if let internalAbbrevScore = calculateInternalAbbreviationMatch(appName: appName, query: searchQuery) {
+            score = 700 + internalAbbrevScore
             matchType = .wordStart
         }
-        // 4. 子序列匹配 (如搜索 "vsc" 匹配 "Visual Studio Code")
+        // 5. 拼音首字母匹配 (如搜索 "wps" 匹配中文应用)
+        else if let pinyinScore = calculatePinyinMatch(appName: app.name, query: searchQuery) {
+            score = 650 + pinyinScore
+            matchType = .wordStart
+        }
+        // 5. 子序列匹配 (如搜索 "vsc" 匹配 "Visual Studio Code")
         else if let subsequenceScore = calculateSubsequenceMatch(appName: appName, query: searchQuery) {
             score = 600 + subsequenceScore
             matchType = .subsequence
         }
-        // 5. 模糊匹配 (允许一些字符错误)
+        // 6. 模糊匹配 (允许一些字符错误)
         else if let fuzzyScore = calculateFuzzyMatch(appName: appName, query: searchQuery) {
             score = 400 + fuzzyScore
             matchType = .fuzzy
         }
-        // 6. 简单包含匹配
+        // 7. 简单包含匹配
         else if appName.contains(searchQuery) {
             score = 200 + Double(searchQuery.count) * 5
             matchType = .contains
@@ -165,46 +175,217 @@ class LauncherViewModel: ObservableObject {
         return AppMatch(app: app, score: score, matchType: matchType)
     }
     
+    // 常见缩写匹配 (例如 "ps" -> "Photoshop", "ai" -> "Adobe Illustrator")
+    private func calculateAbbreviationMatch(appName: String, query: String) -> Double? {
+        let commonAbbreviations: [String: [String]] = [
+            "ps": ["photoshop"],
+            "ai": ["illustrator"],
+            "pr": ["premiere"],
+            "ae": ["after effects"],
+            "id": ["indesign"],
+            "lr": ["lightroom"],
+            "dw": ["dreamweaver"],
+            "xd": ["adobe xd"],
+            "vs": ["visual studio", "code"],
+            "vsc": ["visual studio code", "code"],
+            "code": ["visual studio code", "code"],
+            "chrome": ["google chrome"],
+            "ff": ["firefox"],
+            "safari": ["safari"],
+            "edge": ["microsoft edge"],
+            "word": ["microsoft word"],
+            "excel": ["microsoft excel"],
+            "ppt": ["powerpoint"],
+            "outlook": ["microsoft outlook"],
+            "teams": ["microsoft teams"],
+            "qq": ["qq"],
+            "wx": ["wechat", "微信"],
+            "wechat": ["微信"],
+            "sketch": ["sketch"],
+            "figma": ["figma"],
+            "notion": ["notion"],
+            "slack": ["slack"],
+            "zoom": ["zoom"],
+            "terminal": ["terminal"],
+            "finder": ["finder"],
+            "calculator": ["calculator"],
+            "preview": ["preview"],
+            "notes": ["notes"],
+            "music": ["music"],
+            "photos": ["photos"],
+            "mail": ["mail"],
+            "calendar": ["calendar"]
+        ]
+        
+        let lowercaseQuery = query.lowercased()
+        let lowercaseAppName = appName.lowercased()
+        
+        if let abbreviations = commonAbbreviations[lowercaseQuery] {
+            for abbrev in abbreviations {
+                if lowercaseAppName.contains(abbrev) {
+                    return Double(query.count * 40) // 给缩写匹配高分
+                }
+            }
+        }
+        
+        return nil
+    }
+
+    // 拼音首字母匹配算法 (适用于中文应用名称)
+    private func calculatePinyinMatch(appName: String, query: String) -> Double? {
+        // 简单的中文字符检测
+        let chineseCharacterSet = CharacterSet(charactersIn: "\u{4e00}"..."\u{9fff}")
+        guard appName.rangeOfCharacter(from: chineseCharacterSet) != nil else {
+            return nil
+        }
+        
+        // 将中文应用名转换为拼音首字母
+        let pinyinInitials = getPinyinInitials(from: appName)
+        
+        if pinyinInitials.lowercased().hasPrefix(query.lowercased()) {
+            return Double(query.count * 30) // 给拼音匹配较高分数
+        }
+        
+        return nil
+    }
+    
+    // 单词内部缩写匹配 (如 "vsc" 匹配 "vscode", "ps" 匹配 "photoshop")
+    private func calculateInternalAbbreviationMatch(appName: String, query: String) -> Double? {
+        let appLower = appName.lowercased()
+        let queryLower = query.lowercased()
+        
+        // 检查是否是单词内部的连续首字母缩写
+        var queryIndex = 0
+        var lastMatchIndex = -1
+        var consecutiveMatches = 0
+        var score: Double = 0
+        
+        for (i, char) in appLower.enumerated() {
+            if queryIndex < queryLower.count && char == queryLower[queryLower.index(queryLower.startIndex, offsetBy: queryIndex)] {
+                // 如果是连续匹配
+                if i == lastMatchIndex + 1 {
+                    consecutiveMatches += 1
+                    score += Double(consecutiveMatches * 5)
+                } else {
+                    consecutiveMatches = 1
+                    score += 1
+                }
+                
+                queryIndex += 1
+                lastMatchIndex = i
+                
+                // 如果完全匹配了查询
+                if queryIndex == queryLower.count {
+                    // 给予基础分数加上连续性奖励
+                    return score + Double(query.count * 15)
+                }
+            }
+        }
+        
+        // 必须匹配至少80%的查询字符
+        let matchRatio = Double(queryIndex) / Double(query.count)
+        return matchRatio >= 0.8 ? score : nil
+    }
+    
+    // 获取拼音首字母 (简化版本)
+    private func getPinyinInitials(from text: String) -> String {
+        var result = ""
+        
+        for char in text {
+            if char.isASCII {
+                // 如果是英文字符，直接添加
+                if char.isLetter {
+                    result += String(char).lowercased()
+                }
+            } else {
+                // 对于中文字符，使用 CFStringTransform 转换为拼音
+                let mutableString = NSMutableString(string: String(char))
+                if CFStringTransform(mutableString, nil, kCFStringTransformToLatin, false) {
+                    if CFStringTransform(mutableString, nil, kCFStringTransformStripDiacritics, false) {
+                        let pinyin = String(mutableString).lowercased()
+                        // 取第一个字母作为首字母
+                        if let firstChar = pinyin.first, firstChar.isLetter {
+                            result += String(firstChar)
+                        }
+                    }
+                }
+            }
+        }
+        
+        return result
+    }
+
     // 单词开头匹配算法
     private func calculateWordStartMatch(appName: String, query: String) -> Double? {
         let words = appName.components(separatedBy: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
             .filter { !$0.isEmpty }
         
-        let queryChars = Array(query)
+        let queryChars = Array(query.lowercased())
         var queryIndex = 0
         var matchedWords = 0
+        var score: Double = 0
+        var wordIndex = 0
         
+        // 尝试按顺序匹配每个查询字符到单词的首字母
         for word in words {
-            if queryIndex < queryChars.count && word.lowercased().hasPrefix(String(queryChars[queryIndex])) {
-                queryIndex += 1
-                matchedWords += 1
-                
-                // 如果完全匹配了查询
-                if queryIndex == queryChars.count {
-                    return Double(matchedWords * 50) + Double(query.count * 10)
+            let wordLower = word.lowercased()
+            if queryIndex < queryChars.count {
+                // 检查单词是否以当前查询字符开头
+                if !wordLower.isEmpty && wordLower.first == queryChars[queryIndex] {
+                    queryIndex += 1
+                    matchedWords += 1
+                    
+                    // 连续匹配给予额外分数
+                    score += Double(matchedWords * 10)
+                    
+                    // 如果完全匹配了查询
+                    if queryIndex == queryChars.count {
+                        // 完全匹配给予更高分数
+                        score += Double(query.count * 20)
+                        // 早期匹配给予额外分数
+                        score += Double((words.count - wordIndex) * 5)
+                        return score
+                    }
                 }
             }
+            wordIndex += 1
         }
         
-        // 部分匹配也给一些分数
-        return queryIndex > 0 ? Double(queryIndex * 20) : nil
+        // 部分匹配也给一些分数，但要求至少匹配一半的查询字符
+        let matchRatio = Double(queryIndex) / Double(query.count)
+        return matchRatio >= 0.5 ? score + Double(queryIndex * 15) : nil
     }
     
     // 子序列匹配算法
     private func calculateSubsequenceMatch(appName: String, query: String) -> Double? {
-        let appChars = Array(appName)
-        let queryChars = Array(query)
+        let appChars = Array(appName.lowercased())
+        let queryChars = Array(query.lowercased())
         
         var appIndex = 0
         var queryIndex = 0
         var score: Double = 0
         var consecutiveMatches = 0
+        var lastMatchIndex = -1
         
         while appIndex < appChars.count && queryIndex < queryChars.count {
-            if appChars[appIndex].lowercased() == String(queryChars[queryIndex]).lowercased() {
+            if appChars[appIndex] == queryChars[queryIndex] {
                 queryIndex += 1
-                consecutiveMatches += 1
-                score += Double(consecutiveMatches) * 2 // 连续匹配加分
+                
+                // 连续匹配给予更高分数
+                if appIndex == lastMatchIndex + 1 {
+                    consecutiveMatches += 1
+                    score += Double(consecutiveMatches * 3) // 连续匹配指数增长
+                } else {
+                    consecutiveMatches = 1
+                    score += 1
+                }
+                
+                lastMatchIndex = appIndex
+                
+                // 如果匹配在单词开头，给予额外分数
+                if appIndex == 0 || appChars[appIndex - 1] == " " {
+                    score += 5
+                }
             } else {
                 consecutiveMatches = 0
             }
@@ -212,7 +393,14 @@ class LauncherViewModel: ObservableObject {
         }
         
         // 必须匹配所有查询字符
-        return queryIndex == queryChars.count ? score : nil
+        if queryIndex == queryChars.count {
+            // 根据匹配的紧密程度调整分数
+            let compactness = Double(lastMatchIndex + 1) / Double(appChars.count)
+            score *= (2.0 - compactness) // 越紧密的匹配分数越高
+            return score
+        }
+        
+        return nil
     }
     
     // 模糊匹配算法 (允许少量错误)
