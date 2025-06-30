@@ -9,9 +9,13 @@ let package = Package(
     products: [
         .executable(name: "LightLauncher", targets: ["LightLauncher"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0")
+    ],
     targets: [
         .executableTarget(
             name: "LightLauncher",
+            dependencies: ["Yams"],
             path: "Sources")
     ]
 )

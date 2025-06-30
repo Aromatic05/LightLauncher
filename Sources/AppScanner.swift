@@ -23,12 +23,16 @@ struct AppInfo: Identifiable, Hashable {
 class AppScanner: ObservableObject {
     @Published var applications: [AppInfo] = []
     private var isScanning = false
+    private let configManager = ConfigManager.shared
     
-    private let searchDirectories = [
-        "/Applications",
-        "/System/Applications",
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Applications").path
-    ]
+    var searchDirectories: [String] {
+        return configManager.config.searchDirectories.map { path in
+            if path.hasPrefix("~/") {
+                return NSString(string: path).expandingTildeInPath
+            }
+            return path
+        }
+    }
     
     func scanForApplications() {
         guard !isScanning else { return }

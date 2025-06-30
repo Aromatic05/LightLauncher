@@ -54,6 +54,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var modifierMonitor: Any?
     private var inputMethodManager = InputMethodManager()
     private var settingsManager = SettingsManager.shared
+    private var configManager = ConfigManager.shared
     private var statusItem: NSStatusItem?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -115,11 +116,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var hotKeyRef: EventHotKeyRef?
         
         // 对于单独的修饰键，使用特殊的keyCode处理
-        let keyCode = settingsManager.hotKeyCode == 0 ? UInt32(kVK_F13) : settingsManager.hotKeyCode
+        let keyCode = configManager.config.hotKey.keyCode == 0 ? UInt32(kVK_F13) : configManager.config.hotKey.keyCode
         
         let status = RegisterEventHotKey(
             keyCode,
-            settingsManager.hotKeyModifiers,
+            configManager.config.hotKey.modifiers,
             hotKeyId,
             GetApplicationEventTarget(),
             0,
@@ -130,7 +131,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self.hotKeyRef = hotKeyRef
             
             // 如果是单独的修饰键，需要设置特殊的事件处理
-            if settingsManager.hotKeyCode == 0 {
+            if configManager.config.hotKey.keyCode == 0 {
                 setupModifierOnlyHotkey()
             } else {
                 setupRegularHotkey()
@@ -179,7 +180,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleModifierOnlyHotkey(_ event: NSEvent) {
         let keyCode = UInt32(event.keyCode)
         let modifiers = event.modifierFlags
-        let settingsModifiers = settingsManager.hotKeyModifiers
+        let settingsModifiers = configManager.config.hotKey.modifiers
         
         // 检查是否是我们设置的修饰键的释放事件
         var isOurModifier = false
@@ -289,7 +290,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupGlobalHotkey()
 
         // 更新状态栏工具提示
-        statusItem?.button?.toolTip = "LightLauncher - \(settingsManager.getHotKeyDescription())"
+        statusItem?.button?.toolTip = "LightLauncher - \(configManager.getHotKeyDescription())"
     }
     
     // 显示设置窗口

@@ -1,0 +1,139 @@
+# LightLauncher 配置文件
+# 修改此文件后，需要重启应用或在设置中点击"重新加载配置"
+
+# 全局热键配置
+# modifiers: 修饰键组合 (可选值: 256=Cmd, 512=Shift, 1024=Option, 2048=Ctrl)
+# 特殊值: 1048592=右Cmd, 1048640=右Option
+# keyCode: 按键代码 (0表示仅修饰键, 49=Space, 36=Return 等)
+hotKey:
+  modifiers: 1024
+  keyCode: 49
+
+# 应用搜索目录
+# 支持 ~ 符号表示用户主目录
+searchDirectories:
+  - "/Applications"
+  - "/Applications/Utilities"
+  - "/System/Applications"
+  - "/System/Applications/Utilities"
+  - "~/Applications"
+
+# 常用应用缩写匹配
+# 格式: "缩写": ["匹配词1", "匹配词2"]
+commonAbbreviations:
+  "1password":
+    - "1password"
+  ae:
+    - "after effects"
+  ai:
+    - "illustrator"
+  alfred:
+    - "alfred"
+  amphetamine:
+    - "amphetamine"
+  bartender:
+    - "bartender"
+  calculator:
+    - "calculator"
+  calendar:
+    - "calendar"
+  chrome:
+    - "google chrome"
+  cleanmymac:
+    - "cleanmymac"
+  code:
+    - "visual studio code"
+    - "code"
+  docker:
+    - "docker"
+  dw:
+    - "dreamweaver"
+  edge:
+    - "microsoft edge"
+  excel:
+    - "microsoft excel"
+  ff:
+    - "firefox"
+  figma:
+    - "figma"
+  finder:
+    - "finder"
+  git:
+    - "github desktop"
+    - "sourcetree"
+  homebrew:
+    - "homebrew"
+  id:
+    - "indesign"
+  istat:
+    - "istat menus"
+  lr:
+    - "lightroom"
+  magnet:
+    - "magnet"
+  mail:
+    - "mail"
+  music:
+    - "music"
+  notes:
+    - "notes"
+  notion:
+    - "notion"
+  obsidian:
+    - "obsidian"
+  outlook:
+    - "microsoft outlook"
+  photos:
+    - "photos"
+  postman:
+    - "postman"
+  ppt:
+    - "powerpoint"
+  pr:
+    - "premiere"
+  preview:
+    - "preview"
+  ps:
+    - "photoshop"
+  qq:
+    - "qq"
+  raycast:
+    - "raycast"
+  rectangle:
+    - "rectangle"
+  safari:
+    - "safari"
+  simulator:
+    - "simulator"
+  sketch:
+    - "sketch"
+  slack:
+    - "slack"
+  teams:
+    - "microsoft teams"
+  terminal:
+    - "terminal"
+  typora:
+    - "typora"
+  vm:
+    - "vmware"
+    - "parallels"
+  vs:
+    - "visual studio"
+    - "code"
+  vsc:
+    - "visual studio code"
+    - "code"
+  wechat:
+    - "微信"
+  word:
+    - "microsoft word"
+  wx:
+    - "wechat"
+    - "微信"
+  xcode:
+    - "xcode"
+  xd:
+    - "adobe xd"
+  zoom:
+    - "zoom"

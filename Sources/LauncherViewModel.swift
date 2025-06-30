@@ -177,45 +177,7 @@ class LauncherViewModel: ObservableObject {
     
     // 常见缩写匹配 (例如 "ps" -> "Photoshop", "ai" -> "Adobe Illustrator")
     private func calculateAbbreviationMatch(appName: String, query: String) -> Double? {
-        let commonAbbreviations: [String: [String]] = [
-            "ps": ["photoshop"],
-            "ai": ["illustrator"],
-            "pr": ["premiere"],
-            "ae": ["after effects"],
-            "id": ["indesign"],
-            "lr": ["lightroom"],
-            "dw": ["dreamweaver"],
-            "xd": ["adobe xd"],
-            "vs": ["visual studio", "code"],
-            "vsc": ["visual studio code", "code"],
-            "code": ["visual studio code", "code"],
-            "chrome": ["google chrome"],
-            "ff": ["firefox"],
-            "safari": ["safari"],
-            "edge": ["microsoft edge"],
-            "word": ["microsoft word"],
-            "excel": ["microsoft excel"],
-            "ppt": ["powerpoint"],
-            "outlook": ["microsoft outlook"],
-            "teams": ["microsoft teams"],
-            "qq": ["qq"],
-            "wx": ["wechat", "微信"],
-            "wechat": ["微信"],
-            "sketch": ["sketch"],
-            "figma": ["figma"],
-            "notion": ["notion"],
-            "slack": ["slack"],
-            "zoom": ["zoom"],
-            "terminal": ["terminal"],
-            "finder": ["finder"],
-            "calculator": ["calculator"],
-            "preview": ["preview"],
-            "notes": ["notes"],
-            "music": ["music"],
-            "photos": ["photos"],
-            "mail": ["mail"],
-            "calendar": ["calendar"]
-        ]
+        let commonAbbreviations = ConfigManager.shared.config.commonAbbreviations
         
         let lowercaseQuery = query.lowercased()
         let lowercaseAppName = appName.lowercased()

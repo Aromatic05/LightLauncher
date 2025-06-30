@@ -3,6 +3,7 @@ import Carbon
 
 struct SettingsView: View {
     @ObservedObject var settingsManager = SettingsManager.shared
+    @ObservedObject var configManager = ConfigManager.shared
     @State private var isRecordingHotKey = false
     @State private var tempHotKeyDescription = ""
     @State private var globalMonitor: Any?
@@ -66,7 +67,7 @@ struct SettingsView: View {
                         Button(action: {
                             startRecordingHotKey()
                         }) {
-                            Text(isRecordingHotKey ? "按下新的快捷键..." : settingsManager.getHotKeyDescription())
+                            Text(isRecordingHotKey ? "按下新的快捷键..." : configManager.getHotKeyDescription())
                                 .font(.system(size: 16, design: .monospaced))
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
@@ -134,7 +135,19 @@ struct SettingsView: View {
                     .foregroundColor(.red)
                     .font(.body)
                     
+                    Button("重新加载配置") {
+                        configManager.reloadConfig()
+                    }
+                    .foregroundColor(.blue)
+                    .font(.body)
+                    
                     Spacer()
+                    
+                    Button("打开配置文件") {
+                        openConfigFile()
+                    }
+                    .foregroundColor(.blue)
+                    .font(.body)
                     
                     Button("退出应用") {
                         NSApplication.shared.terminate(nil)
@@ -242,7 +255,7 @@ struct SettingsView: View {
     
     private func finishRecordingHotKey(modifiers: UInt32, keyCode: UInt32) {
         isRecordingHotKey = false
-        settingsManager.updateHotKey(modifiers: modifiers, keyCode: keyCode)
+        configManager.updateHotKey(modifiers: modifiers, keyCode: keyCode)
         
         // 移除事件监听
         if let monitor = globalMonitor {
@@ -270,6 +283,12 @@ struct SettingsView: View {
     }
     
     private func resetToDefaults() {
-        settingsManager.updateHotKey(modifiers: UInt32(optionKey), keyCode: UInt32(kVK_Space))
+        configManager.resetToDefaults()
+    }
+    
+    private func openConfigFile() {
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        let configDirectory = homeDirectory.appendingPathComponent(".config/LightLauncher")
+        NSWorkspace.shared.open(configDirectory)
     }
 }
