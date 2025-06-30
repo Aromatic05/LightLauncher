@@ -2,10 +2,35 @@ import Foundation
 import Carbon
 import Yams
 
+// 搜索目录数据结构
+struct SearchDirectory: Identifiable, Codable, Hashable {
+    var id: String { path } // 使用路径作为 ID，确保稳定性
+    let path: String
+    
+    init(path: String) {
+        self.path = path
+    }
+    
+    // 自定义编码，只保存路径
+    private enum CodingKeys: String, CodingKey {
+        case path
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.path = try container.decode(String.self, forKey: .path)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(path, forKey: .path)
+    }
+}
+
 // 配置数据结构
 struct AppConfig: Codable {
     var hotKey: HotKeyConfig
-    var searchDirectories: [String]
+    var searchDirectories: [SearchDirectory]
     var commonAbbreviations: [String: [String]]
     var modes: ModesConfig
     
@@ -80,11 +105,11 @@ class ConfigManager: ObservableObject {
         return AppConfig(
             hotKey: AppConfig.HotKeyConfig(),
             searchDirectories: [
-                "/Applications",
-                "/Applications/Utilities",
-                "/System/Applications",
-                "/System/Applications/Utilities",
-                "~/Applications"
+                SearchDirectory(path: "/Applications"),
+                SearchDirectory(path: "/Applications/Utilities"),
+                SearchDirectory(path: "/System/Applications"),
+                SearchDirectory(path: "/System/Applications/Utilities"),
+                SearchDirectory(path: "~/Applications")
             ],
             commonAbbreviations: [
                 "ps": ["photoshop"],
@@ -187,7 +212,7 @@ class ConfigManager: ObservableObject {
             // 迁移到新格式
             return AppConfig(
                 hotKey: oldConfig.hotKey,
-                searchDirectories: oldConfig.searchDirectories,
+                searchDirectories: oldConfig.searchDirectories.map { SearchDirectory(path: $0) },
                 commonAbbreviations: oldConfig.commonAbbreviations,
                 modes: AppConfig.ModesConfig() // 使用默认模式设置
             )
@@ -382,15 +407,22 @@ class ConfigManager: ObservableObject {
     
     // 添加搜索目录
     func addSearchDirectory(_ path: String) {
-        if !config.searchDirectories.contains(path) {
-            config.searchDirectories.append(path)
+        if !config.searchDirectories.contains(where: { $0.path == path }) {
+            let newDirectory = SearchDirectory(path: path)
+            config.searchDirectories.append(newDirectory)
             saveConfig()
         }
     }
     
     // 移除搜索目录
     func removeSearchDirectory(_ path: String) {
-        config.searchDirectories.removeAll { $0 == path }
+        config.searchDirectories.removeAll { $0.path == path }
+        saveConfig()
+    }
+    
+    // 移除搜索目录（通过 SearchDirectory 对象）
+    func removeSearchDirectory(_ directory: SearchDirectory) {
+        config.searchDirectories.removeAll { $0.path == directory.path }
         saveConfig()
     }
     

@@ -8,7 +8,8 @@ class AppScanner: ObservableObject {
     private let configManager = ConfigManager.shared
     
     var searchDirectories: [String] {
-        return configManager.config.searchDirectories.map { path in
+        return configManager.config.searchDirectories.map { searchDirectory in
+            let path = searchDirectory.path
             if path.hasPrefix("~/") {
                 return NSString(string: path).expandingTildeInPath
             }

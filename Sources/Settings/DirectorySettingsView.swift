@@ -1,10 +1,56 @@
 import SwiftUI
 
+// MARK: - 添加目录组件
+struct AddDirectorySection: View {
+    @Binding var newDirectory: String
+    @Binding var showingDirectoryPicker: Bool
+    @FocusState private var isTextFieldFocused: Bool
+    let onAdd: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("添加搜索目录")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            HStack(spacing: 12) {
+                TextField("输入目录路径 (如: ~/Applications)", text: $newDirectory)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .focused($isTextFieldFocused)
+                    .id("newDirectoryTextField") // 确保 TextField 的稳定性
+                
+                Button("浏览") {
+                    showingDirectoryPicker = true
+                }
+                .buttonStyle(.bordered)
+                
+                Button("添加") {
+                    onAdd()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newDirectory.isEmpty)
+            }
+            .padding(16)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+            .cornerRadius(12)
+        }
+    }
+}
+
 // MARK: - 搜索目录设置视图
 struct DirectorySettingsView: View {
     @ObservedObject var configManager: ConfigManager
     @State private var newDirectory = ""
     @State private var showingDirectoryPicker = false
+    
+    // 使用计算属性来减少不必要的重新渲染
+    private var searchDirectories: [SearchDirectory] {
+        configManager.config.searchDirectories
+    }
+    
+    private var directoryCount: Int {
+        searchDirectories.count
+    }
     
     var body: some View {
         ScrollView {
@@ -20,29 +66,11 @@ struct DirectorySettingsView: View {
                 }
                 
                 // 添加新目录
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("添加搜索目录")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    
-                    HStack(spacing: 12) {
-                        TextField("输入目录路径 (如: ~/Applications)", text: $newDirectory)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                        
-                        Button("浏览") {
-                            showingDirectoryPicker = true
-                        }
-                        .buttonStyle(.bordered)
-                        
-                        Button("添加") {
-                            addDirectory()
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(newDirectory.isEmpty)
-                    }
-                    .padding(16)
-                    .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                    .cornerRadius(12)
+                AddDirectorySection(
+                    newDirectory: $newDirectory,
+                    showingDirectoryPicker: $showingDirectoryPicker
+                ) {
+                    addDirectory()
                 }
                 
                 // 目录列表
@@ -52,15 +80,15 @@ struct DirectorySettingsView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                         Spacer()
-                        Text("\(configManager.config.searchDirectories.count) 个目录")
+                        Text("\(directoryCount) 个目录")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     
                     LazyVStack(spacing: 8) {
-                        ForEach(Array(configManager.config.searchDirectories.enumerated()), id: \.offset) { index, directory in
-                            SettingsDirectoryRow(directory: directory) {
-                                removeDirectory(at: index)
+                        ForEach(searchDirectories) { directory in
+                            SettingsDirectoryRow(directory: directory.path) {
+                                removeDirectory(directory)
                             }
                         }
                     }
@@ -92,8 +120,7 @@ struct DirectorySettingsView: View {
         newDirectory = ""
     }
     
-    private func removeDirectory(at index: Int) {
-        let directory = configManager.config.searchDirectories[index]
+    private func removeDirectory(_ directory: SearchDirectory) {
         configManager.removeSearchDirectory(directory)
     }
 }

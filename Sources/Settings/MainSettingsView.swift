@@ -96,50 +96,85 @@ struct MainSettingsView: View {
                     .padding(.vertical, 16)
                 
                 // 底部操作按钮
-                VStack(spacing: 12) {
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            configManager.reloadConfig()
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.clockwise")
-                                Text("重新加载")
-                            }
-                        }
-                        .font(.caption)
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                VStack(spacing: 16) {
+                    // 配置管理按钮组
+                    VStack(spacing: 8) {
+                        Text("配置管理")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         
-                        Button(action: {
-                            NSWorkspace.shared.selectFile(configManager.configURL.path, inFileViewerRootedAtPath: "")
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "folder")
-                                Text("打开文件夹")
+                        VStack(spacing: 6) {
+                            Button(action: {
+                                configManager.reloadConfig()
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.clockwise")
+                                        .frame(width: 12)
+                                    Text("重新加载配置")
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
                             }
+                            .font(.caption)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button(action: {
+                                NSWorkspace.shared.open(configManager.configURL)
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "doc.text")
+                                        .frame(width: 12)
+                                    Text("编辑配置文件")
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .font(.caption)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            
+                            Button(action: {
+                                NSWorkspace.shared.selectFile(configManager.configURL.path, inFileViewerRootedAtPath: "")
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "folder")
+                                        .frame(width: 12)
+                                    Text("打开配置文件夹")
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .font(.caption)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
+                    
+                    Divider()
+                        .padding(.horizontal, -4)
+                    
+                    // 主要操作按钮
+                    VStack(spacing: 8) {
+                        Button("重置为默认设置") {
+                            configManager.resetToDefaults()
                         }
                         .font(.caption)
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .foregroundColor(.orange)
+                        .frame(maxWidth: .infinity)
+                        
+                        Button("完成") {
+                            dismiss()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
+                        .frame(maxWidth: .infinity)
+                        
+                        Button("退出应用") {
+                            NSApplication.shared.terminate(nil)
+                        }
+                        .foregroundColor(.red)
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
                     }
-                    
-                    Button("重置为默认") {
-                        configManager.resetToDefaults()
-                    }
-                    .font(.caption)
-                    .foregroundColor(.orange)
-                    
-                    Button("完成") {
-                        dismiss()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                    
-                    Button("退出应用") {
-                        NSApplication.shared.terminate(nil)
-                    }
-                    .foregroundColor(.red)
-                    .font(.caption)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 20)
