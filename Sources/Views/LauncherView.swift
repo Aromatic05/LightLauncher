@@ -37,7 +37,10 @@ final class KeyboardEventHandler: @unchecked Sendable {
                 viewModel.moveSelectionDown()
             case 36, 76: // Enter, Numpad Enter
                 if viewModel.executeSelectedAction() {
-                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                    // 在kill模式下不隐藏窗口
+                    if viewModel.mode != .kill {
+                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                    }
                 }
             case 53: // Escape
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
@@ -48,7 +51,10 @@ final class KeyboardEventHandler: @unchecked Sendable {
                    let number = Int(chars),
                    (1...6).contains(number) {
                     if viewModel.selectAppByNumber(number) {
-                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                        // 在kill模式下不隐藏窗口
+                        if viewModel.mode != .kill {
+                            NotificationCenter.default.post(name: .hideWindow, object: nil)
+                        }
                     }
                 }
             }
@@ -139,6 +145,12 @@ struct LauncherView: View {
         .onDisappear {
             KeyboardEventHandler.shared.stopMonitoring()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            KeyboardEventHandler.shared.viewModel = viewModel
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+            KeyboardEventHandler.shared.viewModel = nil
+        }
     }
 }
 
@@ -161,7 +173,10 @@ struct ResultsListView: View {
                             .onTapGesture {
                                 viewModel.selectedIndex = index
                                 if viewModel.executeSelectedAction() {
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    // 在kill模式下不隐藏窗口
+                                    if viewModel.mode != .kill {
+                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    }
                                 }
                             }
                             .focusable(false)
@@ -177,7 +192,10 @@ struct ResultsListView: View {
                             .onTapGesture {
                                 viewModel.selectedIndex = index
                                 if viewModel.executeSelectedAction() {
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    // 在kill模式下不隐藏窗口
+                                    if viewModel.mode != .kill {
+                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    }
                                 }
                             }
                             .focusable(false)
