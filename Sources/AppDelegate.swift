@@ -51,6 +51,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var viewModel: LauncherViewModel?
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
+    private var modifierMonitor: Any?
     private var inputMethodManager = InputMethodManager()
     private var settingsManager = SettingsManager.shared
     private var statusItem: NSStatusItem?
@@ -112,8 +113,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let hotKeyId = EventHotKeyID(signature: FourCharCode("htk1".fourCharCodeValue), id: 1)
         
         var hotKeyRef: EventHotKeyRef?
+        
+        // 对于单独的修饰键，使用特殊的keyCode处理
+        let keyCode = settingsManager.hotKeyCode == 0 ? UInt32(kVK_F13) : settingsManager.hotKeyCode
+        
         let status = RegisterEventHotKey(
-            settingsManager.hotKeyCode,
+            keyCode,
             settingsManager.hotKeyModifiers,
             hotKeyId,
             GetApplicationEventTarget(),
@@ -124,32 +129,85 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if status == noErr {
             self.hotKeyRef = hotKeyRef
             
-            // Install a simple event handler
-            var eventHandler: EventHandlerRef?
-            var eventTypes = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))]
-            
-            let callback: EventHandlerProcPtr = { (_, event, userData) -> OSStatus in
-                if let userData = userData {
-                    let appDelegate = Unmanaged<AppDelegate>.fromOpaque(userData).takeUnretainedValue()
-                    Task { @MainActor in
-                        appDelegate.handleHotKeyPressed()
-                    }
+            // 如果是单独的修饰键，需要设置特殊的事件处理
+            if settingsManager.hotKeyCode == 0 {
+                setupModifierOnlyHotkey()
+            } else {
+                setupRegularHotkey()
+            }
+        }
+    }
+    
+    private func setupRegularHotkey() {
+        // Install a simple event handler for regular hotkeys
+        var eventHandler: EventHandlerRef?
+        var eventTypes = [EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))]
+        
+        let callback: EventHandlerProcPtr = { (_, event, userData) -> OSStatus in
+            if let userData = userData {
+                let appDelegate = Unmanaged<AppDelegate>.fromOpaque(userData).takeUnretainedValue()
+                Task { @MainActor in
+                    appDelegate.handleHotKeyPressed()
                 }
-                return noErr
             }
-            
-            let installStatus = Carbon.InstallEventHandler(
-                GetApplicationEventTarget(),
-                callback,
-                1,
-                &eventTypes,
-                Unmanaged.passUnretained(self).toOpaque(),
-                &eventHandler
-            )
-            
-            if installStatus == noErr {
-                self.eventHandler = eventHandler
+            return noErr
+        }
+        
+        let installStatus = Carbon.InstallEventHandler(
+            GetApplicationEventTarget(),
+            callback,
+            1,
+            &eventTypes,
+            Unmanaged.passUnretained(self).toOpaque(),
+            &eventHandler
+        )
+        
+        if installStatus == noErr {
+            self.eventHandler = eventHandler
+        }
+    }
+    
+    private func setupModifierOnlyHotkey() {
+        // For modifier-only hotkeys, we need to monitor flag changes
+        self.modifierMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            Task { @MainActor in
+                self?.handleModifierOnlyHotkey(event)
             }
+        }
+    }
+    
+    private func handleModifierOnlyHotkey(_ event: NSEvent) {
+        let keyCode = UInt32(event.keyCode)
+        let modifiers = event.modifierFlags
+        let settingsModifiers = settingsManager.hotKeyModifiers
+        
+        // 检查是否是我们设置的修饰键的释放事件
+        var isOurModifier = false
+        
+        switch settingsModifiers {
+        case 0x100008: // 左 Command
+            isOurModifier = (keyCode == UInt32(kVK_Command) && !modifiers.contains(.command))
+        case 0x100010: // 右 Command
+            isOurModifier = (keyCode == UInt32(kVK_RightCommand) && !modifiers.contains(.command))
+        case 0x100020: // 左 Option
+            isOurModifier = (keyCode == UInt32(kVK_Option) && !modifiers.contains(.option))
+        case 0x100040: // 右 Option
+            isOurModifier = (keyCode == UInt32(kVK_RightOption) && !modifiers.contains(.option))
+        case 0x100001: // 左 Control
+            isOurModifier = (keyCode == UInt32(kVK_Control) && !modifiers.contains(.control))
+        case 0x102000: // 右 Control
+            isOurModifier = (keyCode == UInt32(kVK_RightControl) && !modifiers.contains(.control))
+        case 0x100002: // 左 Shift
+            isOurModifier = (keyCode == UInt32(kVK_Shift) && !modifiers.contains(.shift))
+        case 0x100004: // 右 Shift
+            isOurModifier = (keyCode == UInt32(kVK_RightShift) && !modifiers.contains(.shift))
+        default:
+            break
+        }
+        
+        // 确保在释放时没有其他修饰键被按住
+        if isOurModifier && !modifiers.contains([.command, .option, .control, .shift]) {
+            handleHotKeyPressed()
         }
     }
     
@@ -209,23 +267,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 设置窗口为主要响应者，然后焦点会自动传递到文本框
         window.makeFirstResponder(window.contentView)
     }
-    
-    // 更新全局热键
+     // 更新全局热键
     private func updateGlobalHotkey() {
         // 先注销旧的热键
         if let hotKeyRef = hotKeyRef {
             UnregisterEventHotKey(hotKeyRef)
             self.hotKeyRef = nil
         }
-        
+
         if let eventHandler = eventHandler {
             RemoveEventHandler(eventHandler)
             self.eventHandler = nil
         }
         
+        if let modifierMonitor = modifierMonitor {
+            NSEvent.removeMonitor(modifierMonitor)
+            self.modifierMonitor = nil
+        }
+
         // 重新设置热键
         setupGlobalHotkey()
-        
+
         // 更新状态栏工具提示
         statusItem?.button?.toolTip = "LightLauncher - \(settingsManager.getHotKeyDescription())"
     }

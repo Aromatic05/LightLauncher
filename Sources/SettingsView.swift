@@ -5,6 +5,9 @@ struct SettingsView: View {
     @ObservedObject var settingsManager = SettingsManager.shared
     @State private var isRecordingHotKey = false
     @State private var tempHotKeyDescription = ""
+    @State private var globalMonitor: Any?
+    @State private var localMonitor: Any?
+    @State private var currentModifiers: UInt32 = 0
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -156,13 +159,14 @@ struct SettingsView: View {
     private func startRecordingHotKey() {
         isRecordingHotKey = true
         tempHotKeyDescription = "按下新的快捷键..."
+        currentModifiers = 0
         
         // 设置全局事件监听
-        NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             handleHotKeyEvent(event)
         }
         
-        NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
             handleHotKeyEvent(event)
             return event
         }
@@ -173,7 +177,7 @@ struct SettingsView: View {
         
         if event.type == .keyDown {
             let keyCode = UInt32(event.keyCode)
-            let modifiers = UInt32(event.modifierFlags.rawValue)
+            let modifiers = event.modifierFlags
             
             // 过滤掉一些不适合的按键
             let validKeys: [UInt32] = [
@@ -191,10 +195,46 @@ struct SettingsView: View {
             ]
             
             if validKeys.contains(keyCode) {
-                // 确保有修饰键
-                let cleanModifiers = modifiers & (UInt32(cmdKey) | UInt32(optionKey) | UInt32(controlKey) | UInt32(shiftKey))
+                // 构建修饰键组合 - 使用标准的修饰键常量
+                var cleanModifiers: UInt32 = 0
+                
+                if modifiers.contains(.command) {
+                    cleanModifiers |= UInt32(cmdKey)
+                }
+                if modifiers.contains(.option) {
+                    cleanModifiers |= UInt32(optionKey)
+                }
+                if modifiers.contains(.control) {
+                    cleanModifiers |= UInt32(controlKey)
+                }
+                if modifiers.contains(.shift) {
+                    cleanModifiers |= UInt32(shiftKey)
+                }
+                
                 if cleanModifiers != 0 {
                     finishRecordingHotKey(modifiers: cleanModifiers, keyCode: keyCode)
+                }
+            }
+        } else if event.type == .flagsChanged {
+            let keyCode = UInt32(event.keyCode)
+            let modifiers = event.modifierFlags
+            
+            // 简化的单修饰键检测 - 只处理右Command键作为示例
+            if keyCode == UInt32(kVK_RightCommand) {
+                if !modifiers.contains(.command) { // 键被释放
+                    // 检查是否只有右Command被按下过，没有其他修饰键
+                    if !modifiers.contains([.option, .control, .shift]) {
+                        // 使用自定义的右Command标识
+                        finishRecordingHotKey(modifiers: 0x100010, keyCode: 0)
+                    }
+                }
+            }
+            // 处理右Option键
+            else if keyCode == UInt32(kVK_RightOption) {
+                if !modifiers.contains(.option) { // 键被释放
+                    if !modifiers.contains([.command, .control, .shift]) {
+                        finishRecordingHotKey(modifiers: 0x100040, keyCode: 0)
+                    }
                 }
             }
         }
@@ -205,14 +245,28 @@ struct SettingsView: View {
         settingsManager.updateHotKey(modifiers: modifiers, keyCode: keyCode)
         
         // 移除事件监听
-        NSEvent.removeMonitor(self)
+        if let monitor = globalMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalMonitor = nil
+        }
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMonitor = nil
+        }
     }
     
     private func cancelRecordingHotKey() {
         isRecordingHotKey = false
         
         // 移除事件监听
-        NSEvent.removeMonitor(self)
+        if let monitor = globalMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalMonitor = nil
+        }
+        if let monitor = localMonitor {
+            NSEvent.removeMonitor(monitor)
+            localMonitor = nil
+        }
     }
     
     private func resetToDefaults() {
