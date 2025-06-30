@@ -265,6 +265,39 @@ struct GeneralSettingsView: View {
                             }
                             
                             SettingRow(
+                                icon: "globe",
+                                iconColor: .blue,
+                                title: "网页搜索",
+                                description: "输入 /s 进入网页搜索模式",
+                                isToggle: true,
+                                toggleValue: $settingsManager.isSearchModeEnabled
+                            ) {
+                                settingsManager.toggleSearchMode()
+                            }
+                            
+                            SettingRow(
+                                icon: "safari",
+                                iconColor: .green,
+                                title: "网页打开",
+                                description: "输入 /w 进入网页打开模式",
+                                isToggle: true,
+                                toggleValue: $settingsManager.isWebModeEnabled
+                            ) {
+                                settingsManager.toggleWebMode()
+                            }
+                            
+                            SettingRow(
+                                icon: "terminal",
+                                iconColor: .orange,
+                                title: "终端执行",
+                                description: "输入 /t 进入终端命令执行模式",
+                                isToggle: true,
+                                toggleValue: $settingsManager.isTerminalModeEnabled
+                            ) {
+                                settingsManager.toggleTerminalMode()
+                            }
+                            
+                            SettingRow(
                                 icon: "lightbulb",
                                 iconColor: .yellow,
                                 title: "命令提示",

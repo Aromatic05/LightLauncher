@@ -37,8 +37,9 @@ class RunningAppsManager: @unchecked Sendable {
             // 过滤掉系统应用和没有界面的应用
             guard let bundleId = app.bundleIdentifier,
                   let appName = app.localizedName,
-                  app.activationPolicy == .regular,
-                  !bundleId.hasPrefix("com.apple.") || appName.contains("Finder") else {
+                  app.activationPolicy == .regular
+            else {
+                // !bundleId.hasPrefix("com.apple.") || appName.contains("Finder")
                 return nil
             }
             

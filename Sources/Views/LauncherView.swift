@@ -100,13 +100,30 @@ struct LauncherView: View {
             if viewModel.showCommandSuggestions {
                 // 当显示命令建议时，不显示其他内容
                 Spacer()
-            } else if viewModel.hasResults {
-                ResultsListView(viewModel: viewModel)
             } else {
-                EmptyStateView(
-                    mode: viewModel.mode,
-                    hasSearchText: !viewModel.searchText.isEmpty
-                )
+                switch viewModel.mode {
+                case .launch:
+                    if viewModel.hasResults {
+                        ResultsListView(viewModel: viewModel)
+                    } else {
+                        EmptyStateView(
+                            mode: viewModel.mode,
+                            hasSearchText: !viewModel.searchText.isEmpty
+                        )
+                    }
+                case .kill:
+                    if viewModel.hasResults {
+                        ResultsListView(viewModel: viewModel)
+                    } else {
+                        EmptyStateView(
+                            mode: viewModel.mode,
+                            hasSearchText: !viewModel.searchText.isEmpty
+                        )
+                    }
+                case .search, .web, .terminal:
+                    // 新模式显示输入提示界面
+                    CommandInputView(mode: viewModel.mode, searchText: viewModel.searchText)
+                }
             }
         }
         .frame(width: 700, height: 500)
@@ -256,6 +273,128 @@ struct CommandSuggestionRow: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(NSColor.controlBackgroundColor).opacity(0.3))
         )
+    }
+}
+
+// MARK: - Command Input View
+struct CommandInputView: View {
+    let mode: LauncherMode
+    let searchText: String
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            // 模式图标和标题
+            VStack(spacing: 16) {
+                Image(systemName: mode.iconName)
+                    .font(.system(size: 48))
+                    .foregroundColor(iconColor)
+                
+                Text(mode.displayName)
+                    .font(.title)
+                    .fontWeight(.bold)
+            }
+            
+            // 输入提示
+            VStack(spacing: 12) {
+                Text(inputPrompt)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                
+                if !searchText.isEmpty {
+                    let cleanText = extractCleanText()
+                    if !cleanText.isEmpty {
+                        Text("将执行: \(cleanText)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 8)
+                            .background(Color(NSColor.controlBackgroundColor))
+                            .cornerRadius(8)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // 帮助文本
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(helpText, id: \.self) { text in
+                    HStack {
+                        Circle()
+                            .fill(Color.secondary)
+                            .frame(width: 4, height: 4)
+                        Text(text)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                }
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 20)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var iconColor: Color {
+        switch mode {
+        case .search:
+            return .blue
+        case .web:
+            return .green
+        case .terminal:
+            return .orange
+        default:
+            return .primary
+        }
+    }
+    
+    private var inputPrompt: String {
+        switch mode {
+        case .search:
+            return "输入搜索关键词，按回车搜索网页"
+        case .web:
+            return "输入网址或网站名称，按回车打开"
+        case .terminal:
+            return "输入终端命令，按回车执行"
+        default:
+            return "请输入内容"
+        }
+    }
+    
+    private var helpText: [String] {
+        switch mode {
+        case .search:
+            return [
+                "支持任意关键词搜索",
+                "将使用默认搜索引擎",
+                "删除 /s 前缀返回启动模式"
+            ]
+        case .web:
+            return [
+                "支持完整 URL 或域名",
+                "自动添加 https:// 前缀",
+                "删除 /w 前缀返回启动模式"
+            ]
+        case .terminal:
+            return [
+                "在终端应用中执行命令",
+                "支持 Terminal 和 iTerm2",
+                "删除 /t 前缀返回启动模式"
+            ]
+        default:
+            return []
+        }
+    }
+    
+    private func extractCleanText() -> String {
+        let prefix = "/\(mode.rawValue.first ?? "x") "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

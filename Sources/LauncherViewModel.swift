@@ -496,6 +496,9 @@ class LauncherViewModel: ObservableObject {
             return filteredApps
         case .kill:
             return runningApps
+        case .search, .web, .terminal:
+            // 对于这些模式，没有选择列表，只有输入
+            return []
         }
     }
     
@@ -525,6 +528,9 @@ class LauncherViewModel: ObservableObject {
             return !filteredApps.isEmpty
         case .kill:
             return !runningApps.isEmpty
+        case .search, .web, .terminal:
+            // 对于这些模式，总是显示输入框
+            return true
         }
     }
     
@@ -556,6 +562,10 @@ class LauncherViewModel: ObservableObject {
             guard index >= 0 && index < runningApps.count && index < 6 else { return false }
             selectedIndex = index
             return killSelectedApp()
+            
+        case .search, .web, .terminal:
+            // 这些模式不支持数字选择
+            return false
         }
     }
     

@@ -13,6 +13,9 @@ class SettingsManager: ObservableObject {
     
     // 模式开关
     @Published var isKillModeEnabled: Bool = true
+    @Published var isSearchModeEnabled: Bool = true
+    @Published var isWebModeEnabled: Bool = true
+    @Published var isTerminalModeEnabled: Bool = true
     @Published var showCommandSuggestions: Bool = true
     
     private let userDefaults = UserDefaults.standard
@@ -23,6 +26,9 @@ class SettingsManager: ObservableObject {
         static let hotKeyModifiers = "hotKeyModifiers"
         static let hotKeyCode = "hotKeyCode"
         static let killModeEnabled = "killModeEnabled"
+        static let searchModeEnabled = "searchModeEnabled"
+        static let webModeEnabled = "webModeEnabled"
+        static let terminalModeEnabled = "terminalModeEnabled"
         static let showCommandSuggestions = "showCommandSuggestions"
     }
     
@@ -39,6 +45,9 @@ class SettingsManager: ObservableObject {
         
         // 加载模式设置，默认启用
         isKillModeEnabled = userDefaults.object(forKey: Keys.killModeEnabled) as? Bool ?? true
+        isSearchModeEnabled = userDefaults.object(forKey: Keys.searchModeEnabled) as? Bool ?? true
+        isWebModeEnabled = userDefaults.object(forKey: Keys.webModeEnabled) as? Bool ?? true
+        isTerminalModeEnabled = userDefaults.object(forKey: Keys.terminalModeEnabled) as? Bool ?? true
         showCommandSuggestions = userDefaults.object(forKey: Keys.showCommandSuggestions) as? Bool ?? true
         
         // 如果是首次运行，设置默认值
@@ -53,6 +62,9 @@ class SettingsManager: ObservableObject {
         userDefaults.set(Int(hotKeyModifiers), forKey: Keys.hotKeyModifiers)
         userDefaults.set(Int(hotKeyCode), forKey: Keys.hotKeyCode)
         userDefaults.set(isKillModeEnabled, forKey: Keys.killModeEnabled)
+        userDefaults.set(isSearchModeEnabled, forKey: Keys.searchModeEnabled)
+        userDefaults.set(isWebModeEnabled, forKey: Keys.webModeEnabled)
+        userDefaults.set(isTerminalModeEnabled, forKey: Keys.terminalModeEnabled)
         userDefaults.set(showCommandSuggestions, forKey: Keys.showCommandSuggestions)
     }
     
@@ -100,6 +112,21 @@ class SettingsManager: ObservableObject {
     
     func toggleKillMode() {
         isKillModeEnabled.toggle()
+        saveSettings()
+    }
+    
+    func toggleSearchMode() {
+        isSearchModeEnabled.toggle()
+        saveSettings()
+    }
+    
+    func toggleWebMode() {
+        isWebModeEnabled.toggle()
+        saveSettings()
+    }
+    
+    func toggleTerminalMode() {
+        isTerminalModeEnabled.toggle()
         saveSettings()
     }
     

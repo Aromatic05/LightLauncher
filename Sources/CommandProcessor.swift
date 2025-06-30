@@ -23,40 +23,80 @@ class MainCommandProcessor: ObservableObject {
     private func setupProcessors() {
         processors = [
             LaunchCommandProcessor(),
-            KillCommandProcessor()
+            KillCommandProcessor(),
+            SearchCommandProcessor(),
+            WebCommandProcessor(),
+            TerminalCommandProcessor()
         ]
     }
     
     func processInput(_ text: String, in viewModel: LauncherViewModel) -> Bool {
-        // 如果当前在 kill 模式下
-        if viewModel.mode == .kill {
-            // 如果用户删除了 /k 前缀，退出 kill 模式
+        // 处理各种模式下的前缀删除
+        switch viewModel.mode {
+        case .kill:
             if !text.hasPrefix("/k") {
                 viewModel.switchToLaunchMode()
-                // 如果有剩余文本，在 launch 模式下搜索
                 if !text.isEmpty {
                     viewModel.filterApps(searchText: text)
                 }
                 return true
-            }
-            // 如果保持 /k 前缀，提取搜索内容
-            else {
+            } else {
                 let searchText = String(text.dropFirst(2)) // 移除 "/k"
                 getCurrentProcessor(for: .kill)?.handleSearch(text: searchText, in: viewModel)
                 return false
             }
+            
+        case .search:
+            if !text.hasPrefix("/s") {
+                viewModel.switchToLaunchMode()
+                if !text.isEmpty {
+                    viewModel.filterApps(searchText: text)
+                }
+                return true
+            } else {
+                let searchText = String(text.dropFirst(2)) // 移除 "/s"
+                getCurrentProcessor(for: .search)?.handleSearch(text: searchText, in: viewModel)
+                return false
+            }
+            
+        case .web:
+            if !text.hasPrefix("/w") {
+                viewModel.switchToLaunchMode()
+                if !text.isEmpty {
+                    viewModel.filterApps(searchText: text)
+                }
+                return true
+            } else {
+                let searchText = String(text.dropFirst(2)) // 移除 "/w"
+                getCurrentProcessor(for: .web)?.handleSearch(text: searchText, in: viewModel)
+                return false
+            }
+            
+        case .terminal:
+            if !text.hasPrefix("/t") {
+                viewModel.switchToLaunchMode()
+                if !text.isEmpty {
+                    viewModel.filterApps(searchText: text)
+                }
+                return true
+            } else {
+                let searchText = String(text.dropFirst(2)) // 移除 "/t"
+                getCurrentProcessor(for: .terminal)?.handleSearch(text: searchText, in: viewModel)
+                return false
+            }
+            
+        case .launch:
+            // 检查是否是命令
+            if let command = LauncherCommand.parseCommand(from: text) {
+                let processor = processors.first { $0.canHandle(command: command.trigger) }
+                return processor?.process(command: command.trigger, in: viewModel) ?? false
+            }
+            
+            // 否则处理为搜索
+            let currentProcessor = getCurrentProcessor(for: viewModel.mode)
+            currentProcessor?.handleSearch(text: text, in: viewModel)
+            return false
         }
-        
-        // 检查是否是命令
-        if let command = LauncherCommand.parseCommand(from: text) {
-            let processor = processors.first { $0.canHandle(command: command.trigger) }
-            return processor?.process(command: command.trigger, in: viewModel) ?? false
-        }
-        
-        // 否则处理为搜索
-        let currentProcessor = getCurrentProcessor(for: viewModel.mode)
-        currentProcessor?.handleSearch(text: text, in: viewModel)
-        return false
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
@@ -78,6 +118,12 @@ class MainCommandProcessor: ObservableObject {
             return processors.first { $0 is LaunchCommandProcessor }
         case .kill:
             return processors.first { $0 is KillCommandProcessor }
+        case .search:
+            return processors.first { $0 is SearchCommandProcessor }
+        case .web:
+            return processors.first { $0 is WebCommandProcessor }
+        case .terminal:
+            return processors.first { $0 is TerminalCommandProcessor }
         }
     }
 }
@@ -151,7 +197,7 @@ struct CommandSuggestionProvider {
             return [
                 "Type to search applications",
                 "Press ↑↓ arrows or numbers 1-6 to select",
-                "Type /k to enter kill mode",
+                "Type / to see all commands",
                 "Press Esc to close"
             ]
         case .kill:
@@ -159,6 +205,27 @@ struct CommandSuggestionProvider {
                 "Type after /k to search running apps",
                 "Press ↑↓ arrows or numbers 1-6 to select", 
                 "Delete /k prefix to return to launch mode",
+                "Press Esc to close"
+            ]
+        case .search:
+            return [
+                "Type after /s to search the web",
+                "Press Enter to execute search",
+                "Delete /s prefix to return to launch mode",
+                "Press Esc to close"
+            ]
+        case .web:
+            return [
+                "Type after /w to open website or URL",
+                "Press Enter to open in browser",
+                "Delete /w prefix to return to launch mode", 
+                "Press Esc to close"
+            ]
+        case .terminal:
+            return [
+                "Type after /t to execute terminal command",
+                "Press Enter to run in Terminal",
+                "Delete /t prefix to return to launch mode",
                 "Press Esc to close"
             ]
         }
