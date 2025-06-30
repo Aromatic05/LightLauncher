@@ -76,12 +76,12 @@ class BrowserDataManager {
     }
     
     func loadBrowserData() {
-        print("🔍 BrowserDataManager: loadBrowserData called")
-        print("🔍 Enabled browsers: \(enabledBrowsers)")
+        // print("🔍 BrowserDataManager: loadBrowserData called")
+        // print("🔍 Enabled browsers: \(enabledBrowsers)")
         
         // 避免频繁加载，缓存5分钟
         if let lastLoad = lastLoadTime, Date().timeIntervalSince(lastLoad) < 300 {
-            print("🔍 Using cached data (last load: \(lastLoad))")
+            // print("🔍 Using cached data (last load: \(lastLoad))")
             return
         }
         
@@ -91,10 +91,10 @@ class BrowserDataManager {
             
             // 加载所有启用的浏览器数据
             for browser in await self.enabledBrowsers {
-                print("🔍 Checking browser: \(browser.rawValue), installed: \(browser.isInstalled)")
+                // print("🔍 Checking browser: \(browser.rawValue), installed: \(browser.isInstalled)")
                 if browser.isInstalled {
                     let (bookmarks, history) = await Self.loadBrowserData(for: browser)
-                    print("🔍 Loaded from \(browser.rawValue): \(bookmarks.count) bookmarks, \(history.count) history items")
+                    // print("🔍 Loaded from \(browser.rawValue): \(bookmarks.count) bookmarks, \(history.count) history items")
                     allBookmarks.append(contentsOf: bookmarks)
                     allHistory.append(contentsOf: history)
                 }
@@ -104,7 +104,7 @@ class BrowserDataManager {
             let uniqueBookmarks = await Self.removeDuplicates(from: allBookmarks)
             let uniqueHistory = await Self.removeDuplicates(from: allHistory)
             
-            print("🔍 Final result: \(uniqueBookmarks.count) unique bookmarks, \(uniqueHistory.count) unique history items")
+            // print("🔍 Final result: \(uniqueBookmarks.count) unique bookmarks, \(uniqueHistory.count) unique history items")
             
             await MainActor.run { [weak self] in
                 self?.bookmarks = uniqueBookmarks
@@ -115,18 +115,15 @@ class BrowserDataManager {
     }
     
     func searchBrowserData(query: String) -> [BrowserItem] {
-        let queryLower = query.lowercased()
+        let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         var results: [BrowserItem] = []
         
-        // 搜索书签（优先级更高）
-        let matchingBookmarks = bookmarks.filter { bookmark in
-            bookmark.title.lowercased().contains(queryLower) ||
+        // 优先匹配URL的项目（书签和历史记录混合）
+        let urlMatchingBookmarks = bookmarks.filter { bookmark in
             bookmark.url.lowercased().contains(queryLower)
         }
         
-        // 搜索历史记录
-        let matchingHistory = historyItems.filter { item in
-            item.title.lowercased().contains(queryLower) ||
+        let urlMatchingHistory = historyItems.filter { item in
             item.url.lowercased().contains(queryLower)
         }.sorted { item1, item2 in
             // 按访问次数和最后访问时间排序
@@ -136,9 +133,32 @@ class BrowserDataManager {
             return (item1.lastVisited ?? Date.distantPast) > (item2.lastVisited ?? Date.distantPast)
         }
         
-        // 合并结果：书签在前，历史记录在后
-        results.append(contentsOf: matchingBookmarks)
-        results.append(contentsOf: Array(matchingHistory.prefix(10))) // 限制历史记录数量
+        // 然后匹配标题的项目（书签和历史记录混合）
+        let titleMatchingBookmarks = bookmarks.filter { bookmark in
+            !bookmark.url.lowercased().contains(queryLower) &&
+            bookmark.title.lowercased().contains(queryLower)
+        }
+        
+        let titleMatchingHistory = historyItems.filter { item in
+            !item.url.lowercased().contains(queryLower) &&
+            item.title.lowercased().contains(queryLower)
+        }.sorted { item1, item2 in
+            // 按访问次数和最后访问时间排序
+            if item1.visitCount != item2.visitCount {
+                return item1.visitCount > item2.visitCount
+            }
+            return (item1.lastVisited ?? Date.distantPast) > (item2.lastVisited ?? Date.distantPast)
+        }
+        
+        // 按优先级合并结果：
+        // 1. URL匹配的书签（最高优先级）
+        results.append(contentsOf: urlMatchingBookmarks)
+        // 2. URL匹配的历史记录（高优先级）
+        results.append(contentsOf: Array(urlMatchingHistory.prefix(10)))
+        // 3. 标题匹配的书签（中等优先级）
+        results.append(contentsOf: titleMatchingBookmarks)
+        // 4. 标题匹配的历史记录（低优先级）
+        results.append(contentsOf: Array(titleMatchingHistory.prefix(5)))
         
         return results
     }
