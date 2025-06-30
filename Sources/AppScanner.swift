@@ -22,7 +22,9 @@ class AppScanner: ObservableObject {
         
         Task {
             let apps = await performScan()
-            self.applications = apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            // 使用 Set 去重，然后转换为数组并排序
+            let uniqueApps = Array(Set(apps))
+            self.applications = uniqueApps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             self.isScanning = false
         }
     }

@@ -129,20 +129,24 @@ struct LauncherCommand {
 
 // MARK: - 应用信息结构
 struct AppInfo: Identifiable, Hashable {
-    let id = UUID()
     let name: String
     let url: URL
+    
+    // 使用 URL 路径作为唯一标识符，避免重复应用
+    var id: String {
+        url.path
+    }
     
     var icon: NSImage? {
         NSWorkspace.shared.icon(forFile: url.path)
     }
     
     func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        hasher.combine(url.path)
     }
     
     static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
-        lhs.id == rhs.id
+        lhs.url.path == rhs.url.path
     }
 }
 
