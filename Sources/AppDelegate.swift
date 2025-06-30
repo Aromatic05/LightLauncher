@@ -330,6 +330,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 恢复之前的输入法
         inputMethodManager.restorePreviousInputMethod()
+        
+        // 对于单独修饰键的热键，需要确保应用不阻塞全局事件
+        if settingsManager.hotKeyCode == 0 {
+            // 将应用设置为非活跃状态，但不隐藏应用本身
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                if let frontmostApp = NSWorkspace.shared.frontmostApplication,
+                   frontmostApp.bundleIdentifier != Bundle.main.bundleIdentifier {
+                    // 如果有其他应用在前台，就激活它
+                    frontmostApp.activate(options: [])
+                } else {
+                    // 否则激活 Finder
+                    if let finderURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.finder") {
+                        NSWorkspace.shared.openApplication(at: finderURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+                    }
+                }
+            }
+        }
     }
     
     private func setupStatusItem() {
