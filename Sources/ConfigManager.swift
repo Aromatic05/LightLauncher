@@ -26,7 +26,8 @@ class ConfigManager: ObservableObject {
     
     @Published var config: AppConfig
     
-    private let configURL: URL
+    // 配置文件路径
+    let configURL: URL
     
     private init() {
         // 创建配置目录
