@@ -6,12 +6,75 @@ final class KeyboardEventHandler: @unchecked Sendable {
     static let shared = KeyboardEventHandler()
     weak var viewModel: LauncherViewModel?
     private var eventMonitor: Any?
+    private var currentMode: LauncherMode = .launch
     
     private init() {}
     
+    func updateMode(_ mode: LauncherMode) {
+        currentMode = mode
+    }
+    
     func startMonitoring() {
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            return self?.handleKeyEvent(event)
+            guard let self = self, let viewModel = self.viewModel else { return event }
+            
+            let keyCode = event.keyCode
+            let modifierFlags = event.modifierFlags
+            let characters = event.characters
+            
+            // 预先检查是否是数字键
+            let isNumericKey = modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty &&
+                              characters != nil &&
+                              Int(characters!) != nil &&
+                              (1...6).contains(Int(characters!)!)
+            
+            // 如果是数字键且在web模式下，直接返回事件让它通过
+            if isNumericKey && self.currentMode == .web || self.currentMode == .search || self.currentMode == .terminal {
+                return event
+            }
+            
+            DispatchQueue.main.async {
+                switch keyCode {
+                case 126: // Up Arrow
+                    viewModel.moveSelectionUp()
+                case 125: // Down Arrow
+                    viewModel.moveSelectionDown()
+                case 36, 76: // Enter, Numpad Enter
+                    if viewModel.executeSelectedAction() {
+                        // 在kill模式下不隐藏窗口
+                        if viewModel.mode != .kill {
+                            NotificationCenter.default.post(name: .hideWindow, object: nil)
+                        }
+                    }
+                case 53: // Escape
+                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                default:
+                    // Handle numeric shortcuts only if no modifier keys are pressed and not in web mode
+                    if modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
+                       let chars = characters,
+                       let number = Int(chars),
+                       (1...6).contains(number),
+                       self.currentMode != .web { // 在web模式下不处理数字快捷键
+                        if viewModel.selectAppByNumber(number) {
+                            // 在kill模式下不隐藏窗口
+                            if viewModel.mode != .kill {
+                                NotificationCenter.default.post(name: .hideWindow, object: nil)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            switch keyCode {
+            case 126, 125, 36, 76, 53: // Navigation keys we want to consume
+                return nil
+            default:
+                // Handle numeric shortcuts - 如果是数字键且不在web模式下，消费事件
+                if isNumericKey && self.currentMode != .web {
+                    return nil // Consume numeric shortcuts
+                }
+                return event // Let other keys pass through
+            }
         }
     }
     
@@ -19,59 +82,6 @@ final class KeyboardEventHandler: @unchecked Sendable {
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil
-        }
-    }
-    
-    private func handleKeyEvent(_ event: NSEvent) -> NSEvent? {
-        guard let viewModel = viewModel else { return event }
-        
-        let keyCode = event.keyCode
-        let modifierFlags = event.modifierFlags
-        let characters = event.characters
-        
-        DispatchQueue.main.async {
-            switch keyCode {
-            case 126: // Up Arrow
-                viewModel.moveSelectionUp()
-            case 125: // Down Arrow
-                viewModel.moveSelectionDown()
-            case 36, 76: // Enter, Numpad Enter
-                if viewModel.executeSelectedAction() {
-                    // 在kill模式下不隐藏窗口
-                    if viewModel.mode != .kill {
-                        NotificationCenter.default.post(name: .hideWindow, object: nil)
-                    }
-                }
-            case 53: // Escape
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
-            default:
-                // Handle numeric shortcuts only if no modifier keys are pressed
-                if modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
-                   let chars = characters,
-                   let number = Int(chars),
-                   (1...6).contains(number) {
-                    if viewModel.selectAppByNumber(number) {
-                        // 在kill模式下不隐藏窗口
-                        if viewModel.mode != .kill {
-                            NotificationCenter.default.post(name: .hideWindow, object: nil)
-                        }
-                    }
-                }
-            }
-        }
-        
-        switch keyCode {
-        case 126, 125, 36, 76, 53: // Navigation keys we want to consume
-            return nil
-        default:
-            // Handle numeric shortcuts
-            if modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
-               let chars = characters,
-               let number = Int(chars),
-               (1...6).contains(number) {
-                return nil // Consume numeric shortcuts
-            }
-            return event // Let other keys pass through
         }
     }
 }
@@ -146,6 +156,7 @@ struct LauncherView: View {
         .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
         .onAppear {
             KeyboardEventHandler.shared.viewModel = viewModel
+            KeyboardEventHandler.shared.updateMode(viewModel.mode)
             KeyboardEventHandler.shared.startMonitoring()
         }
         .onDisappear {
@@ -153,9 +164,13 @@ struct LauncherView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             KeyboardEventHandler.shared.viewModel = viewModel
+            KeyboardEventHandler.shared.updateMode(viewModel.mode)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
             KeyboardEventHandler.shared.viewModel = nil
+        }
+        .onChange(of: viewModel.mode) { newMode in
+            KeyboardEventHandler.shared.updateMode(newMode)
         }
     }
 }
