@@ -638,17 +638,44 @@ class LauncherViewModel: ObservableObject {
     
     func updateSearchHistory(_ items: [SearchHistoryItem]) {
         searchHistory = items
+        // 确保选中索引在有效范围内
+        let maxIndex = getCurrentItems().count - 1
+        if selectedIndex > maxIndex {
+            selectedIndex = 0
+        }
     }
     
     func executeSearchHistoryItem(at index: Int) -> Bool {
         guard index >= 0 && index < searchHistory.count else { return false }
         let item = searchHistory[index]
         
-        // 更新搜索文本
-        searchText = "/s \(item.query)"
+        // 直接执行网页搜索，避免递归
+        let configManager = ConfigManager.shared
+        let engine = configManager.config.modes.defaultSearchEngine
         
-        // 执行搜索
-        return executeSelectedAction()
+        var searchEngine: String
+        switch engine {
+        case "baidu":
+            searchEngine = "https://www.baidu.com/s?wd={query}"
+        case "bing":
+            searchEngine = "https://www.bing.com/search?q={query}"
+        case "google":
+            fallthrough
+        default:
+            searchEngine = "https://www.google.com/search?q={query}"
+        }
+        
+        let encodedQuery = item.query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? item.query
+        let searchURL = searchEngine.replacingOccurrences(of: "{query}", with: encodedQuery)
+        
+        guard let url = URL(string: searchURL) else { return false }
+        
+        // 保存到搜索历史（更新使用时间）
+        SearchHistoryManager.shared.addSearch(query: item.query, searchEngine: engine)
+        
+        NSWorkspace.shared.open(url)
+        resetToLaunchMode()
+        return true
     }
     
     func clearSearchHistory() {

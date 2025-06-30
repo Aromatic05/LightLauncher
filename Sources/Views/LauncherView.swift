@@ -28,8 +28,8 @@ final class KeyboardEventHandler: @unchecked Sendable {
                               Int(characters!) != nil &&
                               (1...6).contains(Int(characters!)!)
             
-            // 如果是数字键且在web模式下，直接返回事件让它通过
-            if isNumericKey && self.currentMode == .web || self.currentMode == .search || self.currentMode == .terminal {
+            // 如果是数字键且在web/search/terminal模式下，直接返回事件让它通过
+            if isNumericKey && (self.currentMode == .web || self.currentMode == .search || self.currentMode == .terminal) {
                 return event
             }
             

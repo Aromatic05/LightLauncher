@@ -90,5 +90,12 @@ extension LauncherViewModel {
     func switchToSearchMode() {
         mode = .search
         selectedIndex = 0
+        
+        // 立即加载搜索历史
+        let historyManager = SearchHistoryManager.shared
+        let searchText = self.searchText.hasPrefix("/s ") ? 
+            String(self.searchText.dropFirst(3)) : ""
+        let historyItems = historyManager.getMatchingHistory(for: searchText, limit: 10)
+        updateSearchHistory(historyItems)
     }
 }
