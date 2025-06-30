@@ -12,6 +12,7 @@ class LauncherViewModel: ObservableObject {
     @Published var commandSuggestions: [LauncherCommand] = []
     @Published var showCommandSuggestions = false
     @Published var browserItems: [BrowserItem] = []
+    @Published var searchHistory: [SearchHistoryItem] = []
     
     private var allApps: [AppInfo] = []
     private let appScanner: AppScanner
@@ -514,11 +515,44 @@ class LauncherViewModel: ObservableObject {
         case .kill:
             return runningApps
         case .web:
-            return browserItems
-        case .search, .terminal:
-            // 对于这些模式，没有选择列表，只有输入
-            return []
+            // Web模式：当前输入项（索引0） + 浏览器项目（索引1开始）
+            var items: [Any] = ["current_web"] // 当前输入项在最前面
+            items.append(contentsOf: browserItems) // 浏览器项目在后面
+            return items
+        case .search:
+            // 搜索模式：当前输入项（索引0） + 历史记录（索引1开始）
+            var items: [Any] = ["current_search"] // 当前搜索项在最前面
+            items.append(contentsOf: searchHistory) // 历史记录在后面
+            return items
+        case .terminal:
+            // 终端模式：只有当前输入项
+            let cleanText = extractCleanTerminalText()
+            return cleanText.isEmpty ? [] : ["current_terminal"]
         }
+    }
+    
+    private func extractCleanWebText() -> String {
+        let prefix = "/w "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private func extractCleanSearchText() -> String {
+        let prefix = "/s "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private func extractCleanTerminalText() -> String {
+        let prefix = "/t "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     func launchSelectedApp() -> Bool {
@@ -597,5 +631,33 @@ class LauncherViewModel: ObservableObject {
         searchText = ""
         filteredApps = getMostUsedApps(from: allApps, limit: 6)
         selectedIndex = 0
+        searchHistory = []
+    }
+    
+    // MARK: - 搜索历史方法
+    
+    func updateSearchHistory(_ items: [SearchHistoryItem]) {
+        searchHistory = items
+    }
+    
+    func executeSearchHistoryItem(at index: Int) -> Bool {
+        guard index >= 0 && index < searchHistory.count else { return false }
+        let item = searchHistory[index]
+        
+        // 更新搜索文本
+        searchText = "/s \(item.query)"
+        
+        // 执行搜索
+        return executeSelectedAction()
+    }
+    
+    func clearSearchHistory() {
+        SearchHistoryManager.shared.clearHistory()
+        searchHistory = []
+    }
+    
+    func removeSearchHistoryItem(_ item: SearchHistoryItem) {
+        SearchHistoryManager.shared.removeSearch(item: item)
+        searchHistory = SearchHistoryManager.shared.searchHistory
     }
 }

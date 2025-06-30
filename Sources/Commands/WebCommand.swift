@@ -15,29 +15,33 @@ class WebCommandProcessor: CommandProcessor {
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        // 提取实际的搜索文本（去掉 "/w " 前缀）
-        let webText = text.hasPrefix("/w ") ? String(text.dropFirst(3)) : text
-        viewModel.updateWebResults(query: webText)
+        // 文本已经在 MainCommandProcessor 中正确处理过了
+        viewModel.updateWebResults(query: text)
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
         guard viewModel.mode == .web else { return false }
         
-        // 如果有浏览器项目可选择，优先选择浏览器项目
-        if !viewModel.browserItems.isEmpty && index < viewModel.browserItems.count {
-            let selectedItem = viewModel.browserItems[index]
+        let cleanWebText = viewModel.searchText.hasPrefix("/w ") ? 
+            String(viewModel.searchText.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) : 
+            viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 如果选择的是当前输入项（索引0）
+        if index == 0 {
+            if !cleanWebText.isEmpty {
+                return openWebsite(urlText: cleanWebText, in: viewModel)
+            }
+            // 如果输入文本为空，可以提示用户输入
+            return false
+        }
+        // 如果选择的是浏览器项目（索引1开始）
+        else if index > 0 && index <= viewModel.browserItems.count {
+            let browserIndex = index - 1 // 转换为浏览器项目的实际索引
+            let selectedItem = viewModel.browserItems[browserIndex]
             return openBrowserItem(selectedItem, in: viewModel)
         }
         
-        // 否则处理直接输入的URL
-        let urlText = viewModel.searchText.hasPrefix("/w ") ? 
-            String(viewModel.searchText.dropFirst(3)) : viewModel.searchText
-        
-        guard !urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return false
-        }
-        
-        return openWebsite(urlText: urlText, in: viewModel)
+        return false
     }
     
     private func openBrowserItem(_ item: BrowserItem, in viewModel: LauncherViewModel) -> Bool {

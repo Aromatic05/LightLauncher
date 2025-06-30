@@ -4,6 +4,8 @@ import AppKit
 // MARK: - 网页搜索命令处理器
 @MainActor
 class SearchCommandProcessor: CommandProcessor {
+    private let historyManager = SearchHistoryManager.shared
+    
     func canHandle(command: String) -> Bool {
         return command == "/s"
     }
@@ -15,22 +17,33 @@ class SearchCommandProcessor: CommandProcessor {
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        // 在搜索模式下，直接显示搜索文本，不需要过滤
-        // 用户按回车时会执行搜索
+        // 文本已经在 MainCommandProcessor 中正确处理过了
+        // 更新搜索历史建议
+        let historyItems = historyManager.getMatchingHistory(for: text, limit: 10)
+        viewModel.updateSearchHistory(historyItems)
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
         guard viewModel.mode == .search else { return false }
         
-        // 提取搜索文本，去掉 "/s " 前缀
-        let searchText = viewModel.searchText.hasPrefix("/s ") ? 
-            String(viewModel.searchText.dropFirst(3)) : viewModel.searchText
+        let cleanSearchText = viewModel.searchText.hasPrefix("/s ") ? 
+            String(viewModel.searchText.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) : 
+            viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        // 如果选择的是当前搜索项（索引0）
+        if index == 0 {
+            if !cleanSearchText.isEmpty {
+                return executeWebSearch(query: cleanSearchText, in: viewModel)
+            }
             return false
         }
+        // 如果选择的是搜索历史项（索引1开始）
+        else if index > 0 && index <= viewModel.searchHistory.count {
+            let historyIndex = index - 1 // 转换为历史记录的实际索引
+            return viewModel.executeSearchHistoryItem(at: historyIndex)
+        }
         
-        return executeWebSearch(query: searchText, in: viewModel)
+        return false
     }
     
     private func executeWebSearch(query: String, in viewModel: LauncherViewModel) -> Bool {
@@ -40,6 +53,10 @@ class SearchCommandProcessor: CommandProcessor {
         let searchURL = searchEngine.replacingOccurrences(of: "{query}", with: encodedQuery)
         
         guard let url = URL(string: searchURL) else { return false }
+        
+        // 保存到搜索历史
+        let engineName = getDefaultSearchEngineName()
+        historyManager.addSearch(query: query, searchEngine: engineName)
         
         NSWorkspace.shared.open(url)
         viewModel.resetToLaunchMode()
@@ -60,6 +77,11 @@ class SearchCommandProcessor: CommandProcessor {
         default:
             return "https://www.google.com/search?q={query}"
         }
+    }
+    
+    private func getDefaultSearchEngineName() -> String {
+        let configManager = ConfigManager.shared
+        return configManager.config.modes.defaultSearchEngine
     }
 }
 

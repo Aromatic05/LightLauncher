@@ -54,7 +54,8 @@ class MainCommandProcessor: ObservableObject {
                 }
                 return true
             } else {
-                let searchText = String(text.dropFirst(2)) // 移除 "/s"
+                // 正确处理 "/s " 前缀
+                let searchText = text.hasPrefix("/s ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
                 getCurrentProcessor(for: .search)?.handleSearch(text: searchText, in: viewModel)
                 return false
             }
@@ -67,7 +68,8 @@ class MainCommandProcessor: ObservableObject {
                 }
                 return true
             } else {
-                let searchText = String(text.dropFirst(2)) // 移除 "/w"
+                // 正确处理 "/w " 前缀
+                let searchText = text.hasPrefix("/w ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
                 getCurrentProcessor(for: .web)?.handleSearch(text: searchText, in: viewModel)
                 return false
             }
@@ -80,7 +82,8 @@ class MainCommandProcessor: ObservableObject {
                 }
                 return true
             } else {
-                let searchText = String(text.dropFirst(2)) // 移除 "/t"
+                // 正确处理 "/t " 前缀
+                let searchText = text.hasPrefix("/t ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
                 getCurrentProcessor(for: .terminal)?.handleSearch(text: searchText, in: viewModel)
                 return false
             }
