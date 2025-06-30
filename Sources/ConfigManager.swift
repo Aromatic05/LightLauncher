@@ -7,6 +7,7 @@ struct AppConfig: Codable {
     var hotKey: HotKeyConfig
     var searchDirectories: [String]
     var commonAbbreviations: [String: [String]]
+    var modes: ModesConfig
     
     struct HotKeyConfig: Codable {
         var modifiers: UInt32
@@ -15,6 +16,24 @@ struct AppConfig: Codable {
         init(modifiers: UInt32 = UInt32(optionKey), keyCode: UInt32 = UInt32(kVK_Space)) {
             self.modifiers = modifiers
             self.keyCode = keyCode
+        }
+    }
+    
+    struct ModesConfig: Codable {
+        var killModeEnabled: Bool
+        var searchModeEnabled: Bool
+        var webModeEnabled: Bool
+        var terminalModeEnabled: Bool
+        var showCommandSuggestions: Bool
+        var defaultSearchEngine: String
+        
+        init() {
+            self.killModeEnabled = true
+            self.searchModeEnabled = true
+            self.webModeEnabled = true
+            self.terminalModeEnabled = true
+            self.showCommandSuggestions = true
+            self.defaultSearchEngine = "google"
         }
     }
 }
@@ -48,6 +67,11 @@ class ConfigManager: ObservableObject {
         } else {
             self.config = Self.createDefaultConfig()
             saveConfig()
+        }
+        
+        // 加载模式设置到 SettingsManager
+        Task { @MainActor in
+            loadModeSettings()
         }
     }
     
@@ -118,7 +142,8 @@ class ConfigManager: ObservableObject {
                 "rectangle": ["rectangle"],
                 "amphetamine": ["amphetamine"],
                 "homebrew": ["homebrew"]
-            ]
+            ],
+            modes: AppConfig.ModesConfig()
         )
     }
     
@@ -127,9 +152,47 @@ class ConfigManager: ObservableObject {
         do {
             let yamlString = try String(contentsOf: url, encoding: .utf8)
             let decoder = YAMLDecoder()
-            return try decoder.decode(AppConfig.self, from: yamlString)
+            var config = try decoder.decode(AppConfig.self, from: yamlString)
+            
+            // 配置迁移：确保新字段有默认值
+            config = migrateConfig(config)
+            
+            return config
         } catch {
             print("加载配置文件失败: \(error)")
+            // 尝试迁移旧格式
+            return tryMigrateOldConfig(from: url)
+        }
+    }
+    
+    // 配置迁移
+    private static func migrateConfig(_ config: AppConfig) -> AppConfig {
+        return config // 如果解码成功，说明配置是完整的
+    }
+    
+    // 尝试迁移旧格式配置
+    private static func tryMigrateOldConfig(from url: URL) -> AppConfig? {
+        // 定义旧版本配置结构
+        struct OldAppConfig: Codable {
+            var hotKey: AppConfig.HotKeyConfig
+            var searchDirectories: [String]
+            var commonAbbreviations: [String: [String]]
+        }
+        
+        do {
+            let yamlString = try String(contentsOf: url, encoding: .utf8)
+            let decoder = YAMLDecoder()
+            let oldConfig = try decoder.decode(OldAppConfig.self, from: yamlString)
+            
+            // 迁移到新格式
+            return AppConfig(
+                hotKey: oldConfig.hotKey,
+                searchDirectories: oldConfig.searchDirectories,
+                commonAbbreviations: oldConfig.commonAbbreviations,
+                modes: AppConfig.ModesConfig() // 使用默认模式设置
+            )
+        } catch {
+            print("迁移旧配置失败: \(error)")
             return nil
         }
     }
@@ -149,6 +212,14 @@ class ConfigManager: ObservableObject {
 # modifiers: 修饰键组合 (可选值: 256=Cmd, 512=Shift, 1024=Option, 2048=Ctrl)
 # 特殊值: 1048592=右Cmd, 1048640=右Option
 # keyCode: 按键代码 (0表示仅修饰键, 49=Space, 36=Return 等)
+
+# 功能模式配置
+# killModeEnabled: 启用关闭应用模式 (/k)
+# searchModeEnabled: 启用网页搜索模式 (/s)
+# webModeEnabled: 启用网页打开模式 (/w)
+# terminalModeEnabled: 启用终端执行模式 (/t)
+# showCommandSuggestions: 输入 / 时显示命令提示
+# defaultSearchEngine: 默认搜索引擎 (google, baidu, bing)
 
 \(yamlString)
 """
@@ -335,10 +406,36 @@ class ConfigManager: ObservableObject {
         saveConfig()
     }
     
+    // MARK: - 模式设置管理
+    
+    func updateModeSettings() {
+        // 从 SettingsManager 同步设置到配置文件
+        let settingsManager = SettingsManager.shared
+        config.modes.killModeEnabled = settingsManager.isKillModeEnabled
+        config.modes.searchModeEnabled = settingsManager.isSearchModeEnabled
+        config.modes.webModeEnabled = settingsManager.isWebModeEnabled
+        config.modes.terminalModeEnabled = settingsManager.isTerminalModeEnabled
+        config.modes.showCommandSuggestions = settingsManager.showCommandSuggestions
+        saveConfig()
+    }
+    
+    func loadModeSettings() {
+        // 从配置文件同步设置到 SettingsManager
+        let settingsManager = SettingsManager.shared
+        settingsManager.isKillModeEnabled = config.modes.killModeEnabled
+        settingsManager.isSearchModeEnabled = config.modes.searchModeEnabled
+        settingsManager.isWebModeEnabled = config.modes.webModeEnabled
+        settingsManager.isTerminalModeEnabled = config.modes.terminalModeEnabled
+        settingsManager.showCommandSuggestions = config.modes.showCommandSuggestions
+    }
+    
     // 重置为默认配置
     func resetToDefaults() {
         config = Self.createDefaultConfig()
         saveConfig()
+        
+        // 同步模式设置
+        loadModeSettings()
         
         // 通知热键变化
         NotificationCenter.default.post(name: .hotKeyChanged, object: nil)

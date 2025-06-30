@@ -113,26 +113,46 @@ class SettingsManager: ObservableObject {
     func toggleKillMode() {
         isKillModeEnabled.toggle()
         saveSettings()
+        // 同步到配置文件
+        Task { @MainActor in
+            ConfigManager.shared.updateModeSettings()
+        }
     }
     
     func toggleSearchMode() {
         isSearchModeEnabled.toggle()
         saveSettings()
+        // 同步到配置文件
+        Task { @MainActor in
+            ConfigManager.shared.updateModeSettings()
+        }
     }
     
     func toggleWebMode() {
         isWebModeEnabled.toggle()
         saveSettings()
+        // 同步到配置文件
+        Task { @MainActor in
+            ConfigManager.shared.updateModeSettings()
+        }
     }
     
     func toggleTerminalMode() {
         isTerminalModeEnabled.toggle()
         saveSettings()
+        // 同步到配置文件
+        Task { @MainActor in
+            ConfigManager.shared.updateModeSettings()
+        }
     }
     
     func toggleCommandSuggestions() {
         showCommandSuggestions.toggle()
         saveSettings()
+        // 同步到配置文件
+        Task { @MainActor in
+            ConfigManager.shared.updateModeSettings()
+        }
     }
     
     // MARK: - 热键设置

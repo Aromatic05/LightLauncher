@@ -3,6 +3,7 @@ import Carbon
 
 enum SettingsTab {
     case general
+    case modes
     case directories
     case abbreviations
     case about
@@ -50,6 +51,14 @@ struct SettingsView: View {
                         isSelected: selectedTab == .general
                     ) {
                         selectedTab = .general
+                    }
+                    
+                    TabButton(
+                        title: "功能模式",
+                        icon: "slider.horizontal.3",
+                        isSelected: selectedTab == .modes
+                    ) {
+                        selectedTab = .modes
                     }
                     
                     TabButton(
@@ -150,6 +159,11 @@ struct SettingsView: View {
                     localMonitor: $localMonitor,
                     currentModifiers: $currentModifiers
                 )
+            case .modes:
+                ModeSettingsView(
+                    settingsManager: settingsManager,
+                    configManager: configManager
+                )
             case .directories:
                 DirectorySettingsView(configManager: configManager)
             case .abbreviations:
@@ -234,80 +248,6 @@ struct GeneralSettingsView: View {
                         toggleValue: $settingsManager.isAutoStartEnabled
                     ) {
                         settingsManager.toggleAutoStart()
-                    }
-                    
-                    Divider()
-                    
-                    // 功能模式设置
-                    VStack(alignment: .leading, spacing: 20) {
-                        HStack {
-                            Image(systemName: "slider.horizontal.3")
-                                .foregroundColor(.purple)
-                            Text("功能模式")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
-                        
-                        Text("启用或禁用特定功能模式")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        VStack(spacing: 16) {
-                            SettingRow(
-                                icon: "xmark.circle",
-                                iconColor: .red,
-                                title: "关闭模式",
-                                description: "输入 /k 进入关闭应用模式",
-                                isToggle: true,
-                                toggleValue: $settingsManager.isKillModeEnabled
-                            ) {
-                                settingsManager.toggleKillMode()
-                            }
-                            
-                            SettingRow(
-                                icon: "globe",
-                                iconColor: .blue,
-                                title: "网页搜索",
-                                description: "输入 /s 进入网页搜索模式",
-                                isToggle: true,
-                                toggleValue: $settingsManager.isSearchModeEnabled
-                            ) {
-                                settingsManager.toggleSearchMode()
-                            }
-                            
-                            SettingRow(
-                                icon: "safari",
-                                iconColor: .green,
-                                title: "网页打开",
-                                description: "输入 /w 进入网页打开模式",
-                                isToggle: true,
-                                toggleValue: $settingsManager.isWebModeEnabled
-                            ) {
-                                settingsManager.toggleWebMode()
-                            }
-                            
-                            SettingRow(
-                                icon: "terminal",
-                                iconColor: .orange,
-                                title: "终端执行",
-                                description: "输入 /t 进入终端命令执行模式",
-                                isToggle: true,
-                                toggleValue: $settingsManager.isTerminalModeEnabled
-                            ) {
-                                settingsManager.toggleTerminalMode()
-                            }
-                            
-                            SettingRow(
-                                icon: "lightbulb",
-                                iconColor: .yellow,
-                                title: "命令提示",
-                                description: "输入 / 时显示可用命令提示",
-                                isToggle: true,
-                                toggleValue: $settingsManager.showCommandSuggestions
-                            ) {
-                                settingsManager.toggleCommandSuggestions()
-                            }
-                        }
                     }
                     
                     Divider()
@@ -1150,5 +1090,228 @@ struct ConfigContentView: View {
         }
         .padding(24)
         .frame(width: 700, height: 600)
+    }
+}
+
+// MARK: - 功能模式设置视图
+struct ModeSettingsView: View {
+    @ObservedObject var settingsManager: SettingsManager
+    @ObservedObject var configManager: ConfigManager
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 32) {
+                // 标题
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("功能模式设置")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    Text("启用或禁用特定功能模式，并配置相关设置")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                // 模式设置组
+                VStack(spacing: 32) {
+                    // 关闭模式
+                    ModeSettingSection(
+                        title: "关闭模式 (/k)",
+                        icon: "xmark.circle",
+                        iconColor: .red,
+                        description: "快速关闭运行中的应用程序",
+                        isEnabled: $settingsManager.isKillModeEnabled,
+                        onToggle: {
+                            settingsManager.toggleKillMode()
+                        }
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("在此模式下，你可以：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("• 搜索并选择要关闭的应用")
+                                Text("• 使用数字键 1-6 快速选择")
+                                Text("• 删除 /k 前缀自动返回启动模式")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // 网页搜索模式
+                    ModeSettingSection(
+                        title: "网页搜索 (/s)",
+                        icon: "globe",
+                        iconColor: .blue,
+                        description: "使用默认搜索引擎搜索网络内容",
+                        isEnabled: $settingsManager.isSearchModeEnabled,
+                        onToggle: {
+                            settingsManager.toggleSearchMode()
+                        }
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("搜索引擎设置：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            
+                            HStack {
+                                Text("默认搜索引擎：")
+                                    .font(.subheadline)
+                                Picker("搜索引擎", selection: .constant("google")) {
+                                    Text("Google").tag("google")
+                                    Text("百度").tag("baidu")
+                                    Text("必应").tag("bing")
+                                }
+                                .pickerStyle(MenuPickerStyle())
+                                .disabled(true) // 暂时禁用，后续可以实现
+                            }
+                            
+                            Text("输入 /s 后空格，然后输入搜索关键词")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // 网页打开模式
+                    ModeSettingSection(
+                        title: "网页打开 (/w)",
+                        icon: "safari",
+                        iconColor: .green,
+                        description: "快速打开网站或 URL",
+                        isEnabled: $settingsManager.isWebModeEnabled,
+                        onToggle: {
+                            settingsManager.toggleWebMode()
+                        }
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("支持的输入格式：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("• 完整 URL：https://example.com")
+                                Text("• 域名：example.com")
+                                Text("• 关键词：搜索关键词（自动跳转到搜索）")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // 终端执行模式
+                    ModeSettingSection(
+                        title: "终端执行 (/t)",
+                        icon: "terminal",
+                        iconColor: .orange,
+                        description: "在终端中执行命令",
+                        isEnabled: $settingsManager.isTerminalModeEnabled,
+                        onToggle: {
+                            settingsManager.toggleTerminalMode()
+                        }
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("终端应用优先级：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("1. Terminal.app（系统默认）")
+                                Text("2. iTerm2（如果已安装）")
+                                Text("3. 直接后台执行")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(.orange)
+                                Text("注意：请谨慎执行终端命令")
+                                    .font(.caption)
+                                    .foregroundColor(.orange)
+                            }
+                            .padding(.top, 8)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // 命令提示
+                    SettingRow(
+                        icon: "lightbulb",
+                        iconColor: .yellow,
+                        title: "命令提示",
+                        description: "输入 / 时显示可用命令列表",
+                        isToggle: true,
+                        toggleValue: $settingsManager.showCommandSuggestions
+                    ) {
+                        settingsManager.toggleCommandSuggestions()
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(32)
+        }
+    }
+}
+
+// MARK: - 模式设置区块组件
+struct ModeSettingSection<Content: View>: View {
+    let title: String
+    let icon: String
+    let iconColor: Color
+    let description: String
+    @Binding var isEnabled: Bool
+    let onToggle: () -> Void
+    @ViewBuilder let content: Content
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // 标题和开关
+            HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: icon)
+                        .foregroundColor(iconColor)
+                        .font(.title2)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                        Text(description)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                Toggle("", isOn: $isEnabled)
+                    .onChange(of: isEnabled) { _ in
+                        onToggle()
+                    }
+                    .scaleEffect(1.2)
+            }
+            
+            // 详细内容（仅在启用时显示）
+            if isEnabled {
+                content
+                    .padding(20)
+                    .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
+                    .cornerRadius(12)
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(isEnabled ? iconColor.opacity(0.05) : Color(NSColor.controlBackgroundColor).opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(isEnabled ? iconColor.opacity(0.3) : Color.secondary.opacity(0.2), lineWidth: 1)
+        )
     }
 }
