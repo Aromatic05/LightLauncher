@@ -135,38 +135,8 @@ class ConfigManager: ObservableObject {
                 "qq": ["qq"],
                 "wx": ["wechat", "微信"],
                 "wechat": ["微信"],
-                "sketch": ["sketch"],
-                "figma": ["figma"],
-                "notion": ["notion"],
-                "slack": ["slack"],
-                "zoom": ["zoom"],
-                "terminal": ["terminal"],
-                "finder": ["finder"],
-                "calculator": ["calculator"],
-                "preview": ["preview"],
-                "notes": ["notes"],
-                "music": ["music"],
-                "photos": ["photos"],
-                "mail": ["mail"],
-                "calendar": ["calendar"],
-                "xcode": ["xcode"],
-                "simulator": ["simulator"],
-                "docker": ["docker"],
-                "postman": ["postman"],
                 "git": ["github desktop", "sourcetree"],
                 "vm": ["vmware", "parallels"],
-                "1password": ["1password"],
-                "alfred": ["alfred"],
-                "raycast": ["raycast"],
-                "obsidian": ["obsidian"],
-                "typora": ["typora"],
-                "istat": ["istat menus"],
-                "cleanmymac": ["cleanmymac"],
-                "bartender": ["bartender"],
-                "magnet": ["magnet"],
-                "rectangle": ["rectangle"],
-                "amphetamine": ["amphetamine"],
-                "homebrew": ["homebrew"]
             ],
             modes: AppConfig.ModesConfig()
         )
@@ -459,6 +429,13 @@ class ConfigManager: ObservableObject {
         settingsManager.isWebModeEnabled = config.modes.webModeEnabled
         settingsManager.isTerminalModeEnabled = config.modes.terminalModeEnabled
         settingsManager.showCommandSuggestions = config.modes.showCommandSuggestions
+    }
+    
+    // MARK: - 搜索引擎设置管理
+    
+    func updateDefaultSearchEngine(_ engine: String) {
+        config.modes.defaultSearchEngine = engine
+        saveConfig()
     }
     
     // 重置为默认配置

@@ -47,8 +47,19 @@ class SearchCommandProcessor: CommandProcessor {
     }
     
     private func getDefaultSearchEngine() -> String {
-        // 可以从设置中读取，这里先使用 Google 作为默认
-        return "https://www.google.com/search?q={query}"
+        let configManager = ConfigManager.shared
+        let engine = configManager.config.modes.defaultSearchEngine
+        
+        switch engine {
+        case "baidu":
+            return "https://www.baidu.com/s?wd={query}"
+        case "bing":
+            return "https://www.bing.com/search?q={query}"
+        case "google":
+            fallthrough
+        default:
+            return "https://www.google.com/search?q={query}"
+        }
     }
 }
 

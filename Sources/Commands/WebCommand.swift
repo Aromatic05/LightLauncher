@@ -54,7 +54,7 @@ class WebCommandProcessor: CommandProcessor {
         
         // 如果都不是，作为搜索处理
         let encodedQuery = cleanText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cleanText
-        let searchURL = "https://www.google.com/search?q=\(encodedQuery)"
+        let searchURL = getDefaultSearchEngine().replacingOccurrences(of: "{query}", with: encodedQuery)
         
         if let url = URL(string: searchURL) {
             NSWorkspace.shared.open(url)
@@ -63,6 +63,22 @@ class WebCommandProcessor: CommandProcessor {
         }
         
         return false
+    }
+    
+    private func getDefaultSearchEngine() -> String {
+        let configManager = ConfigManager.shared
+        let engine = configManager.config.modes.defaultSearchEngine
+        
+        switch engine {
+        case "baidu":
+            return "https://www.baidu.com/s?wd={query}"
+        case "bing":
+            return "https://www.bing.com/search?q={query}"
+        case "google":
+            fallthrough
+        default:
+            return "https://www.google.com/search?q={query}"
+        }
     }
     
     private func isDomainName(_ text: String) -> Bool {

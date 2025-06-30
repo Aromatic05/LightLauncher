@@ -66,13 +66,15 @@ struct ModeSettingsView: View {
                             HStack {
                                 Text("默认搜索引擎：")
                                     .font(.subheadline)
-                                Picker("搜索引擎", selection: .constant("google")) {
+                                Picker("搜索引擎", selection: Binding(
+                                    get: { configManager.config.modes.defaultSearchEngine },
+                                    set: { configManager.updateDefaultSearchEngine($0) }
+                                )) {
                                     Text("Google").tag("google")
                                     Text("百度").tag("baidu")
                                     Text("必应").tag("bing")
                                 }
                                 .pickerStyle(MenuPickerStyle())
-                                .disabled(true) // 暂时禁用，后续可以实现
                             }
                             
                             Text("输入 /s 后空格，然后输入搜索关键词")
