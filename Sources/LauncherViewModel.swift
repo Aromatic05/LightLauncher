@@ -2,30 +2,19 @@ import Foundation
 import Combine
 import AppKit
 
-// 应用匹配结果结构
-struct AppMatch {
-    let app: AppInfo
-    let score: Double
-    let matchType: MatchType
-    
-    enum MatchType {
-        case exactStart      // 完全匹配开头
-        case wordStart       // 单词开头匹配
-        case subsequence     // 子序列匹配
-        case fuzzy          // 模糊匹配
-        case contains       // 包含匹配
-    }
-}
-
 @MainActor
 class LauncherViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var selectedIndex = 0
     @Published var filteredApps: [AppInfo] = []
+    @Published var mode: LauncherMode = .launch
+    @Published var runningApps: [RunningAppInfo] = []
     
     private var allApps: [AppInfo] = []
     private let appScanner: AppScanner
     private var cancellables = Set<AnyCancellable>()
+    private let commandProcessor = MainCommandProcessor()
+    private let runningAppsManager = RunningAppsManager.shared
     
     // 使用频率统计
     private var appUsageCount: [String: Int] = [:]
@@ -34,7 +23,10 @@ class LauncherViewModel: ObservableObject {
     init(appScanner: AppScanner) {
         self.appScanner = appScanner
         loadUsageData()
-        
+        setupObservers()
+    }
+    
+    private func setupObservers() {
         // 监听 AppScanner 的应用列表
         appScanner.$applications
             .receive(on: DispatchQueue.main)
@@ -50,9 +42,46 @@ class LauncherViewModel: ObservableObject {
         $searchText
             .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
             .sink { [weak self] text in
-                self?.filterApps(searchText: text)
+                self?.handleSearchTextChange(text: text)
             }
             .store(in: &cancellables)
+    }
+    
+    // MARK: - 命令处理
+    
+    private func handleSearchTextChange(text: String) {
+        let isCommand = commandProcessor.processInput(text, in: self)
+        if !isCommand {
+            selectedIndex = 0
+        }
+    }
+    
+    // MARK: - 模式切换
+    
+    func switchToKillMode() {
+        mode = .kill
+        searchText = ""
+        loadRunningApps()
+        selectedIndex = 0
+    }
+    
+    func switchToLaunchMode() {
+        mode = .launch
+        searchText = ""
+        filteredApps = getMostUsedApps(from: allApps, limit: 6)
+        selectedIndex = 0
+    }
+    
+    // MARK: - 运行应用管理
+    
+    func loadRunningApps() {
+        runningApps = runningAppsManager.loadRunningApps()
+    }
+    
+    func filterRunningApps(searchText: String) {
+        let allRunningApps = runningAppsManager.loadRunningApps()
+        runningApps = runningAppsManager.filterRunningApps(allRunningApps, with: searchText)
+        selectedIndex = 0
     }
     
     // MARK: - 使用频率管理
@@ -88,7 +117,7 @@ class LauncherViewModel: ObservableObject {
     
     // MARK: - 智能搜索算法
     
-    private func filterApps(searchText: String) {
+    func filterApps(searchText: String) {
         if searchText.isEmpty {
             filteredApps = getMostUsedApps(from: allApps, limit: 6)
         } else {
@@ -416,13 +445,44 @@ class LauncherViewModel: ObservableObject {
     }
     
     func moveSelectionUp() {
-        guard !filteredApps.isEmpty else { return }
-        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : filteredApps.count - 1
+        guard !getCurrentItems().isEmpty else { return }
+        let itemCount = getCurrentItems().count
+        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : itemCount - 1
     }
     
     func moveSelectionDown() {
-        guard !filteredApps.isEmpty else { return }
-        selectedIndex = selectedIndex < filteredApps.count - 1 ? selectedIndex + 1 : 0
+        guard !getCurrentItems().isEmpty else { return }
+        let itemCount = getCurrentItems().count
+        selectedIndex = selectedIndex < itemCount - 1 ? selectedIndex + 1 : 0
+    }
+    
+    func killSelectedApp() -> Bool {
+        guard mode == .kill && selectedIndex < runningApps.count else { return false }
+        let selectedApp = runningApps[selectedIndex]
+        
+        let success = runningAppsManager.killApp(selectedApp)
+        if success {
+            // 刷新运行应用列表
+            loadRunningApps()
+            // 调整选择索引
+            if selectedIndex >= runningApps.count && runningApps.count > 0 {
+                selectedIndex = runningApps.count - 1
+            }
+        }
+        return success
+    }
+    
+    func executeSelectedAction() -> Bool {
+        return commandProcessor.executeAction(at: selectedIndex, in: self)
+    }
+    
+    private func getCurrentItems() -> [Any] {
+        switch mode {
+        case .launch:
+            return filteredApps
+        case .kill:
+            return runningApps
+        }
     }
     
     func launchSelectedApp() -> Bool {
@@ -446,7 +506,12 @@ class LauncherViewModel: ObservableObject {
     }
     
     var hasResults: Bool {
-        !filteredApps.isEmpty
+        switch mode {
+        case .launch:
+            return !filteredApps.isEmpty
+        case .kill:
+            return !runningApps.isEmpty
+        }
     }
     
     var selectedApp: AppInfo? {
@@ -456,18 +521,36 @@ class LauncherViewModel: ObservableObject {
     
     func selectAppByNumber(_ number: Int) -> Bool {
         let index = number - 1 // 转换为0基础索引
-        guard index >= 0 && index < filteredApps.count && index < 6 else { return false }
-        selectedIndex = index
         
-        let selectedApp = filteredApps[selectedIndex]
-        let success = NSWorkspace.shared.open(selectedApp.url)
-        
-        if success {
-            // 记录使用频率
-            incrementUsage(for: selectedApp.name)
-            clearSearch()
+        switch mode {
+        case .launch:
+            guard index >= 0 && index < filteredApps.count && index < 6 else { return false }
+            selectedIndex = index
+            
+            let selectedApp = filteredApps[selectedIndex]
+            let success = NSWorkspace.shared.open(selectedApp.url)
+            
+            if success {
+                // 记录使用频率
+                incrementUsage(for: selectedApp.name)
+                clearSearch()
+            }
+            
+            return success
+            
+        case .kill:
+            guard index >= 0 && index < runningApps.count && index < 6 else { return false }
+            selectedIndex = index
+            return killSelectedApp()
         }
-        
-        return success
+    }
+    
+    // MARK: - 清理方法
+    
+    func resetToLaunchMode() {
+        mode = .launch
+        searchText = ""
+        filteredApps = getMostUsedApps(from: allApps, limit: 6)
+        selectedIndex = 0
     }
 }

@@ -214,7 +214,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func setupNotificationObservers() {
         NotificationCenter.default.addObserver(
-            forName: .hideWindow,
+            forName: NSNotification.Name("hideWindow"),
             object: nil,
             queue: .main
         ) { [weak self] _ in

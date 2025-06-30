@@ -1,24 +1,6 @@
 import Foundation
 import AppKit
 
-struct AppInfo: Identifiable, Hashable {
-    let id = UUID()
-    let name: String
-    let url: URL
-    
-    var icon: NSImage? {
-        NSWorkspace.shared.icon(forFile: url.path)
-    }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-    
-    static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
 @MainActor
 class AppScanner: ObservableObject {
     @Published var applications: [AppInfo] = []
