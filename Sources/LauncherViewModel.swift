@@ -18,6 +18,10 @@ class LauncherViewModel: ObservableObject {
     @Published var currentFiles: [FileItem] = []
     @Published var currentPath: String = NSHomeDirectory()
     
+    // 文件浏览器起始路径
+    @Published var fileBrowserStartPaths: [FileBrowserStartPath] = []
+    @Published var showStartPaths: Bool = true
+
     private var allApps: [AppInfo] = []
     private let appScanner: AppScanner
     private var cancellables = Set<AnyCancellable>()
@@ -234,8 +238,8 @@ class LauncherViewModel: ObservableObject {
             let cleanText = extractCleanTerminalText()
             return cleanText.isEmpty ? [] : ["current_terminal"]
         case .file:
-            // 文件模式：显示当前目录的文件和文件夹
-            return currentFiles
+            // 文件模式：显示起始路径或当前目录的文件和文件夹
+            return showStartPaths ? fileBrowserStartPaths : currentFiles
         }
     }
     
@@ -295,7 +299,7 @@ class LauncherViewModel: ObservableObject {
             // 对于这些模式，总是显示输入框
             return true
         case .file:
-            return !currentFiles.isEmpty
+            return showStartPaths ? !fileBrowserStartPaths.isEmpty : !currentFiles.isEmpty
         }
     }
     

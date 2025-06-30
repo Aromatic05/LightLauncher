@@ -54,6 +54,7 @@ struct AppConfig: Codable {
         var defaultSearchEngine: String
         var preferredTerminal: String
         var enabledBrowsers: [String]
+        var fileBrowserStartPaths: [String]
         
         init() {
             self.killModeEnabled = true
@@ -65,6 +66,12 @@ struct AppConfig: Codable {
             self.defaultSearchEngine = "google"
             self.preferredTerminal = "auto"
             self.enabledBrowsers = ["safari"] // 默认只启用 Safari
+            self.fileBrowserStartPaths = [
+                NSHomeDirectory(),
+                NSHomeDirectory() + "/Desktop",
+                NSHomeDirectory() + "/Downloads",
+                NSHomeDirectory() + "/Documents"
+            ]
         }
     }
 }
@@ -481,5 +488,41 @@ class ConfigManager: ObservableObject {
         
         // 通知热键变化
         NotificationCenter.default.post(name: .hotKeyChanged, object: nil)
+    }
+    
+    // MARK: - 文件浏览器路径管理
+    
+    func getFileBrowserStartPaths() -> [String] {
+        return config.modes.fileBrowserStartPaths.filter { path in
+            FileManager.default.fileExists(atPath: path)
+        }
+    }
+    
+    func addFileBrowserStartPath(_ path: String) {
+        // 检查路径是否存在且是目录
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return }
+        
+        // 避免重复添加
+        if !config.modes.fileBrowserStartPaths.contains(path) {
+            config.modes.fileBrowserStartPaths.append(path)
+            saveConfig()
+        }
+    }
+    
+    func removeFileBrowserStartPath(_ path: String) {
+        config.modes.fileBrowserStartPaths.removeAll { $0 == path }
+        saveConfig()
+    }
+    
+    func updateFileBrowserStartPaths(_ paths: [String]) {
+        // 过滤掉不存在的路径
+        let validPaths = paths.filter { path in
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+        }
+        config.modes.fileBrowserStartPaths = validPaths
+        saveConfig()
     }
 }

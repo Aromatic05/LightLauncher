@@ -291,7 +291,7 @@ struct ModeSettingsView: View {
                         title: "文件管理器 (/o)",
                         icon: "folder",
                         iconColor: .blue,
-                        description: "浏览文件和文件夹，从家目录开始",
+                        description: "浏览文件和文件夹，支持自定义起始路径",
                         isEnabled: $settingsManager.isFileModeEnabled,
                         onToggle: {
                             settingsManager.toggleFileMode()
@@ -302,19 +302,28 @@ struct ModeSettingsView: View {
                                 .font(.headline)
                                 .fontWeight(.semibold)
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("• 从家目录开始浏览文件和文件夹")
+                                Text("• 可配置多个起始路径，快速访问常用目录")
                                 Text("• 按 Enter 打开文件或进入文件夹")
                                 Text("• 按 Space 在 Finder 中打开当前选择")
-                                Text("• 支持按名称过滤文件")
+                                Text("• 支持按名称过滤文件和目录")
                                 Text("• 显示文件大小和修改时间")
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             
+                            // 起始路径配置
+                            Text("起始路径配置：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.top, 8)
+                            
+                            FileBrowserPathSettingsView(configManager: configManager)
+                                .frame(maxHeight: 300)
+                            
                             HStack {
                                 Image(systemName: "info.circle")
                                     .foregroundColor(.blue)
-                                Text("提示：输入文件名可快速过滤结果")
+                                Text("提示：启动文件模式时会显示配置的起始路径列表")
                                     .font(.caption)
                                     .foregroundColor(.blue)
                             }

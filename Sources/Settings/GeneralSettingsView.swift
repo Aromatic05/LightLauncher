@@ -147,29 +147,6 @@ struct GeneralSettingsView: View {
                             )
                         }
                     }
-                    
-                    Divider()
-                    
-                    // 性能优化说明
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Image(systemName: "bolt")
-                                .foregroundColor(.orange)
-                            Text("性能提示")
-                                .font(.headline)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("• 应用会自动缓存搜索结果以提升性能")
-                            Text("• 可在搜索目录设置中添加或移除扫描路径")
-                            Text("• 缩写匹配功能帮助快速定位应用")
-                        }
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    }
-                    .padding(16)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(12)
                 }
                 
                 Spacer()

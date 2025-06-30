@@ -8,7 +8,7 @@ echo "🚀 开始构建 LightLauncher..."
 
 # 清理之前的构建
 echo "🧹 清理之前的构建..."
-rm -rf .build
+# rm -rf .build
 rm -rf LightLauncher.app
 
 # 构建 release 版本

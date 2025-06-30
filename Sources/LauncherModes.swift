@@ -281,3 +281,52 @@ struct FileModeData: ModeData {
         return files[index]
     }
 }
+
+// MARK: - 文件浏览器起始路径结构
+struct FileBrowserStartPath: Identifiable, Hashable {
+    let id = UUID()
+    let name: String
+    let path: String
+    
+    var icon: NSImage? {
+        if #available(macOS 12.0, *) {
+            return NSWorkspace.shared.icon(for: .folder)
+        } else {
+            return NSWorkspace.shared.icon(forFileType: "public.folder")
+        }
+    }
+    
+    var displayName: String {
+        if path == NSHomeDirectory() {
+            return "Home"
+        } else if path == NSHomeDirectory() + "/Desktop" {
+            return "Desktop"
+        } else if path == NSHomeDirectory() + "/Downloads" {
+            return "Downloads"
+        } else if path == NSHomeDirectory() + "/Documents" {
+            return "Documents"
+        } else if path == "/Applications" {
+            return "Applications"
+        } else if path == "/" {
+            return "Root"
+        } else {
+            return URL(fileURLWithPath: path).lastPathComponent
+        }
+    }
+    
+    var displayPath: String {
+        let home = NSHomeDirectory()
+        if path.hasPrefix(home) {
+            return "~" + String(path.dropFirst(home.count))
+        }
+        return path
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: FileBrowserStartPath, rhs: FileBrowserStartPath) -> Bool {
+        lhs.id == rhs.id
+    }
+}

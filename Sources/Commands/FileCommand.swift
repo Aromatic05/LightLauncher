@@ -21,8 +21,8 @@ class FileCommandProcessor: CommandProcessor {
             text.trimmingCharacters(in: .whitespacesAndNewlines)
         
         if cleanText.isEmpty {
-            // 如果没有输入，显示当前目录
-            viewModel.updateFileResults(path: viewModel.currentPath)
+            // 如果没有输入，显示起始路径选择界面
+            viewModel.showFileBrowserStartPaths()
         } else {
             // 根据输入过滤文件
             viewModel.filterFiles(query: cleanText)
@@ -32,10 +32,16 @@ class FileCommandProcessor: CommandProcessor {
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
         guard viewModel.mode == .file else { return false }
         
-        // 获取选中的文件项
-        guard let fileItem = viewModel.getFileItem(at: index) else { return false }
-        
-        return openFileItem(fileItem, in: viewModel)
+        if viewModel.showStartPaths {
+            // 在起始路径选择模式下
+            guard let startPath = viewModel.getStartPath(at: index) else { return false }
+            viewModel.navigateToDirectory(URL(fileURLWithPath: startPath.path))
+            return false // 不关闭窗口，继续浏览
+        } else {
+            // 在文件浏览模式下
+            guard let fileItem = viewModel.getFileItem(at: index) else { return false }
+            return openFileItem(fileItem, in: viewModel)
+        }
     }
     
     private func openFileItem(_ fileItem: FileItem, in viewModel: LauncherViewModel) -> Bool {
@@ -145,21 +151,47 @@ class FileManager_LightLauncher {
 extension LauncherViewModel {
     func switchToFileMode() {
         mode = .file
-        // 从家目录开始
-        currentPath = NSHomeDirectory()
-        updateFileResults(path: currentPath)
+        // 显示起始路径选择界面
+        showFileBrowserStartPaths()
         selectedIndex = 0
     }
     
+    func showFileBrowserStartPaths() {
+        showStartPaths = true
+        currentFiles = []
+        loadFileBrowserStartPaths()
+        selectedIndex = 0
+    }
+    
+    func loadFileBrowserStartPaths() {
+        let paths = ConfigManager.shared.getFileBrowserStartPaths()
+        fileBrowserStartPaths = paths.map { path in
+            FileBrowserStartPath(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
+        }
+    }
+    
     func updateFileResults(path: String) {
+        showStartPaths = false
         currentPath = path
         currentFiles = FileManager_LightLauncher.shared.getFiles(at: path)
         selectedIndex = 0
     }
     
     func filterFiles(query: String) {
-        let allFiles = FileManager_LightLauncher.shared.getFiles(at: currentPath)
-        currentFiles = FileManager_LightLauncher.shared.filterFiles(allFiles, query: query)
+        if showStartPaths {
+            // 在起始路径模式下过滤路径
+            let allPaths = ConfigManager.shared.getFileBrowserStartPaths().map { path in
+                FileBrowserStartPath(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
+            }
+            fileBrowserStartPaths = allPaths.filter { startPath in
+                startPath.displayName.localizedCaseInsensitiveContains(query) ||
+                startPath.displayPath.localizedCaseInsensitiveContains(query)
+            }
+        } else {
+            // 在文件浏览模式下过滤文件
+            let allFiles = FileManager_LightLauncher.shared.getFiles(at: currentPath)
+            currentFiles = FileManager_LightLauncher.shared.filterFiles(allFiles, query: query)
+        }
         selectedIndex = 0
     }
     
@@ -168,12 +200,24 @@ extension LauncherViewModel {
     }
     
     func getFileItem(at index: Int) -> FileItem? {
-        guard index >= 0 && index < currentFiles.count else { return nil }
+        guard !showStartPaths, index >= 0 && index < currentFiles.count else { return nil }
         return currentFiles[index]
     }
     
+    func getStartPath(at index: Int) -> FileBrowserStartPath? {
+        guard showStartPaths, index >= 0 && index < fileBrowserStartPaths.count else { return nil }
+        return fileBrowserStartPaths[index]
+    }
+    
     func openSelectedFileInFinder() {
-        guard let fileItem = getFileItem(at: selectedIndex) else { return }
-        FileManager_LightLauncher.shared.openInFinder(fileItem.url)
+        if showStartPaths {
+            // 在起始路径模式下，打开选中的路径
+            guard let startPath = getStartPath(at: selectedIndex) else { return }
+            FileManager_LightLauncher.shared.openInFinder(URL(fileURLWithPath: startPath.path))
+        } else {
+            // 在文件浏览模式下，打开选中的文件
+            guard let fileItem = getFileItem(at: selectedIndex) else { return }
+            FileManager_LightLauncher.shared.openInFinder(fileItem.url)
+        }
     }
 }

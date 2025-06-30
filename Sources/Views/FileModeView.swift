@@ -7,6 +7,80 @@ struct FileModeResultsView: View {
     
     var body: some View {
         VStack(spacing: 0) {
+            if viewModel.showStartPaths {
+                // 起始路径选择界面
+                StartPathSelectionView(viewModel: viewModel)
+            } else {
+                // 文件浏览界面
+                FileBrowserView(viewModel: viewModel)
+            }
+        }
+    }
+}
+
+// MARK: - 起始路径选择视图
+struct StartPathSelectionView: View {
+    @ObservedObject var viewModel: LauncherViewModel
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // 标题
+            HStack {
+                Image(systemName: "folder.fill")
+                    .foregroundColor(.blue)
+                    .font(.system(size: 16))
+                
+                Text("Choose Starting Directory")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.blue.opacity(0.1))
+            
+            // 路径列表
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 4) {
+                        ForEach(Array(viewModel.fileBrowserStartPaths.enumerated()), id: \.element) { index, startPath in
+                            StartPathRowView(
+                                startPath: startPath,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture {
+                                viewModel.selectedIndex = index
+                                if viewModel.executeSelectedAction() {
+                                    // 选择起始路径不关闭窗口
+                                }
+                            }
+                            .focusable(false)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .focusable(false)
+                }
+                .focusable(false)
+                .onChange(of: viewModel.selectedIndex) { newIndex in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        proxy.scrollTo(newIndex, anchor: .center)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 文件浏览视图
+struct FileBrowserView: View {
+    @ObservedObject var viewModel: LauncherViewModel
+    
+    var body: some View {
+        VStack(spacing: 0) {
             // 当前路径显示
             CurrentPathView(currentPath: viewModel.currentPath)
             
@@ -45,6 +119,62 @@ struct FileModeResultsView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - 起始路径行视图
+struct StartPathRowView: View {
+    let startPath: FileBrowserStartPath
+    let isSelected: Bool
+    let index: Int
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // 序号
+            Text("\(index + 1)")
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundColor(.secondary)
+                .frame(width: 20, alignment: .trailing)
+            
+            // 图标
+            if let icon = startPath.icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 32, height: 32)
+            } else {
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(.blue)
+                    .frame(width: 32, height: 32)
+            }
+            
+            // 路径信息
+            VStack(alignment: .leading, spacing: 4) {
+                Text(startPath.displayName)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(isSelected ? .white : .primary)
+                    .lineLimit(1)
+                
+                Text(startPath.displayPath)
+                    .font(.system(size: 12))
+                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                    .lineLimit(1)
+            }
+            
+            Spacer()
+            
+            // 箭头指示器
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(isSelected ? .white.opacity(0.7) : .secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isSelected ? Color.accentColor : Color.clear)
+        )
+        .contentShape(Rectangle())
     }
 }
 
@@ -159,7 +289,7 @@ struct FileCommandInputView: View {
                     .font(.headline)
                     .fontWeight(.semibold)
                 
-                Text("Current directory: \(displayPath)")
+                Text("Choose a starting directory to begin browsing")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -174,17 +304,17 @@ struct FileCommandInputView: View {
                     HStack {
                         Text("• Enter:")
                             .fontWeight(.medium)
-                        Text("Open file or enter directory")
+                        Text("Select directory or open file")
                     }
                     HStack {
                         Text("• Space:")
                             .fontWeight(.medium)
-                        Text("Open current directory in Finder")
+                        Text("Open in Finder")
                     }
                     HStack {
                         Text("• Type:")
                             .fontWeight(.medium)
-                        Text("Filter files and folders")
+                        Text("Filter directories")
                     }
                 }
                 .font(.caption)
@@ -196,14 +326,6 @@ struct FileCommandInputView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
-    }
-    
-    private var displayPath: String {
-        let home = NSHomeDirectory()
-        if currentPath.hasPrefix(home) {
-            return "~" + String(currentPath.dropFirst(home.count))
-        }
-        return currentPath
     }
 }
 
