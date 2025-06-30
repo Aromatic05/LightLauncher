@@ -16,9 +16,6 @@ let package = Package(
         .executableTarget(
             name: "LightLauncher",
             dependencies: ["Yams"],
-            path: "Sources",
-            resources: [
-                .process("Resources")
-            ])
+            path: "Sources")
     ]
 )

@@ -75,13 +75,6 @@ cat > LightLauncher.app/Contents/Info.plist << 'EOF'
 </plist>
 EOF
 
-# 创建简单的应用图标 (可选)
-echo "🎨 创建应用图标..."
-cat > LightLauncher.app/Contents/Resources/AppIcon.icns << 'EOF'
-# 这里应该是实际的 .icns 文件内容
-# 现在我们暂时跳过图标创建
-EOF
-
 # 设置可执行权限
 chmod +x LightLauncher.app/Contents/MacOS/LightLauncher
 
