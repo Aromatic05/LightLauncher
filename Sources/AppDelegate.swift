@@ -46,17 +46,21 @@ class InputMethodManager {
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
+    private var settingsWindow: NSWindow?
     private var appScanner = AppScanner()
     private var viewModel: LauncherViewModel?
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
     private var inputMethodManager = InputMethodManager()
+    private var settingsManager = SettingsManager.shared
+    private var statusItem: NSStatusItem?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // No dock icon
         
         setupViewModel()
         setupWindow()
+        setupStatusItem()
         setupGlobalHotkey()
         setupNotificationObservers()
         
@@ -109,8 +113,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         var hotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
-            UInt32(kVK_Space),
-            UInt32(optionKey),
+            settingsManager.hotKeyCode,
+            settingsManager.hotKeyModifiers,
             hotKeyId,
             GetApplicationEventTarget(),
             0,
@@ -159,6 +163,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.hideWindow()
             }
         }
+        
+        // 监听热键变化
+        NotificationCenter.default.addObserver(
+            forName: .hotKeyChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.updateGlobalHotkey()
+            }
+        }
     }
     
     private func handleHotKeyPressed() {
@@ -195,6 +210,58 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.makeFirstResponder(window.contentView)
     }
     
+    // 更新全局热键
+    private func updateGlobalHotkey() {
+        // 先注销旧的热键
+        if let hotKeyRef = hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
+        }
+        
+        if let eventHandler = eventHandler {
+            RemoveEventHandler(eventHandler)
+            self.eventHandler = nil
+        }
+        
+        // 重新设置热键
+        setupGlobalHotkey()
+        
+        // 更新状态栏工具提示
+        statusItem?.button?.toolTip = "LightLauncher - \(settingsManager.getHotKeyDescription())"
+    }
+    
+    // 显示设置窗口
+    private func showSettingsWindow() {
+        if settingsWindow == nil {
+            let settingsView = SettingsView()
+            let hostingView = NSHostingView(rootView: settingsView)
+            
+            settingsWindow = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 600, height: 480),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            
+            settingsWindow?.title = "LightLauncher 设置"
+            settingsWindow?.contentView = hostingView
+            settingsWindow?.isReleasedWhenClosed = false
+            settingsWindow?.level = .floating
+            
+            // 居中显示
+            if let screen = NSScreen.main {
+                let screenFrame = screen.visibleFrame
+                let windowFrame = settingsWindow!.frame
+                let x = screenFrame.midX - windowFrame.width / 2
+                let y = screenFrame.midY - windowFrame.height / 2
+                settingsWindow?.setFrameOrigin(NSPoint(x: x, y: y))
+            }
+        }
+        
+        settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     private func hideWindow() {
         window?.orderOut(nil)
         viewModel?.clearSearch()
@@ -203,6 +270,62 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         inputMethodManager.restorePreviousInputMethod()
     }
     
+    private func setupStatusItem() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        
+        if let button = statusItem?.button {
+            // 设置图标 - 使用系统图标或自定义图标
+            if let image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "LightLauncher") {
+                image.size = NSSize(width: 18, height: 18)
+                button.image = image
+            } else {
+                button.title = "🚀"
+            }
+            
+            button.toolTip = "LightLauncher - \(settingsManager.getHotKeyDescription())"
+        }
+        
+        // 创建菜单
+        let menu = NSMenu()
+        
+        menu.addItem(NSMenuItem(title: "显示启动器", action: #selector(showLauncher), keyEquivalent: ""))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "设置...", action: #selector(openSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "关于", action: #selector(showAbout), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "退出", action: #selector(quitApp), keyEquivalent: "q"))
+        
+        statusItem?.menu = menu
+    }
+    
+    @objc private func showLauncher() {
+        showWindow()
+    }
+    
+    @objc private func openSettings() {
+        showSettingsWindow()
+    }
+    
+    @objc private func showAbout() {
+        let alert = NSAlert()
+        alert.messageText = "关于 LightLauncher"
+        alert.informativeText = """
+        LightLauncher 是一个快速的应用启动器
+        
+        版本: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+        构建: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
+        
+        快捷键: \(settingsManager.getHotKeyDescription())
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "确定")
+        alert.runModal()
+    }
+    
+    @objc private func quitApp() {
+        NSApplication.shared.terminate(nil)
+    }
+
     deinit {
         // Cleanup will be handled when the app terminates
     }
