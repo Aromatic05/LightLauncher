@@ -28,6 +28,25 @@ class MainCommandProcessor: ObservableObject {
     }
     
     func processInput(_ text: String, in viewModel: LauncherViewModel) -> Bool {
+        // 如果当前在 kill 模式下
+        if viewModel.mode == .kill {
+            // 如果用户删除了 /k 前缀，退出 kill 模式
+            if !text.hasPrefix("/k") {
+                viewModel.switchToLaunchMode()
+                // 如果有剩余文本，在 launch 模式下搜索
+                if !text.isEmpty {
+                    viewModel.filterApps(searchText: text)
+                }
+                return true
+            }
+            // 如果保持 /k 前缀，提取搜索内容
+            else {
+                let searchText = String(text.dropFirst(2)) // 移除 "/k"
+                getCurrentProcessor(for: .kill)?.handleSearch(text: searchText, in: viewModel)
+                return false
+            }
+        }
+        
         // 检查是否是命令
         if let command = LauncherCommand.parseCommand(from: text) {
             let processor = processors.first { $0.canHandle(command: command.trigger) }
@@ -86,6 +105,8 @@ class KillCommandProcessor: CommandProcessor {
     func process(command: String, in viewModel: LauncherViewModel) -> Bool {
         if command == "/k" {
             viewModel.switchToKillMode()
+            // 设置搜索文本为 "/k"，保持前缀显示
+            viewModel.searchText = "/k"
             return true
         }
         return false
@@ -127,9 +148,9 @@ struct CommandSuggestionProvider {
             ]
         case .kill:
             return [
-                "Search for running apps to close",
+                "Type after /k to search running apps",
                 "Press ↑↓ arrows or numbers 1-6 to select", 
-                "Clear search to return to launch mode",
+                "Delete /k prefix to return to launch mode",
                 "Press Esc to close"
             ]
         }

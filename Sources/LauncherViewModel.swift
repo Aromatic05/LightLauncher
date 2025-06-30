@@ -50,17 +50,16 @@ class LauncherViewModel: ObservableObject {
     // MARK: - 命令处理
     
     private func handleSearchTextChange(text: String) {
-        let isCommand = commandProcessor.processInput(text, in: self)
-        if !isCommand {
-            selectedIndex = 0
-        }
+        // 使用命令处理器处理输入
+        _ = commandProcessor.processInput(text, in: self)
     }
     
     // MARK: - 模式切换
     
     func switchToKillMode() {
         mode = .kill
-        searchText = ""
+        // 不清空搜索文本，保持 "/k" 前缀
+        // searchText = ""  // 注释掉这行
         loadRunningApps()
         selectedIndex = 0
     }

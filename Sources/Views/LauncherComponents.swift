@@ -132,7 +132,7 @@ struct EmptyStateView: View {
         if hasSearchText {
             return mode == .launch ? "No applications found" : "No running apps found"
         } else {
-            return mode == .launch ? "Start typing to search" : "Type /k to enter kill mode"
+            return mode == .launch ? "Start typing to search" : "Type after /k to search apps"
         }
     }
 }
