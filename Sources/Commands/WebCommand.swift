@@ -15,14 +15,21 @@ class WebCommandProcessor: CommandProcessor {
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        // 在网页打开模式下，直接显示输入文本，不需要过滤
-        // 用户按回车时会打开网页
+        // 提取实际的搜索文本（去掉 "/w " 前缀）
+        let webText = text.hasPrefix("/w ") ? String(text.dropFirst(3)) : text
+        viewModel.updateWebResults(query: webText)
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
         guard viewModel.mode == .web else { return false }
         
-        // 提取URL文本，去掉 "/w " 前缀
+        // 如果有浏览器项目可选择，优先选择浏览器项目
+        if !viewModel.browserItems.isEmpty && index < viewModel.browserItems.count {
+            let selectedItem = viewModel.browserItems[index]
+            return openBrowserItem(selectedItem, in: viewModel)
+        }
+        
+        // 否则处理直接输入的URL
         let urlText = viewModel.searchText.hasPrefix("/w ") ? 
             String(viewModel.searchText.dropFirst(3)) : viewModel.searchText
         
@@ -31,6 +38,13 @@ class WebCommandProcessor: CommandProcessor {
         }
         
         return openWebsite(urlText: urlText, in: viewModel)
+    }
+    
+    private func openBrowserItem(_ item: BrowserItem, in viewModel: LauncherViewModel) -> Bool {
+        guard let url = URL(string: item.url) else { return false }
+        NSWorkspace.shared.open(url)
+        viewModel.resetToLaunchMode()
+        return true
     }
     
     private func openWebsite(urlText: String, in viewModel: LauncherViewModel) -> Bool {
@@ -92,5 +106,33 @@ extension LauncherViewModel {
     func switchToWebMode() {
         mode = .web
         selectedIndex = 0
+        
+        // 加载浏览器数据
+        self.getBrowserDataManager().loadBrowserData()
+        
+        // 如果有输入文本，立即搜索；否则显示默认建议
+        let webText = self.searchText.hasPrefix("/w ") ? String(self.searchText.dropFirst(3)) : ""
+        if !webText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            self.updateWebResults(query: webText)
+        } else {
+            // 显示最近访问的书签和历史记录
+            self.showDefaultWebSuggestions()
+        }
+    }
+    
+    func updateWebResults(query: String) {
+        guard mode == .web else { return }
+        
+        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            showDefaultWebSuggestions()
+        } else {
+            browserItems = self.getBrowserDataManager().searchBrowserData(query: query)
+        }
+        selectedIndex = 0
+    }
+    
+    private func showDefaultWebSuggestions() {
+        // 显示最近的书签和历史记录
+        browserItems = self.getBrowserDataManager().getDefaultBrowserItems(limit: 10)
     }
 }

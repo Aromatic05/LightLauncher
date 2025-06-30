@@ -126,7 +126,13 @@ struct LauncherView: View {
                             hasSearchText: !viewModel.searchText.isEmpty
                         )
                     }
-                case .search, .web, .terminal:
+                case .web:
+                    if viewModel.hasResults || !viewModel.browserItems.isEmpty {
+                        ResultsListView(viewModel: viewModel)
+                    } else {
+                        CommandInputView(mode: viewModel.mode, searchText: viewModel.searchText)
+                    }
+                case .search, .terminal:
                     // 新模式显示输入提示界面
                     CommandInputView(mode: viewModel.mode, searchText: viewModel.searchText)
                 }
@@ -168,6 +174,25 @@ struct ResultsListView: View {
                                 isSelected: index == viewModel.selectedIndex,
                                 index: index,
                                 mode: .launch
+                            )
+                            .id(index)
+                            .onTapGesture {
+                                viewModel.selectedIndex = index
+                                if viewModel.executeSelectedAction() {
+                                    // 在kill模式下不隐藏窗口
+                                    if viewModel.mode != .kill {
+                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    }
+                                }
+                            }
+                            .focusable(false)
+                        }
+                    } else if viewModel.mode == .web {
+                        ForEach(Array(viewModel.browserItems.enumerated()), id: \.element) { index, item in
+                            BrowserItemRowView(
+                                item: item,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
                             )
                             .id(index)
                             .onTapGesture {

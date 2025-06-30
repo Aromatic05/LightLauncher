@@ -52,6 +52,7 @@ struct AppConfig: Codable {
         var showCommandSuggestions: Bool
         var defaultSearchEngine: String
         var preferredTerminal: String
+        var enabledBrowsers: [String]
         
         init() {
             self.killModeEnabled = true
@@ -61,6 +62,7 @@ struct AppConfig: Codable {
             self.showCommandSuggestions = true
             self.defaultSearchEngine = "google"
             self.preferredTerminal = "auto"
+            self.enabledBrowsers = ["safari"] // 默认只启用 Safari
         }
     }
 }
@@ -218,6 +220,7 @@ class ConfigManager: ObservableObject {
 # showCommandSuggestions: 输入 / 时显示命令提示
 # defaultSearchEngine: 默认搜索引擎 (google, baidu, bing)
 # preferredTerminal: 首选终端应用 (auto, terminal, iterm2, ghostty, kitty, alacritty, wezterm)
+# enabledBrowsers: 启用的浏览器数据源 (safari, chrome, edge, firefox, arc)
 
 \(yamlString)
 """
@@ -444,6 +447,24 @@ class ConfigManager: ObservableObject {
     func updatePreferredTerminal(_ terminal: String) {
         config.modes.preferredTerminal = terminal
         saveConfig()
+    }
+    
+    // 更新启用的浏览器
+    func updateEnabledBrowsers(_ browsers: Set<BrowserType>) {
+        config.modes.enabledBrowsers = browsers.map { $0.rawValue.lowercased() }
+        saveConfig()
+        
+        // 同步到 BrowserDataManager
+        BrowserDataManager.shared.setEnabledBrowsers(browsers)
+    }
+    
+    func getEnabledBrowsers() -> Set<BrowserType> {
+        let browserTypes = Set(config.modes.enabledBrowsers.compactMap { browserString in
+            BrowserType.allCases.first { $0.rawValue.lowercased() == browserString.lowercased() }
+        })
+        
+        // 如果配置为空，返回默认的 Safari
+        return browserTypes.isEmpty ? [.safari] : browserTypes
     }
 
     // 重置为默认配置

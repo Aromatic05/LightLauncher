@@ -11,12 +11,19 @@ class LauncherViewModel: ObservableObject {
     @Published var runningApps: [RunningAppInfo] = []
     @Published var commandSuggestions: [LauncherCommand] = []
     @Published var showCommandSuggestions = false
+    @Published var browserItems: [BrowserItem] = []
     
     private var allApps: [AppInfo] = []
     private let appScanner: AppScanner
     private var cancellables = Set<AnyCancellable>()
     private let commandProcessor = MainCommandProcessor()
     private let runningAppsManager = RunningAppsManager.shared
+    private let browserDataManager = BrowserDataManager.shared
+    
+    // 公共方法供其他地方访问
+    func getBrowserDataManager() -> BrowserDataManager {
+        return browserDataManager
+    }
     
     // 使用频率统计
     private var appUsageCount: [String: Int] = [:]
@@ -26,6 +33,16 @@ class LauncherViewModel: ObservableObject {
         self.appScanner = appScanner
         loadUsageData()
         setupObservers()
+        initializeBrowserData()
+    }
+    
+    private func initializeBrowserData() {
+        // 从配置管理器同步启用的浏览器设置
+        let enabledBrowsers = ConfigManager.shared.getEnabledBrowsers()
+        browserDataManager.setEnabledBrowsers(enabledBrowsers)
+        
+        // 初始加载浏览器数据
+        browserDataManager.loadBrowserData()
     }
     
     private func setupObservers() {
@@ -496,7 +513,9 @@ class LauncherViewModel: ObservableObject {
             return filteredApps
         case .kill:
             return runningApps
-        case .search, .web, .terminal:
+        case .web:
+            return browserItems
+        case .search, .terminal:
             // 对于这些模式，没有选择列表，只有输入
             return []
         }
@@ -528,7 +547,9 @@ class LauncherViewModel: ObservableObject {
             return !filteredApps.isEmpty
         case .kill:
             return !runningApps.isEmpty
-        case .search, .web, .terminal:
+        case .web:
+            return !browserItems.isEmpty
+        case .search, .terminal:
             // 对于这些模式，总是显示输入框
             return true
         }
@@ -563,8 +584,8 @@ class LauncherViewModel: ObservableObject {
             selectedIndex = index
             return killSelectedApp()
             
-        case .search, .web, .terminal:
-            // 这些模式不支持数字选择
+        case .web, .search, .terminal:
+            // 这些模式不支持数字选择，只能通过方向键和回车选择
             return false
         }
     }

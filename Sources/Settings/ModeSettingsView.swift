@@ -16,6 +16,21 @@ struct ModeSettingsView: View {
         default: return terminal.capitalized
         }
     }
+    
+    private func getBrowserColor(_ browser: BrowserType) -> Color {
+        switch browser {
+        case .safari:
+            return .blue
+        case .chrome:
+            return .green
+        case .edge:
+            return .teal
+        case .firefox:
+            return .orange
+        case .arc:
+            return .purple
+        }
+    }
 
     var body: some View {
         ScrollView {
@@ -102,7 +117,7 @@ struct ModeSettingsView: View {
                         title: "网页打开 (/w)",
                         icon: "safari",
                         iconColor: .green,
-                        description: "快速打开网站或 URL",
+                        description: "快速打开网站或 URL，支持书签和历史记录",
                         isEnabled: $settingsManager.isWebModeEnabled,
                         onToggle: {
                             settingsManager.toggleWebMode()
@@ -116,9 +131,85 @@ struct ModeSettingsView: View {
                                 Text("• 完整 URL：https://example.com")
                                 Text("• 域名：example.com")
                                 Text("• 关键词：搜索关键词（自动跳转到搜索）")
+                                Text("• 书签和历史记录：自动匹配显示")
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)
+                            
+                            // 浏览器数据源设置
+                            Text("浏览器数据源：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.top, 8)
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(BrowserType.allCases, id: \.self) { browser in
+                                    if browser.isInstalled {
+                                        HStack {
+                                            Toggle(browser.displayName, isOn: Binding(
+                                                get: {
+                                                    configManager.getEnabledBrowsers().contains(browser)
+                                                },
+                                                set: { enabled in
+                                                    var enabledBrowsers = configManager.getEnabledBrowsers()
+                                                    if enabled {
+                                                        enabledBrowsers.insert(browser)
+                                                    } else {
+                                                        enabledBrowsers.remove(browser)
+                                                    }
+                                                    configManager.updateEnabledBrowsers(enabledBrowsers)
+                                                }
+                                            ))
+                                            .toggleStyle(SwitchToggleStyle())
+                                            
+                                            Spacer()
+                                            
+                                            // 浏览器状态指示器
+                                            Circle()
+                                                .fill(getBrowserColor(browser))
+                                                .frame(width: 8, height: 8)
+                                        }
+                                    } else {
+                                        HStack {
+                                            Text(browser.displayName)
+                                                .foregroundColor(.secondary)
+                                            Spacer()
+                                            Text("未安装")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 搜索引擎设置
+                            Text("默认搜索引擎：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.top, 8)
+                            
+                            HStack {
+                                Picker("搜索引擎", selection: Binding(
+                                    get: { configManager.config.modes.defaultSearchEngine },
+                                    set: { configManager.updateDefaultSearchEngine($0) }
+                                )) {
+                                    Text("Google").tag("google")
+                                    Text("百度").tag("baidu")
+                                    Text("必应").tag("bing")
+                                }
+                                .pickerStyle(MenuPickerStyle())
+                                
+                                Spacer()
+                            }
+                            
+                            HStack {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(.blue)
+                                Text("书签和历史记录会定期自动更新，支持智能搜索匹配")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.top, 8)
                         }
                     }
                     
