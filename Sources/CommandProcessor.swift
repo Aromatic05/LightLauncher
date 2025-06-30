@@ -64,6 +64,14 @@ class MainCommandProcessor: ObservableObject {
         return processor?.executeAction(at: index, in: viewModel) ?? false
     }
     
+    func getCommandSuggestions(for text: String) -> [LauncherCommand] {
+        return LauncherCommand.getCommandSuggestions(for: text)
+    }
+    
+    func shouldShowCommandSuggestions() -> Bool {
+        return SettingsManager.shared.showCommandSuggestions
+    }
+    
     private func getCurrentProcessor(for mode: LauncherMode) -> CommandProcessor? {
         switch mode {
         case .launch:

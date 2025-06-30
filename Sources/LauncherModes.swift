@@ -39,17 +39,46 @@ struct LauncherCommand {
     let trigger: String          // 触发字符串，如 "/k"
     let mode: LauncherMode      // 对应的模式
     let description: String     // 命令描述
+    let isEnabled: Bool         // 是否启用
     
     static let allCommands: [LauncherCommand] = [
         LauncherCommand(
             trigger: "/k",
             mode: .kill,
-            description: "Enter kill mode to close running applications"
+            description: "Enter kill mode to close running applications",
+            isEnabled: true
         )
     ]
     
+    @MainActor
     static func parseCommand(from text: String) -> LauncherCommand? {
-        return allCommands.first { $0.trigger == text }
+        return getEnabledCommands().first { $0.trigger == text }
+    }
+    
+    @MainActor
+    static func getEnabledCommands() -> [LauncherCommand] {
+        let settings = SettingsManager.shared
+        return allCommands.filter { command in
+            switch command.mode {
+            case .launch:
+                return true // 启动模式始终启用
+            case .kill:
+                return settings.isKillModeEnabled
+            }
+        }
+    }
+    
+    @MainActor
+    static func getCommandSuggestions(for text: String) -> [LauncherCommand] {
+        let enabledCommands = getEnabledCommands()
+        
+        if text == "/" {
+            return enabledCommands
+        }
+        
+        return enabledCommands.filter { command in
+            command.trigger.hasPrefix(text)
+        }
     }
 }
 

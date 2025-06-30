@@ -9,6 +9,8 @@ class LauncherViewModel: ObservableObject {
     @Published var filteredApps: [AppInfo] = []
     @Published var mode: LauncherMode = .launch
     @Published var runningApps: [RunningAppInfo] = []
+    @Published var commandSuggestions: [LauncherCommand] = []
+    @Published var showCommandSuggestions = false
     
     private var allApps: [AppInfo] = []
     private let appScanner: AppScanner
@@ -50,8 +52,21 @@ class LauncherViewModel: ObservableObject {
     // MARK: - 命令处理
     
     private func handleSearchTextChange(text: String) {
+        // 检查是否应该显示命令建议
+        updateCommandSuggestions(for: text)
+        
         // 使用命令处理器处理输入
         _ = commandProcessor.processInput(text, in: self)
+    }
+    
+    private func updateCommandSuggestions(for text: String) {
+        if commandProcessor.shouldShowCommandSuggestions() && text == "/" {
+            commandSuggestions = commandProcessor.getCommandSuggestions(for: text)
+            showCommandSuggestions = true
+        } else {
+            showCommandSuggestions = false
+            commandSuggestions = []
+        }
     }
     
     // MARK: - 模式切换

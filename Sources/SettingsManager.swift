@@ -11,6 +11,10 @@ class SettingsManager: ObservableObject {
     @Published var hotKeyModifiers: UInt32 = UInt32(optionKey)
     @Published var hotKeyCode: UInt32 = UInt32(kVK_Space)
     
+    // 模式开关
+    @Published var isKillModeEnabled: Bool = true
+    @Published var showCommandSuggestions: Bool = true
+    
     private let userDefaults = UserDefaults.standard
     
     // 设置键
@@ -18,6 +22,8 @@ class SettingsManager: ObservableObject {
         static let autoStart = "autoStart"
         static let hotKeyModifiers = "hotKeyModifiers"
         static let hotKeyCode = "hotKeyCode"
+        static let killModeEnabled = "killModeEnabled"
+        static let showCommandSuggestions = "showCommandSuggestions"
     }
     
     private init() {
@@ -31,6 +37,10 @@ class SettingsManager: ObservableObject {
         hotKeyModifiers = UInt32(userDefaults.integer(forKey: Keys.hotKeyModifiers))
         hotKeyCode = UInt32(userDefaults.integer(forKey: Keys.hotKeyCode))
         
+        // 加载模式设置，默认启用
+        isKillModeEnabled = userDefaults.object(forKey: Keys.killModeEnabled) as? Bool ?? true
+        showCommandSuggestions = userDefaults.object(forKey: Keys.showCommandSuggestions) as? Bool ?? true
+        
         // 如果是首次运行，设置默认值
         if hotKeyModifiers == 0 {
             hotKeyModifiers = UInt32(optionKey)
@@ -42,6 +52,8 @@ class SettingsManager: ObservableObject {
         userDefaults.set(isAutoStartEnabled, forKey: Keys.autoStart)
         userDefaults.set(Int(hotKeyModifiers), forKey: Keys.hotKeyModifiers)
         userDefaults.set(Int(hotKeyCode), forKey: Keys.hotKeyCode)
+        userDefaults.set(isKillModeEnabled, forKey: Keys.killModeEnabled)
+        userDefaults.set(showCommandSuggestions, forKey: Keys.showCommandSuggestions)
     }
     
     // MARK: - 开机自启动
@@ -80,6 +92,20 @@ class SettingsManager: ObservableObject {
             // 对于旧版本，我们依赖 UserDefaults 的值
             isAutoStartEnabled = userDefaults.bool(forKey: Keys.autoStart)
         }
+    }
+    
+    // MARK: - 热键设置
+    
+    // MARK: - 模式设置
+    
+    func toggleKillMode() {
+        isKillModeEnabled.toggle()
+        saveSettings()
+    }
+    
+    func toggleCommandSuggestions() {
+        showCommandSuggestions.toggle()
+        saveSettings()
     }
     
     // MARK: - 热键设置

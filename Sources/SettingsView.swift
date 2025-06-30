@@ -238,6 +238,47 @@ struct GeneralSettingsView: View {
                     
                     Divider()
                     
+                    // 功能模式设置
+                    VStack(alignment: .leading, spacing: 20) {
+                        HStack {
+                            Image(systemName: "slider.horizontal.3")
+                                .foregroundColor(.purple)
+                            Text("功能模式")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                        }
+                        
+                        Text("启用或禁用特定功能模式")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        VStack(spacing: 16) {
+                            SettingRow(
+                                icon: "xmark.circle",
+                                iconColor: .red,
+                                title: "关闭模式",
+                                description: "输入 /k 进入关闭应用模式",
+                                isToggle: true,
+                                toggleValue: $settingsManager.isKillModeEnabled
+                            ) {
+                                settingsManager.toggleKillMode()
+                            }
+                            
+                            SettingRow(
+                                icon: "lightbulb",
+                                iconColor: .yellow,
+                                title: "命令提示",
+                                description: "输入 / 时显示可用命令提示",
+                                isToggle: true,
+                                toggleValue: $settingsManager.showCommandSuggestions
+                            ) {
+                                settingsManager.toggleCommandSuggestions()
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
                     // 快捷键设置
                     VStack(alignment: .leading, spacing: 20) {
                         HStack {
