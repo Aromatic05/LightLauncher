@@ -5,6 +5,18 @@ struct ModeSettingsView: View {
     @ObservedObject var settingsManager: SettingsManager
     @ObservedObject var configManager: ConfigManager
     
+    private func getTerminalDisplayName(_ terminal: String) -> String {
+        switch terminal {
+        case "ghostty": return "Ghostty"
+        case "kitty": return "Kitty"
+        case "alacritty": return "Alacritty"
+        case "wezterm": return "WezTerm"
+        case "iterm2": return "iTerm2"
+        case "terminal": return "Terminal.app"
+        default: return terminal.capitalized
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
@@ -124,13 +136,48 @@ struct ModeSettingsView: View {
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("终端应用优先级：")
+                            Text("终端应用设置：")
                                 .font(.headline)
                                 .fontWeight(.semibold)
+                            
+                            HStack {
+                                Text("首选终端：")
+                                    .font(.subheadline)
+                                Picker("终端应用", selection: Binding(
+                                    get: { configManager.config.modes.preferredTerminal },
+                                    set: { configManager.updatePreferredTerminal($0) }
+                                )) {
+                                    Text("自动检测").tag("auto")
+                                    Text("Terminal.app").tag("terminal")
+                                    Text("iTerm2").tag("iterm2")
+                                    Text("Ghostty").tag("ghostty")
+                                    Text("Kitty").tag("kitty")
+                                    Text("Alacritty").tag("alacritty")
+                                    Text("WezTerm").tag("wezterm")
+                                }
+                                .pickerStyle(MenuPickerStyle())
+                            }
+                            
+                            Text("执行优先级说明：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.top, 8)
+                            
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("1. Terminal.app（系统默认）")
-                                Text("2. iTerm2（如果已安装）")
-                                Text("3. 直接后台执行")
+                                let terminal = configManager.config.modes.preferredTerminal
+                                if terminal == "auto" {
+                                    Text("• 自动检测系统默认终端应用")
+                                    Text("• 如果检测失败，按优先级尝试可用终端")
+                                    Text("• 最后降级到后台直接执行")
+                                } else if terminal == "terminal" {
+                                    Text("• 总是使用 Terminal.app")
+                                } else if terminal == "iterm2" {
+                                    Text("• 优先使用 iTerm2")
+                                    Text("• 如果不可用则降级到系统默认")
+                                } else {
+                                    Text("• 优先使用 \(getTerminalDisplayName(terminal))")
+                                    Text("• 如果不可用则降级到系统默认")
+                                }
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)

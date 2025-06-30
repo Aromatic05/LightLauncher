@@ -51,6 +51,7 @@ struct AppConfig: Codable {
         var terminalModeEnabled: Bool
         var showCommandSuggestions: Bool
         var defaultSearchEngine: String
+        var preferredTerminal: String
         
         init() {
             self.killModeEnabled = true
@@ -59,6 +60,7 @@ struct AppConfig: Codable {
             self.terminalModeEnabled = true
             self.showCommandSuggestions = true
             self.defaultSearchEngine = "google"
+            self.preferredTerminal = "auto"
         }
     }
 }
@@ -215,6 +217,7 @@ class ConfigManager: ObservableObject {
 # terminalModeEnabled: 启用终端执行模式 (/t)
 # showCommandSuggestions: 输入 / 时显示命令提示
 # defaultSearchEngine: 默认搜索引擎 (google, baidu, bing)
+# preferredTerminal: 首选终端应用 (auto, terminal, iterm2, ghostty, kitty, alacritty, wezterm)
 
 \(yamlString)
 """
@@ -438,6 +441,11 @@ class ConfigManager: ObservableObject {
         saveConfig()
     }
     
+    func updatePreferredTerminal(_ terminal: String) {
+        config.modes.preferredTerminal = terminal
+        saveConfig()
+    }
+
     // 重置为默认配置
     func resetToDefaults() {
         config = Self.createDefaultConfig()
