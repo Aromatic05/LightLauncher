@@ -286,6 +286,44 @@ struct ModeSettingsView: View {
                     
                     Divider()
                     
+                    // 文件管理器模式
+                    SettingsModeSection(
+                        title: "文件管理器 (/o)",
+                        icon: "folder",
+                        iconColor: .blue,
+                        description: "浏览文件和文件夹，从家目录开始",
+                        isEnabled: $settingsManager.isFileModeEnabled,
+                        onToggle: {
+                            settingsManager.toggleFileMode()
+                        }
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("功能特点：")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("• 从家目录开始浏览文件和文件夹")
+                                Text("• 按 Enter 打开文件或进入文件夹")
+                                Text("• 按 Space 在 Finder 中打开当前选择")
+                                Text("• 支持按名称过滤文件")
+                                Text("• 显示文件大小和修改时间")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            
+                            HStack {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(.blue)
+                                Text("提示：输入文件名可快速过滤结果")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                            .padding(.top, 8)
+                        }
+                    }
+                    
+                    Divider()
+                    
                     // 命令提示
                     SettingsRow(
                         icon: "lightbulb",

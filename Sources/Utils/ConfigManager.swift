@@ -49,6 +49,7 @@ struct AppConfig: Codable {
         var searchModeEnabled: Bool
         var webModeEnabled: Bool
         var terminalModeEnabled: Bool
+        var fileModeEnabled: Bool
         var showCommandSuggestions: Bool
         var defaultSearchEngine: String
         var preferredTerminal: String
@@ -59,6 +60,7 @@ struct AppConfig: Codable {
             self.searchModeEnabled = true
             self.webModeEnabled = true
             self.terminalModeEnabled = true
+            self.fileModeEnabled = true
             self.showCommandSuggestions = true
             self.defaultSearchEngine = "google"
             self.preferredTerminal = "auto"
@@ -423,6 +425,7 @@ class ConfigManager: ObservableObject {
         config.modes.searchModeEnabled = settingsManager.isSearchModeEnabled
         config.modes.webModeEnabled = settingsManager.isWebModeEnabled
         config.modes.terminalModeEnabled = settingsManager.isTerminalModeEnabled
+        config.modes.fileModeEnabled = settingsManager.isFileModeEnabled
         config.modes.showCommandSuggestions = settingsManager.showCommandSuggestions
         saveConfig()
     }
@@ -434,6 +437,7 @@ class ConfigManager: ObservableObject {
         settingsManager.isSearchModeEnabled = config.modes.searchModeEnabled
         settingsManager.isWebModeEnabled = config.modes.webModeEnabled
         settingsManager.isTerminalModeEnabled = config.modes.terminalModeEnabled
+        settingsManager.isFileModeEnabled = config.modes.fileModeEnabled
         settingsManager.showCommandSuggestions = config.modes.showCommandSuggestions
     }
     

@@ -41,10 +41,19 @@ final class KeyboardEventHandler: @unchecked Sendable {
                     viewModel.moveSelectionDown()
                 case 36, 76: // Enter, Numpad Enter
                     if viewModel.executeSelectedAction() {
-                        // 在kill模式下不隐藏窗口
-                        if viewModel.mode != .kill {
+                        // 在kill和file模式下，有些操作不隐藏窗口
+                        if viewModel.mode != .kill && viewModel.mode != .file {
                             NotificationCenter.default.post(name: .hideWindow, object: nil)
+                        } else if viewModel.mode == .file {
+                            // 文件模式下，只有打开文件才关闭窗口，进入目录不关闭
+                            if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex), !fileItem.isDirectory {
+                                NotificationCenter.default.post(name: .hideWindow, object: nil)
+                            }
                         }
+                    }
+                case 49: // Space
+                    if self.currentMode == .file {
+                        viewModel.openSelectedFileInFinder()
                     }
                 case 53: // Escape
                     NotificationCenter.default.post(name: .hideWindow, object: nil)
@@ -68,6 +77,11 @@ final class KeyboardEventHandler: @unchecked Sendable {
             switch keyCode {
             case 126, 125, 36, 76, 53: // Navigation keys we want to consume
                 return nil
+            case 49: // Space key - consume in file mode
+                if self.currentMode == .file {
+                    return nil
+                }
+                return event
             default:
                 // Handle numeric shortcuts - 如果是数字键且不在web模式下，消费事件
                 if isNumericKey && self.currentMode != .web {
@@ -148,6 +162,13 @@ struct LauncherView: View {
                 case .terminal:
                     // 终端模式显示输入提示界面
                     TerminalCommandInputView(searchText: viewModel.searchText)
+                case .file:
+                    // 文件模式显示文件浏览器
+                    if viewModel.hasResults {
+                        ResultsListView(viewModel: viewModel)
+                    } else {
+                        FileCommandInputView(currentPath: viewModel.currentPath)
+                    }
                 }
             }
         }
@@ -190,6 +211,8 @@ struct ResultsListView: View {
             KillModeResultsView(viewModel: viewModel)
         case .web:
             WebModeResultsView(viewModel: viewModel)
+        case .file:
+            FileModeResultsView(viewModel: viewModel)
         case .search, .terminal:
             // 这些模式在主视图中处理，不应该到达这里
             EmptyView()

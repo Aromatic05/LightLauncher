@@ -26,7 +26,8 @@ class MainCommandProcessor: ObservableObject {
             KillCommandProcessor(),
             SearchCommandProcessor(),
             WebCommandProcessor(),
-            TerminalCommandProcessor()
+            TerminalCommandProcessor(),
+            FileCommandProcessor()
         ]
     }
     
@@ -88,6 +89,20 @@ class MainCommandProcessor: ObservableObject {
                 return false
             }
             
+        case .file:
+            if !text.hasPrefix("/o") {
+                viewModel.switchToLaunchMode()
+                if !text.isEmpty {
+                    viewModel.filterApps(searchText: text)
+                }
+                return true
+            } else {
+                // 正确处理 "/o " 前缀
+                let searchText = text.hasPrefix("/o ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
+                getCurrentProcessor(for: .file)?.handleSearch(text: searchText, in: viewModel)
+                return false
+            }
+            
         case .launch:
             // 检查是否是命令
             if let command = LauncherCommand.parseCommand(from: text) {
@@ -127,6 +142,8 @@ class MainCommandProcessor: ObservableObject {
             return processors.first { $0 is WebCommandProcessor }
         case .terminal:
             return processors.first { $0 is TerminalCommandProcessor }
+        case .file:
+            return processors.first { $0 is FileCommandProcessor }
         }
     }
 }
@@ -229,6 +246,14 @@ struct CommandSuggestionProvider {
                 "Type after /t to execute terminal command",
                 "Press Enter to run in Terminal",
                 "Delete /t prefix to return to launch mode",
+                "Press Esc to close"
+            ]
+        case .file:
+            return [
+                "Browse files and folders starting from home directory",
+                "Press Enter to open files or navigate folders",
+                "Press Space to open current folder in Finder",
+                "Delete /o prefix to return to launch mode",
                 "Press Esc to close"
             ]
         }

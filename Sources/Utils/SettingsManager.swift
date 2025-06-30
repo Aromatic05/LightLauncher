@@ -16,6 +16,7 @@ class SettingsManager: ObservableObject {
     @Published var isSearchModeEnabled: Bool = true
     @Published var isWebModeEnabled: Bool = true
     @Published var isTerminalModeEnabled: Bool = true
+    @Published var isFileModeEnabled: Bool = true
     @Published var showCommandSuggestions: Bool = true
     
     private let userDefaults = UserDefaults.standard
@@ -29,6 +30,7 @@ class SettingsManager: ObservableObject {
         static let searchModeEnabled = "searchModeEnabled"
         static let webModeEnabled = "webModeEnabled"
         static let terminalModeEnabled = "terminalModeEnabled"
+        static let fileModeEnabled = "fileModeEnabled"
         static let showCommandSuggestions = "showCommandSuggestions"
     }
     
@@ -48,6 +50,7 @@ class SettingsManager: ObservableObject {
         isSearchModeEnabled = userDefaults.object(forKey: Keys.searchModeEnabled) as? Bool ?? true
         isWebModeEnabled = userDefaults.object(forKey: Keys.webModeEnabled) as? Bool ?? true
         isTerminalModeEnabled = userDefaults.object(forKey: Keys.terminalModeEnabled) as? Bool ?? true
+        isFileModeEnabled = userDefaults.object(forKey: Keys.fileModeEnabled) as? Bool ?? true
         showCommandSuggestions = userDefaults.object(forKey: Keys.showCommandSuggestions) as? Bool ?? true
         
         // 如果是首次运行，设置默认值
@@ -65,6 +68,7 @@ class SettingsManager: ObservableObject {
         userDefaults.set(isSearchModeEnabled, forKey: Keys.searchModeEnabled)
         userDefaults.set(isWebModeEnabled, forKey: Keys.webModeEnabled)
         userDefaults.set(isTerminalModeEnabled, forKey: Keys.terminalModeEnabled)
+        userDefaults.set(isFileModeEnabled, forKey: Keys.fileModeEnabled)
         userDefaults.set(showCommandSuggestions, forKey: Keys.showCommandSuggestions)
     }
     
@@ -139,6 +143,15 @@ class SettingsManager: ObservableObject {
     
     func toggleTerminalMode() {
         isTerminalModeEnabled.toggle()
+        saveSettings()
+        // 同步到配置文件
+        Task { @MainActor in
+            ConfigManager.shared.updateModeSettings()
+        }
+    }
+    
+    func toggleFileMode() {
+        isFileModeEnabled.toggle()
         saveSettings()
         // 同步到配置文件
         Task { @MainActor in

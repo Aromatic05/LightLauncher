@@ -8,6 +8,7 @@ enum LauncherMode: String, CaseIterable {
     case search = "search"    // 网页搜索模式 (/s)
     case web = "web"          // 网页打开模式 (/w)
     case terminal = "terminal" // 终端执行模式 (/t)
+    case file = "file"        // 文件管理器模式 (/o)
     
     var displayName: String {
         switch self {
@@ -21,6 +22,8 @@ enum LauncherMode: String, CaseIterable {
             return "Web Open"
         case .terminal:
             return "Terminal"
+        case .file:
+            return "File Browser"
         }
     }
     
@@ -36,6 +39,8 @@ enum LauncherMode: String, CaseIterable {
             return "safari"
         case .terminal:
             return "terminal"
+        case .file:
+            return "folder"
         }
     }
     
@@ -51,6 +56,8 @@ enum LauncherMode: String, CaseIterable {
             return "Enter URL or website name..."
         case .terminal:
             return "Enter terminal command..."
+        case .file:
+            return "Browse files and folders..."
         }
     }
 }
@@ -86,6 +93,12 @@ struct LauncherCommand {
             mode: .terminal,
             description: "Execute commands in Terminal",
             isEnabled: true
+        ),
+        LauncherCommand(
+            trigger: "/o",
+            mode: .file,
+            description: "Browse files and folders starting from home directory",
+            isEnabled: true
         )
     ]
     
@@ -109,6 +122,8 @@ struct LauncherCommand {
                 return settings.isWebModeEnabled
             case .terminal:
                 return settings.isTerminalModeEnabled
+            case .file:
+                return settings.isFileModeEnabled
             }
         }
     }
@@ -216,5 +231,53 @@ struct KillModeData: ModeData {
     func item(at index: Int) -> Any? {
         guard index >= 0 && index < runningApps.count else { return nil }
         return runningApps[index]
+    }
+}
+
+// MARK: - 文件信息结构
+struct FileItem: Identifiable, Hashable {
+    let id = UUID()
+    let name: String
+    let url: URL
+    let isDirectory: Bool
+    let size: Int64?
+    let modificationDate: Date?
+    
+    var icon: NSImage? {
+        if isDirectory {
+            if #available(macOS 12.0, *) {
+                return NSWorkspace.shared.icon(for: .folder)
+            } else {
+                return NSWorkspace.shared.icon(forFileType: "public.folder")
+            }
+        } else {
+            return NSWorkspace.shared.icon(forFile: url.path)
+        }
+    }
+    
+    var displaySize: String {
+        guard let size = size, !isDirectory else { return "" }
+        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: FileItem, rhs: FileItem) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - 文件模式数据
+struct FileModeData: ModeData {
+    let files: [FileItem]
+    let currentPath: String
+    
+    var count: Int { files.count }
+    
+    func item(at index: Int) -> Any? {
+        guard index >= 0 && index < files.count else { return nil }
+        return files[index]
     }
 }

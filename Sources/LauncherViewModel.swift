@@ -14,6 +14,10 @@ class LauncherViewModel: ObservableObject {
     @Published var browserItems: [BrowserItem] = []
     @Published var searchHistory: [SearchHistoryItem] = []
     
+    // 文件管理器相关属性
+    @Published var currentFiles: [FileItem] = []
+    @Published var currentPath: String = NSHomeDirectory()
+    
     private var allApps: [AppInfo] = []
     private let appScanner: AppScanner
     private var cancellables = Set<AnyCancellable>()
@@ -229,6 +233,9 @@ class LauncherViewModel: ObservableObject {
             // 终端模式：只有当前输入项
             let cleanText = extractCleanTerminalText()
             return cleanText.isEmpty ? [] : ["current_terminal"]
+        case .file:
+            // 文件模式：显示当前目录的文件和文件夹
+            return currentFiles
         }
     }
     
@@ -287,6 +294,8 @@ class LauncherViewModel: ObservableObject {
         case .search, .terminal:
             // 对于这些模式，总是显示输入框
             return true
+        case .file:
+            return !currentFiles.isEmpty
         }
     }
     
@@ -319,7 +328,7 @@ class LauncherViewModel: ObservableObject {
             selectedIndex = index
             return killSelectedApp()
             
-        case .web, .search, .terminal:
+        case .web, .search, .terminal, .file:
             // 这些模式不支持数字选择，只能通过方向键和回车选择
             return false
         }
