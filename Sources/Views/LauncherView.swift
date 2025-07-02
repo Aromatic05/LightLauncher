@@ -22,73 +22,105 @@ final class KeyboardEventHandler: @unchecked Sendable {
             let modifierFlags = event.modifierFlags
             let characters = event.characters
             
-            // 预先检查是否是数字键
-            let isNumericKey = modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty &&
-                              characters != nil &&
-                              Int(characters!) != nil &&
-                              (1...6).contains(Int(characters!)!)
+            // 检查是否是数字键
+            let isNumericKey = self.isNumericShortcut(characters: characters, modifierFlags: modifierFlags)
             
-            // 如果是数字键且在web/search/terminal模式下，直接返回事件让它通过
-            if isNumericKey && (self.currentMode == .web || self.currentMode == .search || self.currentMode == .terminal) {
+            // 在某些模式下让数字键直接通过
+            if isNumericKey && self.shouldPassThroughNumericKey() {
                 return event
             }
             
             DispatchQueue.main.async {
-                switch keyCode {
-                case 126: // Up Arrow
-                    viewModel.moveSelectionUp()
-                case 125: // Down Arrow
-                    viewModel.moveSelectionDown()
-                case 36, 76: // Enter, Numpad Enter
-                    if viewModel.executeSelectedAction() {
-                        // 在kill和file模式下，有些操作不隐藏窗口
-                        if viewModel.mode != .kill && viewModel.mode != .file {
-                            NotificationCenter.default.post(name: .hideWindow, object: nil)
-                        } else if viewModel.mode == .file {
-                            // 文件模式下，只有打开文件才关闭窗口，进入目录不关闭
-                            if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex), !fileItem.isDirectory {
-                                NotificationCenter.default.post(name: .hideWindow, object: nil)
-                            }
-                        }
-                    }
-                case 49: // Space
-                    if self.currentMode == .file {
-                        viewModel.openSelectedFileInFinder()
-                    }
-                case 53: // Escape
-                    NotificationCenter.default.post(name: .hideWindow, object: nil)
-                default:
-                    // Handle numeric shortcuts only if no modifier keys are pressed and not in web mode
-                    if modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
-                       let chars = characters,
-                       let number = Int(chars),
-                       (1...6).contains(number),
-                       self.currentMode != .web { // 在web模式下不处理数字快捷键
-                        if viewModel.selectAppByNumber(number) {
-                            // 在kill模式下不隐藏窗口
-                            if viewModel.mode != .kill {
-                                NotificationCenter.default.post(name: .hideWindow, object: nil)
-                            }
-                        }
-                    }
-                }
+                self.handleKeyPress(keyCode: keyCode, characters: characters, viewModel: viewModel)
             }
             
-            switch keyCode {
-            case 126, 125, 36, 76, 53: // Navigation keys we want to consume
-                return nil
-            case 49: // Space key - consume in file mode
-                if self.currentMode == .file {
-                    return nil
-                }
-                return event
-            default:
-                // Handle numeric shortcuts - 如果是数字键且不在web模式下，消费事件
-                if isNumericKey && self.currentMode != .web {
-                    return nil // Consume numeric shortcuts
-                }
-                return event // Let other keys pass through
+            return self.shouldConsumeEvent(keyCode: keyCode, isNumericKey: isNumericKey) ? nil : event
+        }
+    }
+    
+    private func isNumericShortcut(characters: String?, modifierFlags: NSEvent.ModifierFlags) -> Bool {
+        guard modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
+              let chars = characters,
+              let number = Int(chars),
+              (1...6).contains(number) else {
+            return false
+        }
+        return true
+    }
+    
+    private func shouldPassThroughNumericKey() -> Bool {
+        return currentMode == .web || currentMode == .search || currentMode == .terminal
+    }
+    
+    @MainActor
+    private func handleKeyPress(keyCode: UInt16, characters: String?, viewModel: LauncherViewModel) {
+        switch keyCode {
+        case 126: // Up Arrow
+            viewModel.moveSelectionUp()
+        case 125: // Down Arrow
+            viewModel.moveSelectionDown()
+        case 36, 76: // Enter, Numpad Enter
+            handleEnterKey(viewModel: viewModel)
+        case 49: // Space
+            handleSpaceKey(viewModel: viewModel)
+        case 53: // Escape
+            NotificationCenter.default.post(name: .hideWindowWithoutActivating, object: nil)
+        default:
+            handleNumericShortcut(characters: characters, viewModel: viewModel)
+        }
+    }
+    
+    @MainActor
+    private func handleEnterKey(viewModel: LauncherViewModel) {
+        guard viewModel.executeSelectedAction() else { return }
+        
+        switch viewModel.mode {
+        case .kill:
+            // Kill 模式不隐藏窗口
+            break
+        case .file:
+            // 文件模式：只有打开文件才关闭窗口
+            if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex), !fileItem.isDirectory {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
+        default:
+            NotificationCenter.default.post(name: .hideWindow, object: nil)
+        }
+    }
+    
+    @MainActor
+    private func handleSpaceKey(viewModel: LauncherViewModel) {
+        if currentMode == .file {
+            viewModel.openSelectedFileInFinder()
+        }
+    }
+    
+    @MainActor
+    private func handleNumericShortcut(characters: String?, viewModel: LauncherViewModel) {
+        guard let chars = characters,
+              let number = Int(chars),
+              (1...6).contains(number),
+              !shouldPassThroughNumericKey() else {
+            return
+        }
+        
+        if viewModel.selectAppByNumber(number) {
+            // 在kill模式下不隐藏窗口
+            if viewModel.mode != .kill {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+        }
+    }
+    
+    private func shouldConsumeEvent(keyCode: UInt16, isNumericKey: Bool) -> Bool {
+        switch keyCode {
+        case 126, 125, 36, 76, 53: // Navigation keys and Escape
+            return true
+        case 49: // Space key - consume in file mode
+            return currentMode == .file
+        default:
+            // Consume numeric shortcuts when not in passthrough modes
+            return isNumericKey && !shouldPassThroughNumericKey()
         }
     }
     
@@ -164,10 +196,20 @@ struct LauncherView: View {
                     TerminalCommandInputView(searchText: viewModel.searchText)
                 case .file:
                     // 文件模式显示文件浏览器
-                    if viewModel.hasResults {
-                        ResultsListView(viewModel: viewModel)
+                    if viewModel.showStartPaths {
+                        // 显示起始路径选择
+                        if !viewModel.fileBrowserStartPaths.isEmpty {
+                            ResultsListView(viewModel: viewModel)
+                        } else {
+                            FileCommandInputView(currentPath: viewModel.currentPath)
+                        }
                     } else {
-                        FileCommandInputView(currentPath: viewModel.currentPath)
+                        // 显示文件列表
+                        if !viewModel.currentFiles.isEmpty {
+                            ResultsListView(viewModel: viewModel)
+                        } else {
+                            FileCommandInputView(currentPath: viewModel.currentPath)
+                        }
                     }
                 }
             }
@@ -204,54 +246,71 @@ struct ResultsListView: View {
     @ObservedObject var viewModel: LauncherViewModel
     
     var body: some View {
-        switch viewModel.mode {
-        case .launch:
-            LaunchModeResultsView(viewModel: viewModel)
-        case .kill:
-            KillModeResultsView(viewModel: viewModel)
-        case .web:
-            WebModeResultsView(viewModel: viewModel)
-        case .file:
-            FileModeResultsView(viewModel: viewModel)
-        case .search, .terminal:
-            // 这些模式在主视图中处理，不应该到达这里
-            EmptyView()
-        }
-    }
-}
-
-struct LaunchModeResultsView: View {
-    @ObservedObject var viewModel: LauncherViewModel
-    
-    var body: some View {
+        // 使用统一的结果视图，避免重复的 switch case
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    ForEach(Array(viewModel.filteredApps.enumerated()), id: \.element) { index, app in
-                        AppRowView(
-                            app: app,
-                            isSelected: index == viewModel.selectedIndex,
-                            index: index,
-                            mode: .launch
-                        )
-                        .id(index)
-                        .onTapGesture {
-                            viewModel.selectedIndex = index
-                            if viewModel.executeSelectedAction() {
-                                // 在kill模式下不隐藏窗口
-                                if viewModel.mode != .kill {
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
-                                }
+                    switch viewModel.mode {
+                    case .launch:
+                        ForEach(Array(viewModel.filteredApps.enumerated()), id: \.element) { index, app in
+                            AppRowView(
+                                app: app,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index,
+                                mode: .launch
+                            )
+                            .id(index)
+                            .onTapGesture { handleItemSelection(at: index) }
+                        }
+                    case .kill:
+                        ForEach(Array(viewModel.runningApps.enumerated()), id: \.element) { index, app in
+                            RunningAppRowView(
+                                app: app,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture { handleItemSelection(at: index) }
+                        }
+                    case .web:
+                        ForEach(Array(viewModel.browserItems.enumerated()), id: \.offset) { index, item in
+                            BrowserItemRowView(
+                                item: item,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture { handleItemSelection(at: index) }
+                        }
+                    case .file:
+                        if viewModel.showStartPaths {
+                            ForEach(Array(viewModel.fileBrowserStartPaths.enumerated()), id: \.offset) { index, startPath in
+                                StartPathRowView(
+                                    startPath: startPath,
+                                    isSelected: index == viewModel.selectedIndex,
+                                    index: index
+                                )
+                                .id(index)
+                                .onTapGesture { handleItemSelection(at: index) }
+                            }
+                        } else {
+                            ForEach(Array(viewModel.currentFiles.enumerated()), id: \.offset) { index, item in
+                                FileRowView(
+                                    file: item,
+                                    isSelected: index == viewModel.selectedIndex,
+                                    index: index
+                                )
+                                .id(index)
+                                .onTapGesture { handleItemSelection(at: index) }
                             }
                         }
-                        .focusable(false)
+                    case .search, .terminal:
+                        EmptyView()
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .focusable(false)
             }
-            .focusable(false)
             .onChange(of: viewModel.selectedIndex) { newIndex in
                 withAnimation(.easeInOut(duration: 0.2)) {
                     proxy.scrollTo(newIndex, anchor: .center)
@@ -259,9 +318,39 @@ struct LaunchModeResultsView: View {
             }
         }
     }
+    
+    private func handleItemSelection(at index: Int) {
+        viewModel.selectedIndex = index
+        if viewModel.executeSelectedAction() {
+            // 根据模式决定是否隐藏窗口
+            if shouldHideWindowAfterAction() {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+        }
+    }
+    
+    private func shouldHideWindowAfterAction() -> Bool {
+        switch viewModel.mode {
+        case .launch:
+            return true
+        case .kill:
+            return false // kill 模式不隐藏窗口
+        case .web:
+            return true
+        case .file:
+            // 文件模式：只有打开文件才关闭窗口，进入目录不关闭
+            if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex) {
+                return !fileItem.isDirectory
+            }
+            return true
+        case .search, .terminal:
+            return true
+        }
+    }
 }
 
 // Notification names
 extension Notification.Name {
     static let hideWindow = Notification.Name("hideWindow")
+    static let hideWindowWithoutActivating = Notification.Name("hideWindowWithoutActivating")
 }

@@ -57,6 +57,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var configManager = ConfigManager.shared
     private var statusItem: NSStatusItem?
     
+    // 添加标志来防止重复隐藏窗口
+    private var isHidingWindow = false
+    
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // No dock icon
         
@@ -223,6 +226,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("hideWindowWithoutActivating"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.hideWindow(shouldActivatePreviousApp: false)
+            }
+        }
+        
         // 监听热键变化
         NotificationCenter.default.addObserver(
             forName: .hotKeyChanged,
@@ -253,6 +266,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func showWindow() {
         guard let window = window else { return }
+        
+        // 重置隐藏窗口标志
+        isHidingWindow = false
         
         centerWindow()
         viewModel?.clearSearch()
@@ -326,14 +342,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func hideWindow() {
+        hideWindow(shouldActivatePreviousApp: true)
+    }
+    
+    private func hideWindow(shouldActivatePreviousApp: Bool) {
+        // 防止重复调用
+        if isHidingWindow { return }
+        isHidingWindow = true
+        
         window?.orderOut(nil)
         viewModel?.clearSearch()
         
         // 恢复之前的输入法
         inputMethodManager.restorePreviousInputMethod()
         
-        // 对于单独修饰键的热键，需要确保应用不阻塞全局事件
-        if settingsManager.hotKeyCode == 0 {
+        // 只有在明确要求激活前一个应用，且使用单独修饰键热键时，才执行应用切换逻辑
+        if shouldActivatePreviousApp && settingsManager.hotKeyCode == 0 {
             // 将应用设置为非活跃状态，但不隐藏应用本身
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                 if let frontmostApp = NSWorkspace.shared.frontmostApplication,
@@ -346,6 +370,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                         NSWorkspace.shared.openApplication(at: finderURL, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
                     }
                 }
+                
+                // 重置标志
+                Task { @MainActor in
+                    self.isHidingWindow = false
+                }
+            }
+        } else {
+            // 重置标志
+            DispatchQueue.main.async {
+                self.isHidingWindow = false
             }
         }
     }
