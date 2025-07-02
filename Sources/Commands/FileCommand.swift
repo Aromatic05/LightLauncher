@@ -370,11 +370,3 @@ struct FileCommandSuggestionProvider: CommandSuggestionProvider {
     }
 }
 
-// MARK: - 自动注册处理器
-@MainActor
-private let _autoRegisterFileProcessor: Void = {
-    let processor = FileCommandProcessor()
-    let modeHandler = FileModeHandler()
-    ProcessorRegistry.shared.registerProcessor(processor)
-    ProcessorRegistry.shared.registerModeHandler(modeHandler)
-}()

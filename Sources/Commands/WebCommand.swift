@@ -195,6 +195,16 @@ class WebModeHandler: ModeHandler {
     let prefix = "/w"
     let mode = LauncherMode.web
     
+    func extractSearchText(from text: String) -> String {
+        // 要求空格分隔符：/w space searchText
+        if text.hasPrefix(prefix + " ") {
+            return String(text.dropFirst(prefix.count + 1))
+        } else if text == prefix {
+            return "" // 只有 /w 前缀时，返回空字符串
+        }
+        return "" // 如果没有空格分隔符，不进行搜索
+    }
+    
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
         viewModel.switchToWebMode()
         // 更新浏览器项目列表
@@ -226,12 +236,3 @@ struct WebCommandSuggestionProvider: CommandSuggestionProvider {
         ]
     }
 }
-
-// MARK: - 自动注册处理器
-@MainActor
-private let _autoRegisterWebProcessor: Void = {
-    let processor = WebCommandProcessor()
-    let modeHandler = WebModeHandler()
-    ProcessorRegistry.shared.registerProcessor(processor)
-    ProcessorRegistry.shared.registerModeHandler(modeHandler)
-}()

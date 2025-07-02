@@ -122,9 +122,30 @@ class KillCommandProcessor: CommandProcessor, ModeHandler {
     func process(command: String, in viewModel: LauncherViewModel) -> Bool {
         if command == "/k" {
             viewModel.switchToKillMode()
+            
+            // 检查当前搜索文本是否包含搜索内容
+            let currentText = viewModel.searchText
+            if currentText.hasPrefix("/k ") {
+                let searchText = String(currentText.dropFirst(3))
+                viewModel.filterRunningApps(searchText: searchText)
+            }
+            
             return true
         }
         return false
+    }
+    
+    func extractSearchText(from text: String) -> String {
+        // 优先处理带空格的标准格式：/k space searchText
+        if text.hasPrefix(prefix + " ") {
+            return String(text.dropFirst(prefix.count + 1))
+        } else if text == prefix {
+            return "" // 只有 /k 前缀时，返回空字符串显示所有应用
+        } else if text.hasPrefix(prefix) {
+            // 兼容无空格格式：/ksearchText
+            return String(text.dropFirst(prefix.count))
+        }
+        return text
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
@@ -142,6 +163,19 @@ class KillModeHandler: ModeHandler {
     let prefix = "/k"
     let mode = LauncherMode.kill
     
+    func extractSearchText(from text: String) -> String {
+        // 优先处理带空格的标准格式：/k space searchText
+        if text.hasPrefix(prefix + " ") {
+            return String(text.dropFirst(prefix.count + 1))
+        } else if text == prefix {
+            return "" // 只有 /k 前缀时，返回空字符串显示所有应用
+        } else if text.hasPrefix(prefix) {
+            // 兼容无空格格式：/ksearchText
+            return String(text.dropFirst(prefix.count))
+        }
+        return text
+    }
+    
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
         viewModel.filterRunningApps(searchText: text)
     }
@@ -155,22 +189,14 @@ class KillModeHandler: ModeHandler {
 struct KillCommandSuggestionProvider: CommandSuggestionProvider {
     static func getHelpText() -> [String] {
         return [
-            "Type after /k to search running apps",
+            "Type '/k ' (with space) then search text to find running apps",
+            "Example: '/k chrome' to search for Chrome",
             "Press ↑↓ arrows or numbers 1-6 to select", 
             "Delete /k prefix to return to launch mode",
             "Press Esc to close"
         ]
     }
 }
-
-// MARK: - 自动注册处理器
-@MainActor
-private let _autoRegisterKillProcessor: Void = {
-    let processor = KillCommandProcessor()
-    let modeHandler = KillModeHandler()
-    ProcessorRegistry.shared.registerProcessor(processor)
-    ProcessorRegistry.shared.registerModeHandler(modeHandler)
-}()
 
 // MARK: - LauncherViewModel 扩展 - 关闭应用模式
 extension LauncherViewModel {

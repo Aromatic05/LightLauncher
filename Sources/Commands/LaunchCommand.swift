@@ -239,12 +239,3 @@ extension LauncherViewModel {
         return success
     }
 }
-
-// MARK: - 自动注册处理器
-@MainActor
-private let _autoRegisterLaunchProcessor: Void = {
-    let processor = LaunchCommandProcessor()
-    let modeHandler = LaunchModeHandler()
-    ProcessorRegistry.shared.registerProcessor(processor)
-    ProcessorRegistry.shared.registerModeHandler(modeHandler)
-}()
