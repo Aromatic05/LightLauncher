@@ -285,6 +285,14 @@ extension LauncherViewModel {
         mode = .terminal
         selectedIndex = 0
     }
+    
+    private func extractCleanTerminalText() -> String {
+        let prefix = "/t "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 // MARK: - 终端模式处理器
@@ -320,3 +328,11 @@ struct TerminalCommandSuggestionProvider: CommandSuggestionProvider {
         ]
     }
 }
+
+// MARK: - 自动注册处理器
+private let _autoRegisterTerminalProcessor: Void = {
+    let processor = TerminalCommandProcessor()
+    let modeHandler = TerminalModeHandler()
+    ProcessorRegistry.shared.registerProcessor(processor)
+    ProcessorRegistry.shared.registerModeHandler(modeHandler)
+}()

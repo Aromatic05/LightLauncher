@@ -100,6 +100,81 @@ extension LauncherViewModel {
     }
 }
 
+// MARK: - LauncherViewModel 扩展 - 搜索模式
+extension LauncherViewModel {
+    func switchToSearchMode() {
+        mode = .search
+        selectedIndex = 0
+        
+        // 立即加载搜索历史
+        let historyManager = SearchHistoryManager.shared
+        let searchText = self.searchText.hasPrefix("/s ") ? 
+            String(self.searchText.dropFirst(3)) : ""
+        let historyItems = historyManager.getMatchingHistory(for: searchText, limit: 10)
+        updateSearchHistory(historyItems)
+    }
+    
+    func updateSearchHistory(_ items: [SearchHistoryItem]) {
+        searchHistory = items
+        // 确保选中索引在有效范围内
+        let maxIndex = getCurrentItems().count - 1
+        if selectedIndex > maxIndex {
+            selectedIndex = 0
+        }
+    }
+    
+    func executeSearchHistoryItem(at index: Int) -> Bool {
+        guard index >= 0 && index < searchHistory.count else { return false }
+        let item = searchHistory[index]
+        
+        // 直接执行网页搜索，避免递归
+        let configManager = ConfigManager.shared
+        let engine = configManager.config.modes.defaultSearchEngine
+        
+        var searchEngine: String
+        switch engine {
+        case "baidu":
+            searchEngine = "https://www.baidu.com/s?wd={query}"
+        case "bing":
+            searchEngine = "https://www.bing.com/search?q={query}"
+        case "google":
+            fallthrough
+        default:
+            searchEngine = "https://www.google.com/search?q={query}"
+        }
+        
+        let encodedQuery = item.query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? item.query
+        let searchURL = searchEngine.replacingOccurrences(of: "{query}", with: encodedQuery)
+        
+        guard let url = URL(string: searchURL) else { return false }
+        
+        // 保存到搜索历史（更新使用时间）
+        SearchHistoryManager.shared.addSearch(query: item.query, searchEngine: engine)
+        
+        NSWorkspace.shared.open(url)
+        resetToLaunchMode()
+        return true
+    }
+    
+    func clearSearchHistory() {
+        SearchHistoryManager.shared.clearHistory()
+        searchHistory = []
+    }
+    
+    func removeSearchHistoryItem(_ item: SearchHistoryItem) {
+        SearchHistoryManager.shared.removeSearch(item: item)
+        searchHistory = SearchHistoryManager.shared.searchHistory
+    }
+    
+    private func extractCleanSearchText() -> String {
+        let prefix = "/s "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
 // MARK: - 搜索模式处理器
 @MainActor
 class SearchModeHandler: ModeHandler {
@@ -133,3 +208,11 @@ struct SearchCommandSuggestionProvider: CommandSuggestionProvider {
         ]
     }
 }
+
+// MARK: - 自动注册处理器
+private let _autoRegisterSearchProcessor: Void = {
+    let processor = SearchCommandProcessor()
+    let modeHandler = SearchModeHandler()
+    ProcessorRegistry.shared.registerProcessor(processor)
+    ProcessorRegistry.shared.registerModeHandler(modeHandler)
+}()

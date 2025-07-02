@@ -222,6 +222,106 @@ extension LauncherViewModel {
     }
 }
 
+// MARK: - LauncherViewModel 扩展 - 文件模式
+extension LauncherViewModel {
+    func switchToFileMode() {
+        mode = .file
+        selectedIndex = 0
+        showFileBrowserStartPaths()
+    }
+    
+    func showFileBrowserStartPaths() {
+        showStartPaths = true
+        fileBrowserStartPaths = [
+            FileBrowserStartPath(name: "Home", path: NSHomeDirectory()),
+            FileBrowserStartPath(name: "Desktop", path: NSHomeDirectory() + "/Desktop"),
+            FileBrowserStartPath(name: "Downloads", path: NSHomeDirectory() + "/Downloads"),
+            FileBrowserStartPath(name: "Documents", path: NSHomeDirectory() + "/Documents"),
+            FileBrowserStartPath(name: "Applications", path: "/Applications"),
+            FileBrowserStartPath(name: "Root", path: "/")
+        ]
+        selectedIndex = 0
+    }
+    
+    func navigateToDirectory(_ url: URL) {
+        showStartPaths = false
+        currentPath = url.path
+        loadFiles(from: url)
+    }
+    
+    private func loadFiles(from url: URL) {
+        do {
+            let fileManager = FileManager.default
+            let contents = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey], options: [.skipsHiddenFiles])
+            
+            currentFiles = contents.compactMap { fileURL in
+                do {
+                    let resourceValues = try fileURL.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey])
+                    let isDirectory = resourceValues.isDirectory ?? false
+                    let size = resourceValues.fileSize
+                    let modificationDate = resourceValues.contentModificationDate
+                    
+                    return FileItem(
+                        name: fileURL.lastPathComponent,
+                        url: fileURL,
+                        isDirectory: isDirectory,
+                        size: size != nil ? Int64(size!) : nil,
+                        modificationDate: modificationDate
+                    )
+                } catch {
+                    return nil
+                }
+            }.sorted { first, second in
+                // 目录排在前面，然后按名称排序
+                if first.isDirectory != second.isDirectory {
+                    return first.isDirectory
+                }
+                return first.name.localizedCaseInsensitiveCompare(second.name) == .orderedAscending
+            }
+        } catch {
+            currentFiles = []
+        }
+        selectedIndex = 0
+    }
+    
+    func filterFiles(query: String) {
+        // 如果当前显示起始路径，不进行过滤
+        guard !showStartPaths else { return }
+        
+        if query.isEmpty {
+            loadFiles(from: URL(fileURLWithPath: currentPath))
+        } else {
+            let allFiles = currentFiles
+            currentFiles = allFiles.filter { file in
+                file.name.localizedCaseInsensitiveContains(query)
+            }
+        }
+        selectedIndex = 0
+    }
+    
+    func getFileItem(at index: Int) -> FileItem? {
+        guard !showStartPaths, index >= 0 && index < currentFiles.count else { return nil }
+        return currentFiles[index]
+    }
+    
+    func getStartPath(at index: Int) -> FileBrowserStartPath? {
+        guard showStartPaths, index >= 0 && index < fileBrowserStartPaths.count else { return nil }
+        return fileBrowserStartPaths[index]
+    }
+    
+    func openSelectedFileInFinder() {
+        if showStartPaths {
+            // 在起始路径模式下，打开选中的路径
+            guard let startPath = getStartPath(at: selectedIndex) else { return }
+            FileManager_LightLauncher.shared.openInFinder(URL(fileURLWithPath: startPath.path))
+        } else {
+            // 在文件浏览模式下，打开选中的文件
+            guard let fileItem = getFileItem(at: selectedIndex) else { return }
+            FileManager_LightLauncher.shared.openInFinder(fileItem.url)
+        }
+    }
+}
+
 // MARK: - 文件模式处理器
 @MainActor
 class FileModeHandler: ModeHandler {
@@ -244,6 +344,103 @@ class FileModeHandler: ModeHandler {
     }
 }
 
+// MARK: - 文件信息结构
+struct FileItem: Identifiable, Hashable {
+    let id = UUID()
+    let name: String
+    let url: URL
+    let isDirectory: Bool
+    let size: Int64?
+    let modificationDate: Date?
+    
+    var icon: NSImage? {
+        if isDirectory {
+            if #available(macOS 12.0, *) {
+                return NSWorkspace.shared.icon(for: .folder)
+            } else {
+                return NSWorkspace.shared.icon(forFileType: "public.folder")
+            }
+        } else {
+            return NSWorkspace.shared.icon(forFile: url.path)
+        }
+    }
+    
+    var displaySize: String {
+        guard let size = size, !isDirectory else { return "" }
+        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: FileItem, rhs: FileItem) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - 文件浏览器起始路径结构
+struct FileBrowserStartPath: Identifiable, Hashable {
+    let id = UUID()
+    let name: String
+    let path: String
+    
+    var icon: NSImage? {
+        if #available(macOS 12.0, *) {
+            return NSWorkspace.shared.icon(for: .folder)
+        } else {
+            return NSWorkspace.shared.icon(forFileType: "public.folder")
+        }
+    }
+    
+    var displayName: String {
+        if path == NSHomeDirectory() {
+            return "Home"
+        } else if path == NSHomeDirectory() + "/Desktop" {
+            return "Desktop"
+        } else if path == NSHomeDirectory() + "/Downloads" {
+            return "Downloads"
+        } else if path == NSHomeDirectory() + "/Documents" {
+            return "Documents"
+        } else if path == "/Applications" {
+            return "Applications"
+        } else if path == "/" {
+            return "Root"
+        } else {
+            return URL(fileURLWithPath: path).lastPathComponent
+        }
+    }
+    
+    var displayPath: String {
+        let home = NSHomeDirectory()
+        if path.hasPrefix(home) {
+            return "~" + String(path.dropFirst(home.count))
+        }
+        return path
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: FileBrowserStartPath, rhs: FileBrowserStartPath) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - 文件模式数据
+struct FileModeData: ModeData {
+    let files: [FileItem]
+    let currentPath: String
+    
+    var count: Int { files.count }
+    
+    func item(at index: Int) -> Any? {
+        guard index >= 0 && index < files.count else { return nil }
+        return files[index]
+    }
+}
+
 // MARK: - 文件命令建议提供器
 struct FileCommandSuggestionProvider: CommandSuggestionProvider {
     static func getHelpText() -> [String] {
@@ -256,3 +453,11 @@ struct FileCommandSuggestionProvider: CommandSuggestionProvider {
         ]
     }
 }
+
+// MARK: - 自动注册处理器
+private let _autoRegisterFileProcessor: Void = {
+    let processor = FileCommandProcessor()
+    let modeHandler = FileModeHandler()
+    ProcessorRegistry.shared.registerProcessor(processor)
+    ProcessorRegistry.shared.registerModeHandler(modeHandler)
+}()

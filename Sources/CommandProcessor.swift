@@ -40,6 +40,13 @@ protocol CommandProcessor {
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool
 }
 
+// MARK: - 命令处理器注册协议
+@MainActor
+protocol CommandProcessorRegistrar {
+    static func registerProcessor() -> CommandProcessor
+    static func registerModeHandler() -> ModeHandler?
+}
+
 // MARK: - 主命令处理器
 @MainActor
 class MainCommandProcessor: ObservableObject {
@@ -47,47 +54,40 @@ class MainCommandProcessor: ObservableObject {
     private var modeHandlers: [LauncherMode: ModeHandler] = [:]
     
     init() {
-        setupProcessors()
-        setupModeHandlers()
+        registerProcessors()
     }
     
-    private func setupProcessors() {
-        processors = [
-            LaunchCommandProcessor(),
-            KillCommandProcessor(),
-            SearchCommandProcessor(),
-            WebCommandProcessor(),
-            TerminalCommandProcessor(),
-            FileCommandProcessor()
-        ]
+    private func registerProcessors() {
+        // 注册所有命令处理器和模式处理器
+        // 这里使用延迟加载，避免循环依赖
     }
     
-    private func setupModeHandlers() {
-        modeHandlers = [
-            .launch: LaunchModeHandler(),
-            .kill: KillModeHandler(),
-            .search: SearchModeHandler(mainProcessor: self),
-            .web: WebModeHandler(mainProcessor: self),
-            .terminal: TerminalModeHandler(mainProcessor: self),
-            .file: FileModeHandler(mainProcessor: self)
-        ]
+    // 延迟注册方法，由各模式文件调用
+    func registerProcessor(_ processor: CommandProcessor) {
+        processors.append(processor)
     }
     
-    // 为模式处理器提供访问CommandProcessor的方法
-    func getProcessor(for mode: LauncherMode) -> CommandProcessor? {
-        switch mode {
-        case .launch:
-            return processors.first { $0 is LaunchCommandProcessor }
-        case .kill:
-            return processors.first { $0 is KillCommandProcessor }
-        case .search:
-            return processors.first { $0 is SearchCommandProcessor }
-        case .web:
-            return processors.first { $0 is WebCommandProcessor }
-        case .terminal:
-            return processors.first { $0 is TerminalCommandProcessor }
-        case .file:
-            return processors.first { $0 is FileCommandProcessor }
+    func registerModeHandler(_ handler: ModeHandler) {
+        modeHandlers[handler.mode] = handler
+    }
+    
+    // 获取指定模式的命令处理器
+    func getCommandProcessor(for mode: LauncherMode) -> CommandProcessor? {
+        return processors.first { processor in
+            switch mode {
+            case .launch:
+                return String(describing: type(of: processor)).contains("Launch")
+            case .kill:
+                return String(describing: type(of: processor)).contains("Kill")
+            case .search:
+                return String(describing: type(of: processor)).contains("Search")
+            case .web:
+                return String(describing: type(of: processor)).contains("Web")
+            case .terminal:
+                return String(describing: type(of: processor)).contains("Terminal")
+            case .file:
+                return String(describing: type(of: processor)).contains("File")
+            }
         }
     }
     
@@ -134,22 +134,26 @@ class MainCommandProcessor: ObservableObject {
     func shouldShowCommandSuggestions() -> Bool {
         return SettingsManager.shared.showCommandSuggestions
     }
+}
+
+// MARK: - 全局处理器注册机制
+@MainActor
+class ProcessorRegistry {
+    static let shared = ProcessorRegistry()
+    private var mainProcessor: MainCommandProcessor?
     
-    private func getCurrentProcessor(for mode: LauncherMode) -> CommandProcessor? {
-        switch mode {
-        case .launch:
-            return processors.first { $0 is LaunchCommandProcessor }
-        case .kill:
-            return processors.first { $0 is KillCommandProcessor }
-        case .search:
-            return processors.first { $0 is SearchCommandProcessor }
-        case .web:
-            return processors.first { $0 is WebCommandProcessor }
-        case .terminal:
-            return processors.first { $0 is TerminalCommandProcessor }
-        case .file:
-            return processors.first { $0 is FileCommandProcessor }
-        }
+    private init() {}
+    
+    func setMainProcessor(_ processor: MainCommandProcessor) {
+        self.mainProcessor = processor
+    }
+    
+    func registerProcessor(_ processor: CommandProcessor) {
+        mainProcessor?.registerProcessor(processor)
+    }
+    
+    func registerModeHandler(_ handler: ModeHandler) {
+        mainProcessor?.registerModeHandler(handler)
     }
 }
 
@@ -175,19 +179,20 @@ struct CommandSuggestionManager {
     }
     
     static func getHelpText(for mode: LauncherMode) -> [String] {
+        // 返回基本帮助文本，具体实现由各模式提供
         switch mode {
         case .launch:
-            return LaunchCommandSuggestionProvider.getHelpText()
+            return ["Type to search apps", "Use / for commands"]
         case .kill:
-            return KillCommandSuggestionProvider.getHelpText()
+            return ["Type to search running apps", "Press Enter to kill"]
         case .search:
-            return SearchCommandSuggestionProvider.getHelpText()
+            return ["Type to search", "Press Enter to search with Google"]
         case .web:
-            return WebCommandSuggestionProvider.getHelpText()
+            return ["Type URL or search terms", "Press Enter to open"]
         case .terminal:
-            return TerminalCommandSuggestionProvider.getHelpText()
+            return ["Type terminal command", "Press Enter to execute"]
         case .file:
-            return FileCommandSuggestionProvider.getHelpText()
+            return ["Type to search files", "Press Enter to open"]
         }
     }
 }

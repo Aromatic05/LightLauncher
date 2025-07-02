@@ -139,6 +139,14 @@ extension LauncherViewModel {
         // 显示最近的书签和历史记录
         browserItems = self.getBrowserDataManager().getDefaultBrowserItems(limit: 10)
     }
+    
+    private func extractCleanWebText() -> String {
+        let prefix = "/w "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }
 
 // MARK: - 网页模式处理器
@@ -174,3 +182,11 @@ struct WebCommandSuggestionProvider: CommandSuggestionProvider {
         ]
     }
 }
+
+// MARK: - 自动注册处理器
+private let _autoRegisterWebProcessor: Void = {
+    let processor = WebCommandProcessor()
+    let modeHandler = WebModeHandler()
+    ProcessorRegistry.shared.registerProcessor(processor)
+    ProcessorRegistry.shared.registerModeHandler(modeHandler)
+}()
