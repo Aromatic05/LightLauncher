@@ -7,6 +7,7 @@ enum SettingsTab {
     case modes
     case directories
     case abbreviations
+    case plugins
     case about
 }
 
@@ -77,6 +78,14 @@ struct MainSettingsView: View {
                         isSelected: selectedTab == .abbreviations
                     ) {
                         selectedTab = .abbreviations
+                    }
+                    
+                    SettingsTabButton(
+                        title: "插件管理",
+                        icon: "puzzlepiece.extension",
+                        isSelected: selectedTab == .plugins
+                    ) {
+                        selectedTab = .plugins
                     }
                     
                     SettingsTabButton(
@@ -205,6 +214,8 @@ struct MainSettingsView: View {
                 DirectorySettingsView(configManager: configManager)
             case .abbreviations:
                 AbbreviationSettingsView(configManager: configManager)
+            case .plugins:
+                PluginSettingsView()
             case .about:
                 AboutSettingsView(configManager: configManager)
             }
