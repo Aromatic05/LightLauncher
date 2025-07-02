@@ -16,7 +16,6 @@ class PluginCommandProcessor: CommandProcessor {
     func canHandle(command: String) -> Bool {
         // 检查是否有插件注册了该命令
         let canHandle = pluginManager.canHandleCommand(command)
-        print("🔌 PluginCommandProcessor.canHandle(\(command)) = \(canHandle)")
         if canHandle {
             logger.debug("Plugin can handle command: \(command)")
         }
@@ -24,12 +23,10 @@ class PluginCommandProcessor: CommandProcessor {
     }
     
     func process(command: String, in viewModel: LauncherViewModel) -> Bool {
-        print("🔌 PluginCommandProcessor.process(\(command))")
         logger.info("Processing plugin command: \(command)")
         
         // 获取对应的插件
         guard let plugin = pluginManager.activatePlugin(command: command) else {
-            print("❌ No plugin found for command: \(command)")
             logger.error("No plugin found for command: \(command)")
             return false
         }

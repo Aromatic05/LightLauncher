@@ -98,9 +98,28 @@ class LauncherViewModel: ObservableObject {
     }
     
     private func updateCommandSuggestions(for text: String) {
-        if commandProcessor.shouldShowCommandSuggestions() && text == "/" {
-            commandSuggestions = commandProcessor.getCommandSuggestions(for: text)
-            showCommandSuggestions = true
+        if commandProcessor.shouldShowCommandSuggestions() && text.hasPrefix("/") {
+            // 获取所有命令建议
+            let allCommands = commandProcessor.getCommandSuggestions(for: text)
+            
+            // 如果用户输入了具体的命令前缀（不只是 "/"），进行过滤
+            if text.count > 1 {
+                let searchPrefix = text.lowercased()
+                commandSuggestions = allCommands.filter { command in
+                    command.trigger.lowercased().hasPrefix(searchPrefix) ||
+                    command.description.lowercased().contains(searchPrefix.dropFirst())
+                }
+            } else {
+                // 如果只是 "/"，显示所有命令
+                commandSuggestions = allCommands
+            }
+            
+            showCommandSuggestions = !commandSuggestions.isEmpty
+            
+            // 重置选择索引
+            if !commandSuggestions.isEmpty {
+                selectedIndex = 0
+            }
         } else {
             showCommandSuggestions = false
             commandSuggestions = []
@@ -324,5 +343,42 @@ class LauncherViewModel: ObservableObject {
         case .plugin:
             return pluginItems.count
         }
+    }
+    
+    // MARK: - 命令建议处理
+    
+    /// 处理命令建议的选择导航
+    func moveCommandSuggestionUp() {
+        guard showCommandSuggestions && !commandSuggestions.isEmpty else { return }
+        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : commandSuggestions.count - 1
+    }
+    
+    func moveCommandSuggestionDown() {
+        guard showCommandSuggestions && !commandSuggestions.isEmpty else { return }
+        selectedIndex = selectedIndex < commandSuggestions.count - 1 ? selectedIndex + 1 : 0
+    }
+    
+    /// 选择当前命令建议
+    func selectCurrentCommandSuggestion() -> Bool {
+        guard showCommandSuggestions,
+              selectedIndex >= 0,
+              selectedIndex < commandSuggestions.count else { return false }
+        
+        let selectedCommand = commandSuggestions[selectedIndex]
+        applySelectedCommand(selectedCommand)
+        return true
+    }
+    
+    /// 应用选中的命令
+    func applySelectedCommand(_ command: LauncherCommand) {
+        // 更新搜索文本为选中的命令
+        searchText = command.trigger + " "
+        // 隐藏命令建议
+        showCommandSuggestions = false
+        commandSuggestions = []
+        // 重置选择索引
+        selectedIndex = 0
+        // 处理命令执行
+        _ = commandProcessor.processInput(command.trigger, in: self)
     }
 }

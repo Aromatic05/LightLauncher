@@ -442,65 +442,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupPluginSystem() {
-        print("=== 插件系统初始化开始 ===")
-        
-        // 检查用户插件目录是否存在
-        let userPluginsPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/LightLauncher/plugins")
-        print("用户插件目录路径: \(userPluginsPath.path)")
-        print("用户插件目录是否存在: \(FileManager.default.fileExists(atPath: userPluginsPath.path))")
-        
-        // 检查内置插件目录
-        let builtinPluginsPath = Bundle.main.bundleURL.appendingPathComponent("Contents/Resources/plugins")
-        print("内置插件目录路径: \(builtinPluginsPath.path)")
-        print("内置插件目录是否存在: \(FileManager.default.fileExists(atPath: builtinPluginsPath.path))")
-        
         // 初始化插件管理器并发现插件
-        print("开始发现插件...")
         PluginManager.shared.discoverPlugins()
         
         // 等待插件发现完成后打印结果
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             let plugins = PluginManager.shared.getAllPlugins()
-            print("插件发现完成，找到 \(plugins.count) 个插件:")
-            
-            for plugin in plugins {
-                print("  - 插件名称: \(plugin.name)")
-                print("    版本: \(plugin.version)")
-                print("    命令: \(plugin.command)")
-                print("    描述: \(plugin.description)")
-                print("    启用状态: \(plugin.isEnabled)")
-                print("    插件目录: \(plugin.pluginDirectory.path)")
-                print("    ---")
-            }
+            print("✅ 插件系统就绪，已加载 \(plugins.count) 个插件")
             
             let loadErrors = PluginManager.shared.loadErrors
             if !loadErrors.isEmpty {
-                print("插件加载错误 (\(loadErrors.count) 个):")
+                print("⚠️ 插件加载时发现 \(loadErrors.count) 个错误:")
                 for error in loadErrors {
-                    print("  ❌ \(error)")
+                    print("  • \(error)")
                 }
-            } else {
-                print("✅ 没有插件加载错误")
-            }
-            
-            // 测试 JavaScript 执行
-            if !plugins.isEmpty {
-                print("\n" + String(repeating: "=", count: 50))
-                PluginManager.shared.testAllPlugins()
-                print(String(repeating: "=", count: 50))
             }
         }
         
         // 创建并注册插件命令处理器
-        print("注册插件命令处理器...")
         let pluginProcessor = PluginCommandProcessor()
         
         // 通过 ProcessorRegistry 注册插件处理器
         ProcessorRegistry.shared.registerProcessor(pluginProcessor)
-        print("✅ 插件命令处理器已注册")
-        
-        print("=== 插件系统初始化完成 ===")
     }
 
     deinit {

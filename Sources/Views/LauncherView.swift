@@ -56,9 +56,17 @@ final class KeyboardEventHandler: @unchecked Sendable {
     private func handleKeyPress(keyCode: UInt16, characters: String?, viewModel: LauncherViewModel) {
         switch keyCode {
         case 126: // Up Arrow
-            viewModel.moveSelectionUp()
+            if viewModel.showCommandSuggestions {
+                viewModel.moveCommandSuggestionUp()
+            } else {
+                viewModel.moveSelectionUp()
+            }
         case 125: // Down Arrow
-            viewModel.moveSelectionDown()
+            if viewModel.showCommandSuggestions {
+                viewModel.moveCommandSuggestionDown()
+            } else {
+                viewModel.moveSelectionDown()
+            }
         case 36, 76: // Enter, Numpad Enter
             handleEnterKey(viewModel: viewModel)
         case 49: // Space
@@ -72,6 +80,23 @@ final class KeyboardEventHandler: @unchecked Sendable {
     
     @MainActor
     private func handleEnterKey(viewModel: LauncherViewModel) {
+        // 如果在命令建议模式下，Enter 键选择当前命令
+        if viewModel.showCommandSuggestions {
+            // 确保索引有效且有命令建议
+            if !viewModel.commandSuggestions.isEmpty && 
+               viewModel.selectedIndex >= 0 && 
+               viewModel.selectedIndex < viewModel.commandSuggestions.count {
+                let selectedCommand = viewModel.commandSuggestions[viewModel.selectedIndex]
+                viewModel.applySelectedCommand(selectedCommand)
+                // 成功选择命令，直接返回，不隐藏窗口也不执行其他动作
+                return
+            }
+            // 如果命令建议列表为空或索引无效，隐藏命令建议
+            viewModel.showCommandSuggestions = false
+            viewModel.commandSuggestions = []
+            return
+        }
+        
         guard viewModel.executeSelectedAction() else { return }
         
         switch viewModel.mode {
@@ -90,6 +115,24 @@ final class KeyboardEventHandler: @unchecked Sendable {
     
     @MainActor
     private func handleSpaceKey(viewModel: LauncherViewModel) {
+        // 如果在命令建议模式下，空格键选择当前命令
+        if viewModel.showCommandSuggestions {
+            // 确保索引有效且有命令建议
+            if !viewModel.commandSuggestions.isEmpty && 
+               viewModel.selectedIndex >= 0 && 
+               viewModel.selectedIndex < viewModel.commandSuggestions.count {
+                let selectedCommand = viewModel.commandSuggestions[viewModel.selectedIndex]
+                viewModel.applySelectedCommand(selectedCommand)
+                // 成功选择命令，直接返回
+                return
+            }
+            // 如果命令建议列表为空或索引无效，隐藏命令建议
+            viewModel.showCommandSuggestions = false
+            viewModel.commandSuggestions = []
+            return
+        }
+        
+        // 其他模式的空格键处理
         if currentMode == .file {
             viewModel.openSelectedFileInFinder()
         }
@@ -155,7 +198,13 @@ struct LauncherView: View {
             
             // Command Suggestions
             if viewModel.showCommandSuggestions {
-                CommandSuggestionsView(commands: viewModel.commandSuggestions)
+                CommandSuggestionsView(
+                    commands: viewModel.commandSuggestions,
+                    selectedIndex: $viewModel.selectedIndex,
+                    onCommandSelected: { command in
+                        viewModel.applySelectedCommand(command)
+                    }
+                )
             }
             
             // Content

@@ -114,40 +114,28 @@ class MainCommandProcessor: ObservableObject {
     }
     
     func processInput(_ text: String, in viewModel: LauncherViewModel) -> Bool {
-        print("🔄 MainCommandProcessor.processInput: '\(text)'")
-        
         // 首先检查是否为以"/"开头的命令
         if text.hasPrefix("/") {
             let commandPart = text.components(separatedBy: " ").first ?? text
-            print("📝 检查命令: '\(commandPart)'")
             
             // 优先尝试解析内置标准命令（效率更高）
             if let command = LauncherCommand.parseCommand(from: text) {
-                print("✅ 找到内置命令: \(command.trigger)")
                 let processor = processors.first { $0.canHandle(command: command.trigger) }
                 if let processor = processor {
-                    print("🔧 使用内置命令处理器")
                     return processor.process(command: command.trigger, in: viewModel)
                 }
             }
             
             // 然后检查插件命令
-            print("📝 检查插件命令: '\(commandPart)'")
             if PluginManager.shared.canHandleCommand(commandPart) {
-                print("✅ 找到插件处理该命令: \(commandPart)")
                 // 找到插件处理器
                 let pluginProcessor = processors.first { processor in
                     String(describing: type(of: processor)).contains("Plugin")
                 }
                 
                 if let processor = pluginProcessor {
-                    print("🔌 使用插件处理器处理命令")
                     return processor.process(command: commandPart, in: viewModel)
-                } else {
-                    print("❌ 未找到插件处理器")
                 }
-            } else {
-                print("❌ 没有插件能处理命令: \(commandPart)")
             }
         }
         
