@@ -118,9 +118,16 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
         let item = pluginItems[index]
         logger.info("Executing action for item: \(item.title) in plugin: \(plugin.name)")
         
-        // TODO: 在后续阶段实现 JavaScript 动作执行
-        // 目前返回 true 表示成功
-        return true
+        // 如果项目有动作标识符，调用插件的动作处理器
+        if let action = item.action, !action.isEmpty {
+            let success = pluginManager.executePluginAction(command: plugin.command, action: action)
+            logger.info("Plugin action '\(action)' execution result: \(success)")
+            return success
+        } else {
+            // 如果没有动作标识符，记录警告但仍返回 true（兼容性）
+            logger.warning("No action specified for item: \(item.title)")
+            return true
+        }
     }
     
     // MARK: - 公开方法

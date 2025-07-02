@@ -1,6 +1,7 @@
 import Foundation
 import JavaScriptCore
 import os
+import Yams
 
 // MARK: - 插件管理器
 @MainActor
@@ -56,7 +57,7 @@ class PluginManager: ObservableObject {
             }
             
             // 重新创建 API 管理器（传入 nil viewModel，稍后通过 injectViewModel 设置）
-            let apiManager = APIManager(viewModel: nil, context: context)
+            let apiManager = APIManager(viewModel: nil, context: context, pluginName: plugin.name, pluginCommand: plugin.command)
             
             // 暴露 lightlauncher 对象到 JavaScript 上下文
             context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
@@ -213,15 +214,26 @@ class PluginManager: ObservableObject {
     private func loadPlugin(from directoryURL: URL) async throws -> Plugin {
         let fileManager = FileManager.default
         
-        // 检查 manifest.json 文件
-        let manifestURL = directoryURL.appendingPathComponent("manifest.json")
-        guard fileManager.fileExists(atPath: manifestURL.path) else {
-            throw PluginError.manifestNotFound(manifestURL.path)
+        // 优先检查 manifest.yaml 文件，如果不存在则使用 manifest.json
+        let yamlManifestURL = directoryURL.appendingPathComponent("manifest.yaml")
+        let jsonManifestURL = directoryURL.appendingPathComponent("manifest.json")
+        
+        let manifestURL: URL
+        var useYAML = false
+        
+        if fileManager.fileExists(atPath: yamlManifestURL.path) {
+            manifestURL = yamlManifestURL
+            useYAML = true
+        } else if fileManager.fileExists(atPath: jsonManifestURL.path) {
+            manifestURL = jsonManifestURL
+            useYAML = false
+        } else {
+            throw PluginError.manifestNotFound("Neither manifest.yaml nor manifest.json found")
         }
         
         // 读取并解析 manifest
         let manifestData = try Data(contentsOf: manifestURL)
-        let manifest = try parseManifest(manifestData)
+        let manifest = try parseManifest(manifestData, isYAML: useYAML)
         
         // 检查 main.js 文件
         let scriptURL = directoryURL.appendingPathComponent("main.js")
@@ -246,9 +258,18 @@ class PluginManager: ObservableObject {
         return plugin
     }
     
-    private func parseManifest(_ data: Data) throws -> PluginManifest {
+    private func parseManifest(_ data: Data, isYAML: Bool = false) throws -> PluginManifest {
         do {
-            let manifest = try JSONDecoder().decode(PluginManifest.self, from: data)
+            let manifest: PluginManifest
+            
+            if isYAML {
+                // 解析 YAML 格式
+                let yamlString = String(data: data, encoding: .utf8) ?? ""
+                manifest = try YAMLDecoder().decode(PluginManifest.self, from: yamlString)
+            } else {
+                // 解析 JSON 格式
+                manifest = try JSONDecoder().decode(PluginManifest.self, from: data)
+            }
             
             // 验证必要字段
             guard !manifest.name.isEmpty else {
@@ -266,7 +287,8 @@ class PluginManager: ObservableObject {
             return manifest
             
         } catch let decodingError as DecodingError {
-            throw PluginError.invalidManifest("JSON decoding error: \(decodingError.localizedDescription)")
+            let format = isYAML ? "YAML" : "JSON"
+            throw PluginError.invalidManifest("\(format) decoding error: \(decodingError.localizedDescription)")
         } catch {
             throw PluginError.invalidManifest(error.localizedDescription)
         }
@@ -284,7 +306,7 @@ class PluginManager: ObservableObject {
         }
         
         // 创建 API 管理器实例 (先用 nil，稍后会注入 viewModel)
-        let apiManager = APIManager(viewModel: nil, context: context)
+        let apiManager = APIManager(viewModel: nil, context: context, pluginName: plugin.name, pluginCommand: plugin.command)
         
         // 将 API 管理器暴露给 JavaScript
         context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
@@ -351,6 +373,18 @@ class PluginManager: ObservableObject {
         apiManager.invokeSearchCallback(with: query)
     }
     
+    /// 执行插件动作
+    func executePluginAction(command: String, action: String) -> Bool {
+        guard let plugin = plugins[command],
+              let apiManager = plugin.apiManager else {
+            logger.warning("Plugin or API manager not found for command: \(command)")
+            return false
+        }
+        
+        // 调用动作处理器
+        return apiManager.invokeActionHandler(with: action)
+    }
+    
     /// 清理插件资源
     func cleanupPlugin(command: String) {
         guard var plugin = plugins[command] else { return }
@@ -383,8 +417,12 @@ private struct PluginManifest: Codable {
     let homepage: String?
     let main: String? // 默认为 "main.js"
     
+    // 可选的扩展字段（简化版本）
+    let metadata: PluginMetadata?
+    
     enum CodingKeys: String, CodingKey {
         case name, version, description, command, author, homepage, main
+        case metadata
     }
     
     init(from decoder: Decoder) throws {
@@ -397,5 +435,14 @@ private struct PluginManifest: Codable {
         author = try container.decodeIfPresent(String.self, forKey: .author)
         homepage = try container.decodeIfPresent(String.self, forKey: .homepage)
         main = try container.decodeIfPresent(String.self, forKey: .main) ?? "main.js"
+        
+        // 扩展字段（可选）
+        metadata = try container.decodeIfPresent(PluginMetadata.self, forKey: .metadata)
     }
+}
+
+// MARK: - 插件元数据结构
+private struct PluginMetadata: Codable {
+    let category: String?
+    let tags: [String]?
 }

@@ -1,0 +1,6 @@
+name: Todo Plugin
+version: 1.0.0
+description: Simple todo list manager
+command: /todo
+author: LightLauncher Team
+main: main.js
