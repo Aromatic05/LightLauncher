@@ -26,6 +26,7 @@ enum LauncherMode: String, CaseIterable {
     case web = "web"          // 网页打开模式 (/w)
     case terminal = "terminal" // 终端执行模式 (/t)
     case file = "file"        // 文件管理器模式 (/o)
+    case plugin = "plugin"    // 插件模式 (动态)
     
     // 配置字典 - 数据驱动方法
     private static let configurations: [LauncherMode: ModeConfiguration] = [
@@ -68,6 +69,13 @@ enum LauncherMode: String, CaseIterable {
             placeholder: "Browse files and folders...",
             trigger: "/o",
             description: "Browse files and folders starting from home directory"
+        ),
+        .plugin: ModeConfiguration(
+            displayName: "Plugin",
+            iconName: "puzzlepiece",
+            placeholder: "Plugin mode...",
+            trigger: nil, // 插件模式由具体插件的命令触发
+            description: "Plugin-powered functionality"
         )
     ]
     
@@ -113,6 +121,8 @@ enum LauncherMode: String, CaseIterable {
             return settings.isTerminalModeEnabled
         case .file:
             return settings.isFileModeEnabled
+        case .plugin:
+            return true // 插件模式始终启用（由插件管理器控制具体插件）
         }
     }
 }

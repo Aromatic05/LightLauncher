@@ -150,6 +150,8 @@ struct EmptyStateView: View {
             return TerminalCommandSuggestionProvider.getHelpText()
         case .file:
             return FileCommandSuggestionProvider.getHelpText()
+        case .plugin:
+            return ["Plugin mode", "Functionality provided by active plugin"]
         }
     }
 }

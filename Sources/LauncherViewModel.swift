@@ -21,6 +21,10 @@ class LauncherViewModel: ObservableObject {
     // 文件浏览器起始路径
     @Published var fileBrowserStartPaths: [FileBrowserStartPath] = []
     @Published var showStartPaths: Bool = true
+    
+    // 插件相关属性
+    @Published var pluginItems: [PluginItem] = []
+    private var activePlugin: Plugin?
 
     // 将私有属性改为内部访问级别，供 Commands 扩展使用
     var allApps: [AppInfo] = []
@@ -153,6 +157,8 @@ class LauncherViewModel: ObservableObject {
             return true
         case .file:
             return showStartPaths ? !fileBrowserStartPaths.isEmpty : !currentFiles.isEmpty
+        case .plugin:
+            return true // 插件模式总是显示，由插件控制内容
         }
     }
     
@@ -195,6 +201,9 @@ class LauncherViewModel: ObservableObject {
         case .file:
             // 文件模式：显示起始路径或当前目录的文件和文件夹
             return showStartPaths ? fileBrowserStartPaths : currentFiles
+        case .plugin:
+            // 插件模式：返回插件项目
+            return pluginItems
         }
     }
     
@@ -241,5 +250,75 @@ class LauncherViewModel: ObservableObject {
         let fileModeHandler = FileModeHandler()
         commandProcessor.registerProcessor(fileProcessor)
         commandProcessor.registerModeHandler(fileModeHandler)
+    }
+    
+    // MARK: - 插件模式支持
+    
+    /// 切换到插件模式
+    func switchToPluginMode(with plugin: Plugin) {
+        mode = .plugin
+        activePlugin = plugin
+        pluginItems = []
+        selectedIndex = 0
+    }
+    
+    /// 获取当前激活的插件
+    func getActivePlugin() -> Plugin? {
+        return activePlugin
+    }
+    
+    /// 更新插件结果
+    func updatePluginResults(_ items: [PluginItem]) {
+        pluginItems = items
+        selectedIndex = 0
+    }
+    
+    /// 执行插件动作
+    func executePluginAction() -> Bool {
+        guard mode == .plugin,
+              selectedIndex < pluginItems.count else {
+            return false
+        }
+        
+        // 获取插件处理器
+        if let pluginProcessor = commandProcessor.getCommandProcessor(for: .plugin) as? PluginCommandProcessor {
+            return pluginProcessor.executeAction(at: selectedIndex, in: self)
+        }
+        
+        return false
+    }
+    
+    /// 处理插件搜索
+    func handlePluginSearch(_ text: String) {
+        guard mode == .plugin else { return }
+        
+        // 获取插件处理器
+        if let pluginProcessor = commandProcessor.getCommandProcessor(for: .plugin) as? PluginCommandProcessor {
+            pluginProcessor.handleSearch(text: text, in: self)
+        }
+    }
+    
+    /// 清除插件状态
+    func clearPluginState() {
+        activePlugin = nil
+        pluginItems = []
+    }
+    
+    /// 获取当前模式的项目数量
+    var currentModeItemCount: Int {
+        switch mode {
+        case .launch:
+            return filteredApps.count
+        case .kill:
+            return runningApps.count
+        case .search, .web:
+            return browserItems.count
+        case .terminal:
+            return searchHistory.count
+        case .file:
+            return currentFiles.count
+        case .plugin:
+            return pluginItems.count
+        }
     }
 }

@@ -211,6 +211,16 @@ struct LauncherView: View {
                             FileCommandInputView(currentPath: viewModel.currentPath)
                         }
                     }
+                case .plugin:
+                    // 插件模式显示插件结果
+                    if !viewModel.pluginItems.isEmpty {
+                        ResultsListView(viewModel: viewModel)
+                    } else {
+                        EmptyStateView(
+                            mode: viewModel.mode,
+                            hasSearchText: !viewModel.searchText.isEmpty
+                        )
+                    }
                 }
             }
         }
@@ -306,6 +316,16 @@ struct ResultsListView: View {
                         }
                     case .search, .terminal:
                         EmptyView()
+                    case .plugin:
+                        ForEach(Array(viewModel.pluginItems.enumerated()), id: \.offset) { index, item in
+                            PluginItemRowView(
+                                item: item,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture { handleItemSelection(at: index) }
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -345,6 +365,8 @@ struct ResultsListView: View {
             return true
         case .search, .terminal:
             return true
+        case .plugin:
+            return true // 插件模式执行动作后隐藏窗口
         }
     }
 }
