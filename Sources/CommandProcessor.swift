@@ -185,6 +185,7 @@ protocol CommandSuggestionProvider {
 }
 
 // MARK: - 通用命令建议管理器
+@MainActor
 struct CommandSuggestionManager {
     static func getSuggestions(for text: String) -> [LauncherCommand] {
         if text.isEmpty {
@@ -192,29 +193,9 @@ struct CommandSuggestionManager {
         }
         
         if text == "/" {
-            return LauncherCommand.allCommands
+            return LauncherCommand.getEnabledCommands()
         }
         
-        return LauncherCommand.allCommands.filter { command in
-            command.trigger.hasPrefix(text)
-        }
-    }
-    
-    static func getHelpText(for mode: LauncherMode) -> [String] {
-        // 返回基本帮助文本，具体实现由各模式提供
-        switch mode {
-        case .launch:
-            return ["Type to search apps", "Use / for commands"]
-        case .kill:
-            return ["Type to search running apps", "Press Enter to kill"]
-        case .search:
-            return ["Type to search", "Press Enter to search with Google"]
-        case .web:
-            return ["Type URL or search terms", "Press Enter to open"]
-        case .terminal:
-            return ["Type terminal command", "Press Enter to execute"]
-        case .file:
-            return ["Type to search files", "Press Enter to open"]
-        }
+        return LauncherCommand.getCommandSuggestions(for: text)
     }
 }

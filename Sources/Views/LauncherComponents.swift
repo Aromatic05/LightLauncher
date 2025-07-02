@@ -100,7 +100,7 @@ struct EmptyStateView: View {
                     .foregroundColor(.secondary.opacity(0.7))
             } else {
                 VStack(spacing: 4) {
-                    ForEach(CommandSuggestionManager.getHelpText(for: mode), id: \.self) { helpText in
+                    ForEach(getHelpText(for: mode), id: \.self) { helpText in
                         Text(helpText)
                             .font(.system(size: 14))
                             .foregroundColor(.secondary.opacity(0.7))
@@ -133,6 +133,23 @@ struct EmptyStateView: View {
             return mode == .launch ? "No applications found" : "No running apps found"
         } else {
             return mode == .launch ? "Start typing to search" : "Type after /k to search apps"
+        }
+    }
+    
+    private func getHelpText(for mode: LauncherMode) -> [String] {
+        switch mode {
+        case .launch:
+            return LaunchCommandSuggestionProvider.getHelpText()
+        case .kill:
+            return KillCommandSuggestionProvider.getHelpText()
+        case .search:
+            return SearchCommandSuggestionProvider.getHelpText()
+        case .web:
+            return WebCommandSuggestionProvider.getHelpText()
+        case .terminal:
+            return TerminalCommandSuggestionProvider.getHelpText()
+        case .file:
+            return FileCommandSuggestionProvider.getHelpText()
         }
     }
 }
