@@ -273,6 +273,7 @@ class LauncherViewModel: ObservableObject {
         // 注册插件处理器
         let pluginProcessor = PluginCommandProcessor()
         commandProcessor.registerProcessor(pluginProcessor)
+        commandProcessor.registerModeHandler(pluginProcessor)
     }
     
     // MARK: - 插件模式支持
@@ -380,5 +381,10 @@ class LauncherViewModel: ObservableObject {
         selectedIndex = 0
         // 处理命令执行
         _ = commandProcessor.processInput(command.trigger, in: self)
+    }
+    
+    /// 隐藏启动器窗口
+    func hideLauncher() {
+        NotificationCenter.default.post(name: .hideWindow, object: nil)
     }
 }

@@ -3,13 +3,46 @@ import os
 
 // MARK: - 插件命令处理器
 @MainActor
-class PluginCommandProcessor: CommandProcessor {
+class PluginCommandProcessor: CommandProcessor, ModeHandler {
     private let logger = Logger(subsystem: "com.lightlauncher.plugins", category: "JSCommandProcessor")
     private let pluginManager = PluginManager.shared
     
     // 当前激活的插件
     private var activePlugin: Plugin?
     private var currentResults: [PluginItem] = []
+    
+    // MARK: - ModeHandler 协议实现
+    var prefix: String {
+        return activePlugin?.command ?? ""
+    }
+    
+    var mode: LauncherMode {
+        return .plugin
+    }
+    
+    func shouldSwitchToLaunchMode(for text: String) -> Bool {
+        // 如果输入不再匹配当前插件的命令，切换回启动模式
+        guard let plugin = activePlugin else { return true }
+        
+        if text.hasPrefix("/") {
+            let commandPart = text.components(separatedBy: " ").first ?? text
+            return commandPart != plugin.command
+        }
+        
+        return false
+    }
+    
+    func extractSearchText(from text: String) -> String {
+        guard let plugin = activePlugin else { return text }
+        
+        let prefix = plugin.command
+        if text.hasPrefix(prefix + " ") {
+            return String(text.dropFirst(prefix.count + 1))
+        } else if text == prefix {
+            return ""
+        }
+        return text
+    }
     
     // MARK: - CommandProcessor 协议实现
     
@@ -41,9 +74,12 @@ class PluginCommandProcessor: CommandProcessor {
         activePlugin = plugin
         currentResults = []
         
+        // 注入 ViewModel 到插件的 API 管理器
+        pluginManager.injectViewModel(viewModel, for: command)
+        
         // 切换到插件模式
-        // 注意：这里需要扩展 LauncherViewModel 支持插件模式
-        // 目前先返回 true 表示处理成功
+        viewModel.switchToPluginMode(with: plugin)
+        
         logger.info("Activated plugin: \(plugin.name)")
         return true
     }
@@ -56,11 +92,8 @@ class PluginCommandProcessor: CommandProcessor {
         
         logger.debug("Handling search in plugin \(plugin.name): \(text)")
         
-        // TODO: 在后续阶段实现 JavaScript 执行
-        // 目前提供模拟结果
-        Task {
-            await simulatePluginSearch(query: text, plugin: plugin)
-        }
+        // 使用 PluginManager 执行插件搜索
+        pluginManager.executePluginSearch(command: plugin.command, query: text)
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
@@ -69,12 +102,15 @@ class PluginCommandProcessor: CommandProcessor {
             return false
         }
         
-        guard index >= 0 && index < currentResults.count else {
+        // 在插件模式下，从 viewModel 获取插件结果
+        let pluginItems = viewModel.pluginItems
+        
+        guard index >= 0 && index < pluginItems.count else {
             logger.error("Invalid action index: \(index)")
             return false
         }
         
-        let item = currentResults[index]
+        let item = pluginItems[index]
         logger.info("Executing action for item: \(item.title) in plugin: \(plugin.name)")
         
         // TODO: 在后续阶段实现 JavaScript 动作执行
@@ -84,104 +120,28 @@ class PluginCommandProcessor: CommandProcessor {
     
     // MARK: - 公开方法
     
-    /// 获取当前结果
+    /// 获取当前结果 - 现在从 ViewModel 的插件结果获取
     func getCurrentResults() -> [PluginItem] {
-        return currentResults
+        // 现在结果通过 APIManager.display() 直接更新到 viewModel.pluginItems
+        // 这里返回空数组，实际结果在 viewModel.pluginItems 中
+        return []
     }
     
     /// 清除当前插件状态
     func clearState() {
         activePlugin = nil
         currentResults = []
+        
+        // 清理 PluginManager 中的插件资源
+        if let plugin = activePlugin {
+            pluginManager.cleanupPlugin(command: plugin.command)
+        }
+        
         logger.debug("Cleared plugin state")
     }
     
     /// 获取当前激活的插件
     func getActivePlugin() -> Plugin? {
         return activePlugin
-    }
-    
-    // MARK: - 私有方法
-    
-    private func simulatePluginSearch(query: String, plugin: Plugin) async {
-        // 模拟异步搜索结果
-        let mockResults = createMockResults(for: query, plugin: plugin)
-        
-        await MainActor.run {
-            self.currentResults = mockResults
-            self.logger.debug("Updated results for plugin \(plugin.name): \(mockResults.count) items")
-        }
-    }
-    
-    private func createMockResults(for query: String, plugin: Plugin) -> [PluginItem] {
-        // 创建模拟结果用于测试
-        if query.isEmpty {
-            return [
-                PluginItem(
-                    title: "Welcome to \(plugin.name)",
-                    subtitle: "Start typing to search...",
-                    icon: "magnifyingglass"
-                )
-            ]
-        }
-        
-        return [
-            PluginItem(
-                title: "Search: \(query)",
-                subtitle: "Result from \(plugin.name)",
-                icon: "doc.text"
-            ),
-            PluginItem(
-                title: "Action: \(query)",
-                subtitle: "Perform action with \(plugin.name)",
-                icon: "play.circle"
-            )
-        ]
-    }
-}
-
-// MARK: - 插件模式处理器
-@MainActor
-class PluginModeHandler: ModeHandler {
-    let prefix: String
-    let mode: LauncherMode = .plugin // 需要在 LauncherModes.swift 中添加
-    
-    private let pluginProcessor = PluginCommandProcessor()
-    
-    init(prefix: String) {
-        self.prefix = prefix
-    }
-    
-    func shouldSwitchToLaunchMode(for text: String) -> Bool {
-        return false // 插件模式不自动切换回启动模式
-    }
-    
-    func extractSearchText(from text: String) -> String {
-        // 移除命令前缀，返回搜索文本
-        let cleanText = text.hasPrefix(prefix) ? String(text.dropFirst(prefix.count)) : text
-        return cleanText.trimmingCharacters(in: .whitespaces)
-    }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        let searchText = extractSearchText(from: text)
-        pluginProcessor.handleSearch(text: searchText, in: viewModel)
-    }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return pluginProcessor.executeAction(at: index, in: viewModel)
-    }
-    
-    // MARK: - 插件特定方法
-    
-    func getResults() -> [PluginItem] {
-        return pluginProcessor.getCurrentResults()
-    }
-    
-    func getActivePlugin() -> Plugin? {
-        return pluginProcessor.getActivePlugin()
-    }
-    
-    func clearState() {
-        pluginProcessor.clearState()
     }
 }

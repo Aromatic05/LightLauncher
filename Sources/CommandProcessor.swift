@@ -18,19 +18,42 @@ protocol ModeHandler {
 @MainActor
 extension ModeHandler {
     func shouldSwitchToLaunchMode(for text: String) -> Bool {
-        // 如果是其他模式的命令前缀，不切换到launch模式（让上层命令解析器处理）
+        // 如果是以"/"开头的命令，需要更精确的匹配
         if text.hasPrefix("/") {
-            let otherPrefixes = ["/k", "/s", "/w", "/t", "/o"]
-            for otherPrefix in otherPrefixes {
-                if text.hasPrefix(otherPrefix) && otherPrefix != prefix {
-                    return false // 让上层处理其他模式的命令
-                }
+            // 获取输入的命令部分（空格前的部分）
+            let inputCommand = text.components(separatedBy: " ").first ?? text
+            
+            // 检查是否是已知的内置命令
+            let knownCommands = ["/k", "/s", "/w", "/t", "/o"]
+            
+            // 检查是否是插件命令（精确匹配或者是插件命令的开始）
+            let pluginCommands = PluginManager.shared.getAllPlugins().map { $0.command }
+            
+            // 如果输入正好匹配某个内置命令或插件命令，不切换模式
+            if knownCommands.contains(inputCommand) || pluginCommands.contains(inputCommand) {
+                return false
             }
-        }
-        
-        // 如果当前模式有前缀且输入不匹配该前缀，切换回launch模式
-        if !prefix.isEmpty && !text.hasPrefix(prefix) {
-            return true
+            
+            // 如果输入可能是某个命令的前缀，也不切换模式
+            // 检查是否有命令以输入的文本开头
+            let allCommands = knownCommands + pluginCommands
+            let hasMatchingPrefix = allCommands.contains { command in
+                command.hasPrefix(inputCommand) && command != inputCommand
+            }
+            
+            if hasMatchingPrefix {
+                return false
+            }
+            
+            // 如果当前模式有自己的前缀，且输入不匹配该前缀，切换回launch模式
+            if !prefix.isEmpty && inputCommand != prefix && !inputCommand.hasPrefix(prefix + " ") {
+                return true
+            }
+        } else {
+            // 非命令输入：如果当前模式有前缀且输入不匹配该前缀，切换回launch模式
+            if !prefix.isEmpty && !text.hasPrefix(prefix) {
+                return true
+            }
         }
         
         return false

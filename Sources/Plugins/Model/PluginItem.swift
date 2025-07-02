@@ -1,21 +1,19 @@
 import Foundation
 
 // MARK: - 插件返回的结果项
-struct PluginItem: Identifiable, Hashable {
+struct PluginItem: Identifiable, Hashable, Sendable {
     let id = UUID()
     let title: String
     let subtitle: String?
     let icon: String? // SF Symbol 名称或 Base64 图片字符串
     let action: String? // 执行动作的标识符
-    let data: [String: Any]? // 附加数据
     
     init(title: String, subtitle: String? = nil, icon: String? = nil, 
-         action: String? = nil, data: [String: Any]? = nil) {
+         action: String? = nil) {
         self.title = title
         self.subtitle = subtitle
         self.icon = icon
         self.action = action
-        self.data = data
     }
     
     // MARK: - Hashable 实现

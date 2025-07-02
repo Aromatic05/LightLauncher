@@ -9,8 +9,9 @@ struct Plugin: Identifiable {
     let description: String
     let command: String // 触发命令，如 "/todo"
     
-    // JavaScript 上下文，在后续阶段添加
+    // JavaScript 上下文和 API 管理器
     var context: JSContext?
+    var apiManager: APIManager?
     var isEnabled: Bool = true
     
     // 插件文件路径信息

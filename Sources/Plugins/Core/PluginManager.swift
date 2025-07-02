@@ -193,7 +193,7 @@ class PluginManager: ObservableObject {
         }
         
         // 创建插件实例
-        let plugin = Plugin(
+        var plugin = Plugin(
             name: manifest.name,
             version: manifest.version,
             description: manifest.description,
@@ -202,6 +202,9 @@ class PluginManager: ObservableObject {
             manifestPath: manifestURL,
             scriptPath: scriptURL
         )
+        
+        // 创建并配置 JavaScript 上下文
+        try await setupJavaScriptContext(for: &plugin, scriptURL: scriptURL)
         
         return plugin
     }
@@ -230,6 +233,106 @@ class PluginManager: ObservableObject {
         } catch {
             throw PluginError.invalidManifest(error.localizedDescription)
         }
+    }
+    
+    // MARK: - JavaScript 上下文设置
+    
+    /// 为插件设置 JavaScript 上下文
+    private func setupJavaScriptContext(for plugin: inout Plugin, scriptURL: URL) async throws {
+        // 创建 JavaScript 上下文
+        let context = JSContext()
+        
+        guard let context = context else {
+            throw PluginError.scriptLoadFailed("Failed to create JavaScript context")
+        }
+        
+        // 创建 API 管理器实例 (先用 nil，稍后会注入 viewModel)
+        let apiManager = APIManager(viewModel: nil, context: context)
+        
+        // 将 API 管理器暴露给 JavaScript
+        context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
+        
+        // 捕获插件名称用于错误处理
+        let pluginName = plugin.name
+        
+        // 设置异常处理器
+        context.exceptionHandler = { [weak self] context, exception in
+            let errorMessage = exception?.toString() ?? "Unknown JavaScript error"
+            self?.logger.error("JavaScript execution error in plugin \(pluginName): \(errorMessage)")
+            
+            // 清除异常以防止传播
+            context?.exception = nil
+        }
+        
+        // 读取并执行 main.js 文件
+        do {
+            let scriptContent = try String(contentsOf: scriptURL, encoding: .utf8)
+            let result = context.evaluateScript(scriptContent)
+            
+            if let exception = context.exception {
+                throw PluginError.scriptLoadFailed("Script execution failed: \(exception)")
+            }
+            
+            if result?.isUndefined == false {
+                logger.debug("Successfully executed script for plugin: \(pluginName)")
+            }
+            
+        } catch {
+            throw PluginError.scriptLoadFailed("Failed to load script file: \(error.localizedDescription)")
+        }
+        
+        // 将配置好的上下文和 API 管理器保存到插件实例
+        plugin.context = context
+        plugin.apiManager = apiManager
+        
+        logger.info("JavaScript context setup completed for plugin: \(pluginName)")
+    }
+    
+    // MARK: - 插件执行方法
+    
+    /// 为指定插件注入 LauncherViewModel 引用
+    func injectViewModel(_ viewModel: LauncherViewModel, for command: String) {
+        guard let plugin = plugins[command] else {
+            logger.warning("Plugin not found for command: \(command)")
+            return
+        }
+        
+        plugin.apiManager?.viewModel = viewModel
+        
+        logger.debug("ViewModel injected for plugin: \(plugin.name)")
+    }
+    
+    /// 执行插件搜索
+    func executePluginSearch(command: String, query: String) {
+        guard let plugin = plugins[command],
+              let apiManager = plugin.apiManager else {
+            logger.warning("Plugin or API manager not found for command: \(command)")
+            return
+        }
+        
+        // 调用搜索回调
+        apiManager.invokeSearchCallback(with: query)
+    }
+    
+    /// 清理插件资源
+    func cleanupPlugin(command: String) {
+        guard var plugin = plugins[command] else { return }
+        
+        plugin.apiManager?.cleanup()
+        plugin.apiManager = nil
+        plugin.context = nil
+        
+        plugins[command] = plugin
+        
+        logger.debug("Cleaned up plugin: \(plugin.name)")
+    }
+    
+    /// 清理所有插件资源
+    func cleanupAllPlugins() {
+        for command in plugins.keys {
+            cleanupPlugin(command: command)
+        }
+        logger.info("Cleaned up all plugins")
     }
 }
 
