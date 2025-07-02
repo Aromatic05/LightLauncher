@@ -296,6 +296,16 @@ class LauncherViewModel: ObservableObject {
         return activePlugin
     }
     
+    /// 获取插件的窗口隐藏设置
+    func getPluginShouldHideWindowAfterAction() -> Bool {
+        guard mode == .plugin,
+              let plugin = activePlugin else {
+            return true // 默认隐藏窗口
+        }
+        
+        return PluginManager.shared.getPluginShouldHideWindowAfterAction(command: plugin.command)
+    }
+    
     /// 更新插件结果
     func updatePluginResults(_ items: [PluginItem]) {
         pluginItems = items

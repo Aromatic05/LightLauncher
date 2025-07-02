@@ -9,6 +9,9 @@ struct Plugin: Identifiable {
     let description: String
     let command: String // 触发命令，如 "/todo"
     
+    // 窗口隐藏行为设置（从 manifest.yaml 读取，默认为 true）
+    let shouldHideWindowAfterAction: Bool
+    
     // JavaScript 上下文和 API 管理器
     var context: JSContext?
     var apiManager: APIManager?
@@ -20,7 +23,7 @@ struct Plugin: Identifiable {
     let scriptPath: URL
     
     init(name: String, version: String, description: String, command: String, 
-         pluginDirectory: URL, manifestPath: URL, scriptPath: URL) {
+         pluginDirectory: URL, manifestPath: URL, scriptPath: URL, shouldHideWindowAfterAction: Bool = true) {
         self.name = name
         self.version = version
         self.description = description
@@ -28,6 +31,7 @@ struct Plugin: Identifiable {
         self.pluginDirectory = pluginDirectory
         self.manifestPath = manifestPath
         self.scriptPath = scriptPath
+        self.shouldHideWindowAfterAction = shouldHideWindowAfterAction
     }
 }
 

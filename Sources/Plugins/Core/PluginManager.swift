@@ -285,8 +285,11 @@ class PluginManager: ObservableObject {
             command: manifest.command,
             pluginDirectory: directoryURL,
             manifestPath: manifestURL,
-            scriptPath: scriptURL
+            scriptPath: scriptURL,
+            shouldHideWindowAfterAction: manifest.shouldHideWindowAfterAction ?? true
         )
+        
+        logger.info("Loaded plugin \(manifest.name) with shouldHideWindowAfterAction: \(plugin.shouldHideWindowAfterAction)")
         
         // 创建并配置 JavaScript 上下文
         try await setupJavaScriptContext(for: &plugin, scriptURL: scriptURL)
@@ -432,6 +435,16 @@ class PluginManager: ObservableObject {
         return apiManager.invokeActionHandler(with: action)
     }
     
+    /// 获取插件的窗口隐藏设置
+    func getPluginShouldHideWindowAfterAction(command: String) -> Bool {
+        guard let plugin = plugins[command] else {
+            // 如果找不到插件，默认返回true（隐藏窗口）
+            return true
+        }
+        
+        return plugin.shouldHideWindowAfterAction
+    }
+    
     /// 清理插件资源
     func cleanupPlugin(command: String) {
         guard var plugin = plugins[command] else { return }
@@ -463,12 +476,14 @@ private struct PluginManifest: Codable {
     let author: String?
     let homepage: String?
     let main: String? // 默认为 "main.js"
+    let shouldHideWindowAfterAction: Bool? // 默认为 true
     
     // 可选的扩展字段（简化版本）
     let metadata: PluginMetadata?
     
     enum CodingKeys: String, CodingKey {
         case name, version, description, command, author, homepage, main
+        case shouldHideWindowAfterAction = "should_hide_window_after_action"
         case metadata
     }
     
@@ -482,6 +497,7 @@ private struct PluginManifest: Codable {
         author = try container.decodeIfPresent(String.self, forKey: .author)
         homepage = try container.decodeIfPresent(String.self, forKey: .homepage)
         main = try container.decodeIfPresent(String.self, forKey: .main) ?? "main.js"
+        shouldHideWindowAfterAction = try container.decodeIfPresent(Bool.self, forKey: .shouldHideWindowAfterAction) ?? true
         
         // 扩展字段（可选）
         metadata = try container.decodeIfPresent(PluginMetadata.self, forKey: .metadata)

@@ -4,3 +4,4 @@ description: Simple todo list manager
 command: /todo
 author: LightLauncher Team
 main: main.js
+should_hide_window_after_action: false

@@ -23,8 +23,10 @@ struct PluginModeView: View {
                             .onTapGesture {
                                 viewModel.selectedIndex = index
                                 if viewModel.executeSelectedAction() {
-                                    // 插件动作执行后可能需要隐藏窗口
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    // 插件动作执行后，根据插件设置决定是否隐藏窗口
+                                    if viewModel.getPluginShouldHideWindowAfterAction() {
+                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    }
                                 }
                             }
                         }

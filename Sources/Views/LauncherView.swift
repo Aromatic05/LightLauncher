@@ -108,6 +108,11 @@ final class KeyboardEventHandler: @unchecked Sendable {
             if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex), !fileItem.isDirectory {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
+        case .plugin:
+            // 插件模式：根据插件配置决定是否隐藏窗口
+            if viewModel.getPluginShouldHideWindowAfterAction() {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
         default:
             NotificationCenter.default.post(name: .hideWindow, object: nil)
         }
@@ -148,8 +153,17 @@ final class KeyboardEventHandler: @unchecked Sendable {
         }
         
         if viewModel.selectAppByNumber(number) {
-            // 在kill模式下不隐藏窗口
-            if viewModel.mode != .kill {
+            // 根据模式决定是否隐藏窗口
+            switch viewModel.mode {
+            case .kill:
+                // kill模式下不隐藏窗口
+                break
+            case .plugin:
+                // 插件模式：根据插件配置决定是否隐藏窗口
+                if viewModel.getPluginShouldHideWindowAfterAction() {
+                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                }
+            default:
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
         }
@@ -398,7 +412,8 @@ struct ResultsListView: View {
         case .search, .terminal:
             return true
         case .plugin:
-            return true // 插件模式执行动作后隐藏窗口
+            // 插件模式：使用插件设置的窗口隐藏行为
+            return viewModel.getPluginShouldHideWindowAfterAction()
         }
     }
 }
