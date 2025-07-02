@@ -250,6 +250,10 @@ class LauncherViewModel: ObservableObject {
         let fileModeHandler = FileModeHandler()
         commandProcessor.registerProcessor(fileProcessor)
         commandProcessor.registerModeHandler(fileModeHandler)
+        
+        // 注册插件处理器
+        let pluginProcessor = PluginCommandProcessor()
+        commandProcessor.registerProcessor(pluginProcessor)
     }
     
     // MARK: - 插件模式支持

@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import AppKit
 
 // MARK: - 模式配置数据结构
 struct ModeConfiguration: Sendable {
@@ -165,13 +166,20 @@ struct LauncherCommand {
     
     @MainActor
     static func getCommandSuggestions(for text: String) -> [LauncherCommand] {
+        // 获取内置命令
         let enabledCommands = getEnabledCommands()
         
+        // 获取插件命令
+        let pluginCommands = PluginManager.shared.getAllPluginCommands()
+        
+        // 合并所有命令
+        let allCommands = enabledCommands + pluginCommands
+        
         if text == "/" {
-            return enabledCommands
+            return allCommands
         }
         
-        return enabledCommands.filter { command in
+        return allCommands.filter { command in
             command.trigger.hasPrefix(text)
         }
     }

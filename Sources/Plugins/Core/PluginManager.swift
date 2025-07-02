@@ -146,6 +146,20 @@ class PluginManager: ObservableObject {
         executePlugin(plugin)
     }
     
+    /// 获取所有插件命令，用于命令建议
+    func getAllPluginCommands() -> [LauncherCommand] {
+        return plugins.values.compactMap { plugin in
+            guard plugin.isEnabled else { return nil }
+            
+            return LauncherCommand(
+                trigger: plugin.command,
+                mode: .plugin,
+                description: plugin.description,
+                isEnabled: true
+            )
+        }
+    }
+    
     // MARK: - 私有方法
     
     private func createUserPluginsDirectoryIfNeeded() {

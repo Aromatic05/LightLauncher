@@ -223,10 +223,7 @@ struct CommandSuggestionManager {
             return []
         }
         
-        if text == "/" {
-            return LauncherCommand.getEnabledCommands()
-        }
-        
+        // 统一使用 getCommandSuggestions，这个方法已经包含了插件命令
         return LauncherCommand.getCommandSuggestions(for: text)
     }
 }
