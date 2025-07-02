@@ -129,6 +129,11 @@ class LauncherViewModel: ObservableObject {
     // MARK: - 模式切换
     
     func resetToLaunchMode() {
+        // 如果当前在插件模式，先清理插件状态
+        if mode == .plugin {
+            clearPluginState()
+        }
+        
         mode = .launch
         searchText = ""
         filteredApps = getMostUsedApps(from: allApps, limit: 6)
@@ -326,6 +331,11 @@ class LauncherViewModel: ObservableObject {
     func clearPluginState() {
         activePlugin = nil
         pluginItems = []
+        
+        // 同时清理插件处理器的状态
+        if let pluginProcessor = commandProcessor.getCommandProcessor(for: .plugin) as? PluginCommandProcessor {
+            pluginProcessor.clearState()
+        }
     }
     
     /// 获取当前模式的项目数量

@@ -41,7 +41,44 @@ class PluginManager: ObservableObject {
     
     /// 激活指定命令的插件
     func activatePlugin(command: String) -> Plugin? {
-        return plugins[command]
+        guard var plugin = plugins[command] else {
+            return nil
+        }
+        
+        // 如果插件已被清理（没有 context 或 apiManager），重新初始化
+        if plugin.context == nil || plugin.apiManager == nil {
+            logger.info("Reinitializing plugin: \(plugin.name)")
+            
+            // 重新创建 JavaScript 上下文
+            let context = JSContext()!
+            context.exceptionHandler = { context, exception in
+                self.logger.error("JavaScript error in plugin \(plugin.name): \(exception?.toString() ?? "unknown error")")
+            }
+            
+            // 重新创建 API 管理器（传入 nil viewModel，稍后通过 injectViewModel 设置）
+            let apiManager = APIManager(viewModel: nil, context: context)
+            
+            // 暴露 lightlauncher 对象到 JavaScript 上下文
+            context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
+            
+            // 重新执行插件的主脚本
+            do {
+                let mainJSContent = try String(contentsOf: plugin.scriptPath)
+                context.evaluateScript(mainJSContent)
+                
+                // 更新插件
+                plugin.context = context
+                plugin.apiManager = apiManager
+                plugins[command] = plugin
+                
+                logger.info("Successfully reinitialized plugin: \(plugin.name)")
+            } catch {
+                logger.error("Failed to reinitialize plugin \(plugin.name): \(error)")
+                return nil
+            }
+        }
+        
+        return plugin
     }
     
     /// 获取所有已加载的插件

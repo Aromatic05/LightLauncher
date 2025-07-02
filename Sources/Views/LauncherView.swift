@@ -261,15 +261,8 @@ struct LauncherView: View {
                         }
                     }
                 case .plugin:
-                    // 插件模式显示插件结果
-                    if !viewModel.pluginItems.isEmpty {
-                        ResultsListView(viewModel: viewModel)
-                    } else {
-                        EmptyStateView(
-                            mode: viewModel.mode,
-                            hasSearchText: !viewModel.searchText.isEmpty
-                        )
-                    }
+                    // 插件模式显示专用的插件视图
+                    PluginModeView(viewModel: viewModel)
                 }
             }
         }
@@ -363,18 +356,8 @@ struct ResultsListView: View {
                                 .onTapGesture { handleItemSelection(at: index) }
                             }
                         }
-                    case .search, .terminal:
+                    case .search, .terminal, .plugin:
                         EmptyView()
-                    case .plugin:
-                        ForEach(Array(viewModel.pluginItems.enumerated()), id: \.offset) { index, item in
-                            PluginItemRowView(
-                                item: item,
-                                isSelected: index == viewModel.selectedIndex,
-                                index: index
-                            )
-                            .id(index)
-                            .onTapGesture { handleItemSelection(at: index) }
-                        }
                     }
                 }
                 .padding(.horizontal, 16)

@@ -146,12 +146,22 @@ struct AppMatch {
 // MARK: - LauncherViewModel 扩展 - 启动模式
 extension LauncherViewModel {
     func switchToLaunchMode() {
+        // 如果当前在插件模式，先清理插件状态
+        if mode == .plugin {
+            clearPluginState()
+        }
+        
         mode = .launch
         filteredApps = getMostUsedApps(from: allApps, limit: 6)
         selectedIndex = 0
     }
     
     func switchToLaunchModeAndClear() {
+        // 如果当前在插件模式，先清理插件状态
+        if mode == .plugin {
+            clearPluginState()
+        }
+        
         mode = .launch
         searchText = ""
         filteredApps = getMostUsedApps(from: allApps, limit: 6)

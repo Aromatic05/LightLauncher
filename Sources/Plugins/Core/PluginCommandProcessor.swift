@@ -26,10 +26,12 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
         
         if text.hasPrefix("/") {
             let commandPart = text.components(separatedBy: " ").first ?? text
+            // 如果输入的命令不是当前插件的命令，切换回启动模式
             return commandPart != plugin.command
+        } else {
+            // 如果输入不以"/"开头，说明用户想要回到启动模式
+            return true
         }
-        
-        return false
     }
     
     func extractSearchText(from text: String) -> String {
@@ -80,6 +82,9 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
         // 切换到插件模式
         viewModel.switchToPluginMode(with: plugin)
         
+        // 立即触发初始搜索（空查询）
+        pluginManager.executePluginSearch(command: plugin.command, query: "")
+        
         logger.info("Activated plugin: \(plugin.name)")
         return true
     }
@@ -129,13 +134,13 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
     
     /// 清除当前插件状态
     func clearState() {
-        activePlugin = nil
-        currentResults = []
-        
-        // 清理 PluginManager 中的插件资源
         if let plugin = activePlugin {
+            // 清理 PluginManager 中的插件资源
             pluginManager.cleanupPlugin(command: plugin.command)
         }
+        
+        activePlugin = nil
+        currentResults = []
         
         logger.debug("Cleared plugin state")
     }
