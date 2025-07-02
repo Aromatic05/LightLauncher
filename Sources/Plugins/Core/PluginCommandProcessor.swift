@@ -58,7 +58,7 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
     }
     
     func process(command: String, in viewModel: LauncherViewModel) -> Bool {
-        logger.info("Processing plugin command: \(command)")
+        logger.info("Processing plugin command: \(command, privacy: .public)")
         
         // 获取对应的插件
         guard let plugin = pluginManager.activatePlugin(command: command) else {
@@ -85,7 +85,7 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
         // 立即触发初始搜索（空查询）
         pluginManager.executePluginSearch(command: plugin.command, query: "")
         
-        logger.info("Activated plugin: \(plugin.name)")
+        logger.info("Activated plugin: \(plugin.name, privacy: .public)")
         return true
     }
     
@@ -116,12 +116,12 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
         }
         
         let item = pluginItems[index]
-        logger.info("Executing action for item: \(item.title) in plugin: \(plugin.name)")
+        logger.info("Executing action for item: \(item.title, privacy: .public) in plugin: \(plugin.name, privacy: .public)")
         
         // 如果项目有动作标识符，调用插件的动作处理器
         if let action = item.action, !action.isEmpty {
             let success = pluginManager.executePluginAction(command: plugin.command, action: action)
-            logger.info("Plugin action '\(action)' execution result: \(success)")
+            logger.info("Plugin action '\(action, privacy: .public)' execution result: \(success, privacy: .public)")
             return success
         } else {
             // 如果没有动作标识符，记录警告但仍返回 true（兼容性）

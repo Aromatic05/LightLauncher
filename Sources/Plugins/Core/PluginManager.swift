@@ -48,33 +48,69 @@ class PluginManager: ObservableObject {
         
         // 如果插件已被清理（没有 context 或 apiManager），重新初始化
         if plugin.context == nil || plugin.apiManager == nil {
-            logger.info("Reinitializing plugin: \(plugin.name)")
+            logger.info("Reinitializing plugin: \(plugin.name, privacy: .public)")
             
             // 重新创建 JavaScript 上下文
+            logger.info("Creating JavaScript context for plugin: \(plugin.name, privacy: .public)")
             let context = JSContext()!
             context.exceptionHandler = { context, exception in
-                self.logger.error("JavaScript error in plugin \(plugin.name): \(exception?.toString() ?? "unknown error")")
+                self.logger.error("JavaScript error in plugin \(plugin.name): \(exception?.toString() ?? "unknown error", privacy: .public)")
             }
             
             // 重新创建 API 管理器（传入 nil viewModel，稍后通过 injectViewModel 设置）
+            logger.info("Creating APIManager for plugin: \(plugin.name, privacy: .public)")
             let apiManager = APIManager(viewModel: nil, context: context, pluginName: plugin.name, pluginCommand: plugin.command)
             
             // 暴露 lightlauncher 对象到 JavaScript 上下文
+            logger.info("Exposing lightlauncher object to JavaScript context for plugin: \(plugin.name, privacy: .public)")
             context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
             
+            // 验证对象是否正确暴露
+            let testResult = context.evaluateScript("typeof lightlauncher")
+            logger.info("lightlauncher object type in JS context: \(testResult?.toString() ?? "undefined", privacy: .public)")
+            
+            // 测试具体方法的可用性
+            let writeFileTest = context.evaluateScript("typeof lightlauncher.writeFile")
+            logger.info("lightlauncher.writeFile type in JS context: \(writeFileTest?.toString() ?? "undefined", privacy: .public)")
+            
+            let logTest = context.evaluateScript("typeof lightlauncher.log")
+            logger.info("lightlauncher.log type in JS context: \(logTest?.toString() ?? "undefined", privacy: .public)")
+            
+            // 测试所有API方法的可用性
+            let apiMethods = ["registerCallback", "registerActionHandler", "display", "hide", "log", 
+                             "getConfigPath", "getDataPath", "readConfig", "writeConfig", 
+                             "fileExists", "readFile", "writeFile", "createDirectory",
+                             "hasNetworkPermission", "hasFileWritePermission", "requestPermission"]
+            
+            for method in apiMethods {
+                let methodTest = context.evaluateScript("typeof lightlauncher.\(method)")
+                logger.info("lightlauncher.\(method, privacy: .public) type: \(methodTest?.toString() ?? "undefined", privacy: .public)")
+            }
+            
             // 重新执行插件的主脚本
+            logger.info("Loading main script for plugin: \(plugin.name, privacy: .public)")
             do {
                 let mainJSContent = try String(contentsOf: plugin.scriptPath)
+                logger.info("Script content length: \(mainJSContent.count, privacy: .public) characters")
+                
+                logger.info("Evaluating JavaScript for plugin: \(plugin.name, privacy: .public)")
                 context.evaluateScript(mainJSContent)
+                
+                // 检查是否有JavaScript错误
+                if let exception = context.exception {
+                    logger.error("JavaScript execution exception: \(exception.toString(), privacy: .public)")
+                } else {
+                    logger.info("JavaScript executed successfully for plugin: \(plugin.name, privacy: .public)")
+                }
                 
                 // 更新插件
                 plugin.context = context
                 plugin.apiManager = apiManager
                 plugins[command] = plugin
                 
-                logger.info("Successfully reinitialized plugin: \(plugin.name)")
+                logger.info("Successfully reinitialized plugin: \(plugin.name, privacy: .public)")
             } catch {
-                logger.error("Failed to reinitialize plugin \(plugin.name): \(error)")
+                logger.error("Failed to reinitialize plugin \(plugin.name): \(error, privacy: .public)")
                 return nil
             }
         }
@@ -310,6 +346,17 @@ class PluginManager: ObservableObject {
         
         // 将 API 管理器暴露给 JavaScript
         context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
+        
+        // 验证对象是否正确暴露（添加调试输出）
+        let testResult = context.evaluateScript("typeof lightlauncher")
+        logger.info("Initial setup - lightlauncher object type in JS context: \(testResult?.toString() ?? "undefined", privacy: .public)")
+        
+        // 测试具体方法的可用性
+        let writeFileTest = context.evaluateScript("typeof lightlauncher.writeFile")
+        logger.info("Initial setup - lightlauncher.writeFile type in JS context: \(writeFileTest?.toString() ?? "undefined", privacy: .public)")
+        
+        let logTest = context.evaluateScript("typeof lightlauncher.log")
+        logger.info("Initial setup - lightlauncher.log type in JS context: \(logTest?.toString() ?? "undefined", privacy: .public)")
         
         // 捕获插件名称用于错误处理
         let pluginName = plugin.name

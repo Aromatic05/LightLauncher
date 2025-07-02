@@ -9,8 +9,13 @@ class TodoPlugin {
             iconTheme: "sf_symbols"
         };
         
-        // 加载配置
-        this.loadConfig();
+        // 权限状态
+        this.permissions = {
+            fileWrite: false,
+            network: false,
+            clipboard: false,
+            notifications: false
+        };
         
         // 默认数据
         this.todos = [
@@ -19,16 +24,36 @@ class TodoPlugin {
             { id: 3, text: "Test the plugin", completed: false, category: "工作" }
         ];
         
-        // 从数据文件加载待办事项
-        this.loadTodos();
-        
         // 注册搜索回调
         lightlauncher.registerCallback(this.handleSearch.bind(this));
         
         // 注册动作处理器
         lightlauncher.registerActionHandler(this.handleAction.bind(this));
         
+        // 直接初始化，不使用 setTimeout（JavaScriptCore 可能不支持）
+        this.initialize();
+        
         lightlauncher.log("Todo plugin initialized with " + this.todos.length + " items");
+    }
+    
+    initialize() {
+        // 检查权限
+        this.checkPermissions();
+        
+        // 加载配置
+        this.loadConfig();
+        
+        // 从数据文件加载待办事项
+        this.loadTodos();
+    }
+    
+    checkPermissions() {
+        // 检查当前权限状态
+        this.permissions.fileWrite = lightlauncher.hasFileWritePermission();
+        this.permissions.network = lightlauncher.hasNetworkPermission();
+        
+        lightlauncher.log("Current permissions - External File Write: " + this.permissions.fileWrite + 
+                         ", Network: " + this.permissions.network);
     }
     
     loadConfig() {
@@ -122,37 +147,54 @@ settings:
         try {
             const dataPath = lightlauncher.getDataPath() + "/" + this.config.dataFile;
             const todoData = JSON.stringify(this.todos, null, 2);
-            if (lightlauncher.writeFile(dataPath, todoData)) {
-                lightlauncher.log("Todos saved successfully");
+            
+            // 使用单参数的 writeFileWithData 方法
+            if (typeof lightlauncher.writeFileWithData === 'function') {
+                const success = lightlauncher.writeFileWithData({path: dataPath, content: todoData});
+                if (success) {
+                    lightlauncher.log("Todos saved successfully");
+                    return true;
+                } else {
+                    lightlauncher.log("Failed to save todos");
+                }
+            } else {
+                lightlauncher.log("writeFileWithData method not available");
             }
+            
+            // 备用方案：使用 writeConfig
+            if (typeof lightlauncher.writeConfig === 'function') {
+                const configData = `# Todo Plugin Data\ntodos_data: |\n${todoData.split('\n').map(line => '  ' + line).join('\n')}\n`;
+                const success = lightlauncher.writeConfig(configData);
+                if (success) {
+                    lightlauncher.log("Todos saved as config data");
+                    return true;
+                }
+            }
+            
+            return false;
         } catch (error) {
-            lightlauncher.log("Failed to save todos: " + error);
+            lightlauncher.log("Error saving todos: " + error);
+            return false;
         }
     }
     
     handleSearch(query) {
-        lightlauncher.log("Todo plugin received query: " + query);
-        
         if (!query || query.trim() === "") {
-            // 显示所有待办事项
             this.displayAllTodos();
         } else if (query.startsWith("add ")) {
-            // 添加新的待办事项
             const todoText = query.substring(4).trim();
             if (todoText) {
                 this.addTodo(todoText);
+            } else {
+                this.displayAllTodos();
             }
         } else {
-            // 搜索待办事项
             this.searchTodos(query);
         }
     }
     
     handleAction(action) {
-        lightlauncher.log("Todo plugin received action: " + action);
-        
         if (action === "add_new") {
-            // 显示添加提示
             lightlauncher.display([{
                 title: "Add a new todo",
                 subtitle: "Type 'add <your task>' to create a new todo item",
@@ -161,20 +203,22 @@ settings:
             }]);
             return true;
         } else if (action === "show_all") {
-            // 显示所有待办事项
             this.displayAllTodos();
             return true;
+        } else if (action === "show_permissions") {
+            this.displayPermissionStatus();
+            return true;
+        } else if (action === "request_file_permission") {
+            this.requestFileWritePermission();
+            return true;
         } else if (action.startsWith("toggle_")) {
-            // 切换待办事项完成状态
             const todoId = parseInt(action.substring(7));
             return this.toggleTodo(todoId);
         } else if (action.startsWith("delete_")) {
-            // 删除待办事项
             const todoId = parseInt(action.substring(7));
             return this.deleteTodo(todoId);
         }
         
-        lightlauncher.log("Unknown action: " + action);
         return false;
     }
     
@@ -193,6 +237,14 @@ settings:
             action: "add_new"
         });
         
+        // 添加权限状态选项
+        results.push({
+            title: "🔒 View Permissions",
+            subtitle: "Check plugin permission status",
+            icon: "checkmark.shield",
+            action: "show_permissions"
+        });
+        
         lightlauncher.display(results);
     }
     
@@ -203,6 +255,9 @@ settings:
             text: text,
             completed: false
         });
+        
+        // 尝试保存数据
+        this.saveTodos();
         
         lightlauncher.display([{
             title: "✅ Added: " + text,
@@ -224,6 +279,9 @@ settings:
         todo.completed = !todo.completed;
         lightlauncher.log("Toggled todo: " + todo.text + " -> " + (todo.completed ? "completed" : "todo"));
         
+        // 尝试保存数据
+        this.saveTodos();
+        
         // 重新显示所有待办事项
         this.displayAllTodos();
         return true;
@@ -238,6 +296,9 @@ settings:
         
         const deletedTodo = this.todos.splice(index, 1)[0];
         lightlauncher.log("Deleted todo: " + deletedTodo.text);
+        
+        // 尝试保存数据
+        this.saveTodos();
         
         // 重新显示所有待办事项
         this.displayAllTodos();
@@ -267,6 +328,53 @@ settings:
         }));
         
         lightlauncher.display(results);
+    }
+    
+    displayPermissionStatus() {
+        const results = [];
+        
+        // 权限状态标题
+        results.push({
+            title: "📋 Plugin Permissions Status",
+            subtitle: "Current permission status for Todo plugin",
+            icon: "checkmark.shield",
+            action: "show_all"
+        });
+        
+        // 文件写入权限
+        results.push({
+            title: this.permissions.fileWrite ? "✅ External File Write Access" : "❌ External File Write Access",
+            subtitle: this.permissions.fileWrite ? "Granted - Can write files outside plugin data directory" : "Denied - Cannot write files outside plugin data directory",
+            icon: this.permissions.fileWrite ? "checkmark.circle.fill" : "xmark.circle.fill",
+            action: this.permissions.fileWrite ? "show_all" : "request_file_permission"
+        });
+        
+        // 网络访问权限
+        results.push({
+            title: this.permissions.network ? "✅ Network Access" : "❌ Network Access",
+            subtitle: this.permissions.network ? "Granted - Can sync to cloud" : "Denied - Cannot access network",
+            icon: this.permissions.network ? "wifi" : "wifi.slash",
+            action: "show_all"
+        });
+        
+        lightlauncher.display(results);
+    }
+    
+    requestFileWritePermission() {
+        lightlauncher.log("Requesting external file write permission...");
+        
+        lightlauncher.requestPermission("file_write", (granted, message) => {
+            lightlauncher.log("External file write permission result: " + granted + " - " + message);
+            this.permissions.fileWrite = granted;
+            
+            // 显示结果
+            lightlauncher.display([{
+                title: granted ? "✅ Permission Granted" : "⏳ Permission Request Sent",
+                subtitle: message,
+                icon: granted ? "checkmark.circle.fill" : "clock.circle",
+                action: "show_permissions"
+            }]);
+        });
     }
 }
 

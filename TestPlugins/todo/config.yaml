@@ -1,88 +1,78 @@
 # Todo 插件配置文件
-# 这个文件定义了 Todo 插件的配置选项
+# 这个文件定义了插件的运行时配置和权限要求
 
-# 插件是否启用
+# 基本设置
 enabled: true
-
-# 插件版本
 version: "1.0.0"
+
+# 权限要求
+permissions:
+  # 外部文件写入权限 - 用于在插件数据目录之外写入文件（插件数据目录内的文件无需权限）
+  file_write: false
+  # 网络访问权限 - 如果需要同步到云端服务
+  network: false
+  # 剪贴板权限 - 用于复制待办事项内容
+  clipboard: false
+  # 通知权限 - 用于提醒功能
+  notifications: false
 
 # 插件设置
 settings:
-  # 最大显示的待办事项数量
+  # 最大显示条目数
   max_items: 10
-  
   # 是否显示已完成的项目
   show_completed: true
-  
   # 自动保存间隔（秒）
   auto_save_interval: 30
-  
   # 数据文件名
   data_file: "todos.json"
   
   # UI 设置
   ui:
-    # 使用的图标主题
-    icon_theme: "sf_symbols"  # 可选值: sf_symbols, emoji
-    
+    # 图标主题
+    icon_theme: "sf_symbols"
     # 颜色方案
-    color_scheme: "auto"      # 可选值: auto, light, dark
-    
-    # 是否显示序号
+    color_scheme: "auto"
+    # 是否显示行号
     show_numbers: true
   
   # 快捷键设置
   shortcuts:
-    # 添加新项目的快捷键
-    add_item: "cmd+n"
-    
-    # 完成项目的快捷键
+    # 切换完成状态
     toggle_complete: "space"
-    
-    # 删除项目的快捷键
-    delete_item: "cmd+backspace"
+    # 删除项目
+    delete_item: "cmd+delete"
+    # 编辑项目
+    edit_item: "enter"
   
   # 分类设置
   categories:
     - name: "工作"
       color: "#FF6B6B"
       icon: "briefcase"
-    
     - name: "个人"
       color: "#4ECDC4"
       icon: "person"
-    
     - name: "学习"
       color: "#45B7D1"
       icon: "book"
   
-  # 提醒设置
+  # 通知设置
   notifications:
     # 是否启用提醒
-    enabled: true
-    
-    # 提醒声音
+    enabled: false
+    # 默认提醒时间（分钟）
+    default_reminder: 60
+    # 声音设置
     sound: "default"
-    
-    # 逾期提醒
-    overdue_reminder: true
 
 # 高级设置
 advanced:
-  # 是否启用调试模式
+  # 调试模式
   debug_mode: false
-  
   # 日志级别
-  log_level: "info"  # 可选值: debug, info, warn, error
-  
-  # 数据同步设置
-  sync:
-    # 是否启用云同步
-    enabled: false
-    
-    # 同步服务
-    provider: "icloud"  # 可选值: icloud, dropbox, manual
-    
-    # 同步间隔（分钟）
-    interval: 15
+  log_level: "info"
+  # 缓存大小（MB）
+  cache_size: 10
+  # 性能模式
+  performance_mode: "balanced"

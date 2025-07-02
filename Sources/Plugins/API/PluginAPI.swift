@@ -41,8 +41,28 @@ import JavaScriptCore
     /// 写入文件内容
     func writeFile(_ path: String, content: String) -> Bool
     
+    /// 写入文件内容（单参数版本，解决 JavaScriptCore 多参数问题）
+    func writeFileWithData(_ data: [String: Any]) -> Bool
+    
     /// 创建目录
     func createDirectory(_ path: String) -> Bool
+    
+    // MARK: - 权限管理 API
+    
+    /// 检查插件是否有网络访问权限
+    func hasNetworkPermission() -> Bool
+    
+    /// 检查插件是否有文件系统写入权限
+    func hasFileWritePermission() -> Bool
+    
+    /// 检查插件是否有系统命令执行权限
+    func hasSystemCommandPermission() -> Bool
+    
+    /// 请求特定权限（将提示用户授权）
+    func requestPermission(_ permission: String, completion: JSValue)
+    
+    /// 调试方法：列出所有可用的方法
+    func debugListMethods() -> String
 }
 
 // MARK: - 插件 API 错误
@@ -55,6 +75,10 @@ enum PluginAPIError: Error, LocalizedError {
     case fileOperationFailed(String)
     case configurationError(String)
     case pathAccessDenied(String)
+    case networkAccessDenied
+    case networkRequestFailed(String)
+    case invalidURL(String)
+    case permissionDenied(String)
     
     var errorDescription: String? {
         switch self {
@@ -74,6 +98,14 @@ enum PluginAPIError: Error, LocalizedError {
             return "Configuration error: \(reason)"
         case .pathAccessDenied(let path):
             return "Access denied to path: \(path)"
+        case .networkAccessDenied:
+            return "Network access denied for this plugin"
+        case .networkRequestFailed(let reason):
+            return "Network request failed: \(reason)"
+        case .invalidURL(let url):
+            return "Invalid URL: \(url)"
+        case .permissionDenied(let permission):
+            return "Permission denied: \(permission)"
         }
     }
 }

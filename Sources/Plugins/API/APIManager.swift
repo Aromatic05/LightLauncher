@@ -40,6 +40,14 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
         
         // 确保目录存在
         createDirectoriesIfNeeded()
+        
+        // 初始化插件权限（如果需要）
+        if !pluginName.isEmpty {
+            PluginPermissionManager.shared.initializePluginPermissions(
+                pluginName: pluginName, 
+                pluginCommand: pluginCommand
+            )
+        }
     }
     
     // MARK: - PluginAPIExports 实现
@@ -101,7 +109,8 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
     }
     
     func log(_ message: String) {
-        logger.info("Plugin Log: \(message)")
+        // 使用 os_log 的公开格式避免隐私保护
+        logger.info("Plugin Log: \(message, privacy: .public)")
         print("[Plugin] \(message)") // 同时输出到控制台便于调试
     }
     
@@ -167,31 +176,31 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
     
     // MARK: - 文件系统 API 实现
     
-    func getConfigPath() -> String {
+    @objc func getConfigPath() -> String {
         let configFileName = pluginName.isEmpty ? "default.yaml" : "\(pluginName).yaml"
         return configsDirectory.appendingPathComponent(configFileName).path
     }
     
-    func getDataPath() -> String {
+    @objc func getDataPath() -> String {
         let dataDirectoryName = pluginName.isEmpty ? "default" : pluginName
         return dataDirectory.appendingPathComponent(dataDirectoryName).path
     }
     
-    func readConfig() -> String? {
+    @objc func readConfig() -> String? {
         let configPath = getConfigPath()
         return readFile(configPath)
     }
     
-    func writeConfig(_ content: String) -> Bool {
+    @objc func writeConfig(_ content: String) -> Bool {
         let configPath = getConfigPath()
         return writeFile(configPath, content: content)
     }
     
-    func fileExists(_ path: String) -> Bool {
+    @objc func fileExists(_ path: String) -> Bool {
         return FileManager.default.fileExists(atPath: path)
     }
     
-    func readFile(_ path: String) -> String? {
+    @objc func readFile(_ path: String) -> String? {
         guard isPathSafe(path) else {
             logger.error("Unsafe path access attempted: \(path)")
             return nil
@@ -207,12 +216,30 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
         }
     }
     
-    func writeFile(_ path: String, content: String) -> Bool {
+    @objc func writeFile(_ path: String, content: String) -> Bool {
+        // 检查路径是否在插件的数据目录内
+        let pluginDataPath = dataDirectory.appendingPathComponent(pluginName).path
+        let resolvedPath = URL(fileURLWithPath: path).standardized.path
+        
+        // 如果是在插件数据目录内，无需权限检查
+        let isInPluginDataDirectory = resolvedPath.hasPrefix(pluginDataPath)
+        
+        // 如果不在插件数据目录内，需要检查文件写入权限
+        if !isInPluginDataDirectory && !PluginPermissionManager.shared.checkFileWritePermission(for: pluginCommand) {
+            logger.warning("File write permission denied for path outside plugin data directory: \(path)")
+            return false
+        }
+        
         guard isPathSafe(path) else {
             logger.error("Unsafe path access attempted: \(path)")
             return false
         }
         
+        return writeFileInternal(path: path, content: content)
+    }
+    
+    // 将实际的文件写入逻辑分离到一个内部方法
+    private func writeFileInternal(path: String, content: String) -> Bool {
         do {
             // 确保父目录存在
             let fileURL = URL(fileURLWithPath: path)
@@ -224,6 +251,7 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
                                                        attributes: nil)
             }
             
+            // 写入文件
             try content.write(toFile: path, atomically: true, encoding: .utf8)
             logger.debug("Successfully wrote file: \(path)")
             return true
@@ -233,7 +261,7 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
         }
     }
     
-    func createDirectory(_ path: String) -> Bool {
+    @objc func createDirectory(_ path: String) -> Bool {
         guard isPathSafe(path) else {
             logger.error("Unsafe path access attempted: \(path)")
             return false
@@ -249,6 +277,104 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
             logger.error("Failed to create directory \(path): \(error.localizedDescription)")
             return false
         }
+    }
+    
+    // MARK: - 权限管理 API 实现
+    
+    @objc func hasNetworkPermission() -> Bool {
+        return PluginPermissionManager.shared.checkNetworkPermission(for: pluginCommand)
+    }
+    
+    @objc func hasFileWritePermission() -> Bool {
+        return PluginPermissionManager.shared.checkFileWritePermission(for: pluginCommand)
+    }
+    
+    @objc func hasSystemCommandPermission() -> Bool {
+        return PluginPermissionManager.shared.checkSystemCommandPermission(for: pluginCommand)
+    }
+    
+    @objc func requestPermission(_ permission: String, completion: JSValue) {
+        guard let pluginPermission = PluginPermission(rawValue: permission) else {
+            logger.error("Invalid permission requested: \(permission)")
+            
+            // 调用 JavaScript 回调，传递错误信息
+            if completion.isObject && !completion.isUndefined {
+                completion.call(withArguments: [false, "Invalid permission: \(permission)"])
+            }
+            return
+        }
+        
+        logger.info("Plugin \(self.pluginName) requesting permission: \(permission)")
+        
+        // 首先检查权限是否已经存在
+        let hasPermission = PluginPermissionManager.shared.hasPermission(
+            pluginCommand: self.pluginCommand,
+            permission: pluginPermission
+        )
+        
+        if hasPermission {
+            // 权限已授予，直接返回
+            if completion.isObject && !completion.isUndefined {
+                completion.call(withArguments: [true, "Permission already granted"])
+            }
+            return
+        }
+        
+        // 请求新权限
+        PluginPermissionManager.shared.requestPermission(
+            pluginName: self.pluginName,
+            pluginCommand: self.pluginCommand,
+            permission: pluginPermission
+        )
+        
+        // 回调，告知权限请求已提交
+        if completion.isObject && !completion.isUndefined {
+            completion.call(withArguments: [false, "Permission request submitted for user approval"])
+        }
+    }
+    
+    // MARK: - 调试方法
+    
+    @objc func debugListMethods() -> String {
+        let methods = [
+            ("registerCallback", "registerCallback:"),
+            ("registerActionHandler", "registerActionHandler:"), 
+            ("display", "display:"),
+            ("hide", "hide"),
+            ("log", "log:"),
+            ("getConfigPath", "getConfigPath"),
+            ("getDataPath", "getDataPath"),
+            ("readConfig", "readConfig"),
+            ("writeConfig", "writeConfig:"),
+            ("fileExists", "fileExists:"),
+            ("readFile", "readFile:"),
+            ("writeFile", "writeFile:content:"),
+            ("writeFileWithData", "writeFileWithData:"),  // 添加单参数包装方法
+            ("createDirectory", "createDirectory:"),
+            ("hasNetworkPermission", "hasNetworkPermission"),
+            ("hasFileWritePermission", "hasFileWritePermission"),
+            ("requestPermission", "requestPermission:completion:")
+        ]
+        
+        var result = "Plugin API Methods:\n"
+        for (name, selector) in methods {
+            let isAvailable = self.responds(to: Selector(selector))
+            result += "  \(name): \(isAvailable ? "✓" : "✗")\n"
+        }
+        
+        return result
+    }
+
+    // MARK: - 单参数包装方法（解决 JavaScriptCore 多参数问题）
+    
+    @objc func writeFileWithData(_ data: [String: Any]) -> Bool {
+        guard let path = data["path"] as? String,
+              let content = data["content"] as? String else {
+            logger.error("Invalid data format for writeFileWithData")
+            return false
+        }
+        
+        return writeFile(path, content: content)
     }
     
     // MARK: - 私有辅助方法
