@@ -76,3 +76,15 @@ class LaunchModeHandler: ModeHandler {
         return viewModel.launchSelectedApp()
     }
 }
+
+// MARK: - 启动命令建议提供器
+struct LaunchCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type to search applications",
+            "Press ↑↓ arrows or numbers 1-6 to select",
+            "Type / to see all commands",
+            "Press Esc to close"
+        ]
+    }
+}

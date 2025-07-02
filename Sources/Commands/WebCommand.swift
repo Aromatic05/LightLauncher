@@ -162,3 +162,15 @@ class WebModeHandler: ModeHandler {
         return mainProcessor?.getProcessor(for: .web)?.executeAction(at: index, in: viewModel) ?? false
     }
 }
+
+// MARK: - 网页命令建议提供器
+struct WebCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type after /w to open website or URL",
+            "Press Enter to open in browser",
+            "Delete /w prefix to return to launch mode", 
+            "Press Esc to close"
+        ]
+    }
+}

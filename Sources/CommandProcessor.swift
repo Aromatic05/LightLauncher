@@ -128,7 +128,7 @@ class MainCommandProcessor: ObservableObject {
     }
     
     func getCommandSuggestions(for text: String) -> [LauncherCommand] {
-        return LauncherCommand.getCommandSuggestions(for: text)
+        return CommandSuggestionManager.getSuggestions(for: text)
     }
     
     func shouldShowCommandSuggestions() -> Bool {
@@ -153,8 +153,13 @@ class MainCommandProcessor: ObservableObject {
     }
 }
 
-// MARK: - 命令建议提供器
-struct CommandSuggestionProvider {
+// MARK: - 命令建议提供器协议
+protocol CommandSuggestionProvider {
+    static func getHelpText() -> [String]
+}
+
+// MARK: - 通用命令建议管理器
+struct CommandSuggestionManager {
     static func getSuggestions(for text: String) -> [LauncherCommand] {
         if text.isEmpty {
             return []
@@ -172,48 +177,17 @@ struct CommandSuggestionProvider {
     static func getHelpText(for mode: LauncherMode) -> [String] {
         switch mode {
         case .launch:
-            return [
-                "Type to search applications",
-                "Press ↑↓ arrows or numbers 1-6 to select",
-                "Type / to see all commands",
-                "Press Esc to close"
-            ]
+            return LaunchCommandSuggestionProvider.getHelpText()
         case .kill:
-            return [
-                "Type after /k to search running apps",
-                "Press ↑↓ arrows or numbers 1-6 to select", 
-                "Delete /k prefix to return to launch mode",
-                "Press Esc to close"
-            ]
+            return KillCommandSuggestionProvider.getHelpText()
         case .search:
-            return [
-                "Type after /s to search the web",
-                "Press Enter to execute search",
-                "Delete /s prefix to return to launch mode",
-                "Press Esc to close"
-            ]
+            return SearchCommandSuggestionProvider.getHelpText()
         case .web:
-            return [
-                "Type after /w to open website or URL",
-                "Press Enter to open in browser",
-                "Delete /w prefix to return to launch mode", 
-                "Press Esc to close"
-            ]
+            return WebCommandSuggestionProvider.getHelpText()
         case .terminal:
-            return [
-                "Type after /t to execute terminal command",
-                "Press Enter to run in Terminal",
-                "Delete /t prefix to return to launch mode",
-                "Press Esc to close"
-            ]
+            return TerminalCommandSuggestionProvider.getHelpText()
         case .file:
-            return [
-                "Browse files and folders starting from home directory",
-                "Press Enter to open files or navigate folders",
-                "Press Space to open current folder in Finder",
-                "Delete /o prefix to return to launch mode",
-                "Press Esc to close"
-            ]
+            return FileCommandSuggestionProvider.getHelpText()
         }
     }
 }

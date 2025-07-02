@@ -116,3 +116,15 @@ class KillModeHandler: ModeHandler {
         return viewModel.killSelectedApp()
     }
 }
+
+// MARK: - 關閉應用命令建議提供器
+struct KillCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type after /k to search running apps",
+            "Press ↑↓ arrows or numbers 1-6 to select", 
+            "Delete /k prefix to return to launch mode",
+            "Press Esc to close"
+        ]
+    }
+}

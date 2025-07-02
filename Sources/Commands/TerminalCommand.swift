@@ -308,3 +308,15 @@ class TerminalModeHandler: ModeHandler {
         return mainProcessor?.getProcessor(for: .terminal)?.executeAction(at: index, in: viewModel) ?? false
     }
 }
+
+// MARK: - 终端命令建议提供器
+struct TerminalCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type after /t to execute terminal command",
+            "Press Enter to run in Terminal",
+            "Delete /t prefix to return to launch mode",
+            "Press Esc to close"
+        ]
+    }
+}

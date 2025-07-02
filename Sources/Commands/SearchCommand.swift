@@ -121,3 +121,15 @@ class SearchModeHandler: ModeHandler {
         return mainProcessor?.getProcessor(for: .search)?.executeAction(at: index, in: viewModel) ?? false
     }
 }
+
+// MARK: - 搜索命令建议提供器
+struct SearchCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type after /s to search the web",
+            "Press Enter to execute search",
+            "Delete /s prefix to return to launch mode",
+            "Press Esc to close"
+        ]
+    }
+}
