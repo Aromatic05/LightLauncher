@@ -22,7 +22,8 @@ class LauncherViewModel: ObservableObject {
     @Published var fileBrowserStartPaths: [FileBrowserStartPath] = []
     @Published var showStartPaths: Bool = true
 
-    private var allApps: [AppInfo] = []
+    // 将私有属性改为内部访问级别，供 Commands 扩展使用
+    var allApps: [AppInfo] = []
     private let appScanner: AppScanner
     private var cancellables = Set<AnyCancellable>()
     private let commandProcessor = MainCommandProcessor()
@@ -34,8 +35,8 @@ class LauncherViewModel: ObservableObject {
         return browserDataManager
     }
     
-    // 使用频率统计
-    private var appUsageCount: [String: Int] = [:]
+    // 使用频率统计 - 改为内部访问级别
+    var appUsageCount: [String: Int] = [:]
     private let userDefaults = UserDefaults.standard
     
     init(appScanner: AppScanner) {
@@ -46,6 +47,9 @@ class LauncherViewModel: ObservableObject {
         
         // 设置全局处理器注册
         ProcessorRegistry.shared.setMainProcessor(commandProcessor)
+        
+        // 手动注册所有处理器和模式处理器
+        registerAllProcessors()
     }
     
     private func initializeBrowserData() {
@@ -62,10 +66,11 @@ class LauncherViewModel: ObservableObject {
         appScanner.$applications
             .receive(on: DispatchQueue.main)
             .sink { [weak self] apps in
-                self?.allApps = apps
+                guard let self = self else { return }
+                self.allApps = apps
                 // 初始加载时，显示最常用的前6个应用
-                self?.filteredApps = self?.getMostUsedApps(from: apps, limit: 6) ?? []
-                self?.selectedIndex = 0
+                self.filteredApps = self.getMostUsedApps(from: apps, limit: 6)
+                self.selectedIndex = 0
             }
             .store(in: &cancellables)
         
@@ -119,20 +124,6 @@ class LauncherViewModel: ObservableObject {
         selectedIndex = 0
     }
     
-    func selectAppByNumber(_ number: Int) -> Bool {
-        let index = number - 1 // 转换为0基础索引
-        
-        switch mode {
-        case .launch:
-            return selectAppByNumber(number)
-        case .kill:
-            return selectKillAppByNumber(number)
-        case .web, .search, .terminal, .file:
-            // 这些模式不支持数字选择，只能通过方向键和回车选择
-            return false
-        }
-    }
-    
     // MARK: - 导航和选择
     
     func moveSelectionUp() {
@@ -182,21 +173,7 @@ class LauncherViewModel: ObservableObject {
         userDefaults.set(appUsageCount, forKey: "appUsageCount")
     }
     
-    private func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
-        return apps
-            .sorted { app1, app2 in
-                let usage1 = appUsageCount[app1.name, default: 0]
-                let usage2 = appUsageCount[app2.name, default: 0]
-                if usage1 != usage2 {
-                    return usage1 > usage2
-                }
-                return app1.name.localizedCaseInsensitiveCompare(app2.name) == .orderedAscending
-            }
-            .prefix(limit)
-            .map { $0 }
-    }
-    
-    private func getCurrentItems() -> [Any] {
+    func getCurrentItems() -> [Any] {
         switch mode {
         case .launch:
             return filteredApps
@@ -219,5 +196,50 @@ class LauncherViewModel: ObservableObject {
             // 文件模式：显示起始路径或当前目录的文件和文件夹
             return showStartPaths ? fileBrowserStartPaths : currentFiles
         }
+    }
+    
+    // MARK: - 辅助方法供内部使用
+    
+    // 暴露给 Commands 扩展使用的保存方法
+    func saveUsageDataPublic() {
+        saveUsageData()
+    }
+    
+    private func registerAllProcessors() {
+        // 注册启动模式处理器
+        let launchProcessor = LaunchCommandProcessor()
+        let launchModeHandler = LaunchModeHandler()
+        commandProcessor.registerProcessor(launchProcessor)
+        commandProcessor.registerModeHandler(launchModeHandler)
+        
+        // 注册关闭应用处理器
+        let killProcessor = KillCommandProcessor()
+        let killModeHandler = KillModeHandler()
+        commandProcessor.registerProcessor(killProcessor)
+        commandProcessor.registerModeHandler(killModeHandler)
+        
+        // 注册搜索处理器
+        let searchProcessor = SearchCommandProcessor()
+        let searchModeHandler = SearchModeHandler()
+        commandProcessor.registerProcessor(searchProcessor)
+        commandProcessor.registerModeHandler(searchModeHandler)
+        
+        // 注册网页处理器
+        let webProcessor = WebCommandProcessor()
+        let webModeHandler = WebModeHandler()
+        commandProcessor.registerProcessor(webProcessor)
+        commandProcessor.registerModeHandler(webModeHandler)
+        
+        // 注册终端处理器
+        let terminalProcessor = TerminalCommandProcessor()
+        let terminalModeHandler = TerminalModeHandler()
+        commandProcessor.registerProcessor(terminalProcessor)
+        commandProcessor.registerModeHandler(terminalModeHandler)
+        
+        // 注册文件处理器
+        let fileProcessor = FileCommandProcessor()
+        let fileModeHandler = FileModeHandler()
+        commandProcessor.registerProcessor(fileProcessor)
+        commandProcessor.registerModeHandler(fileModeHandler)
     }
 }

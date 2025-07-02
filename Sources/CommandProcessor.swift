@@ -18,7 +18,22 @@ protocol ModeHandler {
 @MainActor
 extension ModeHandler {
     func shouldSwitchToLaunchMode(for text: String) -> Bool {
-        return !text.hasPrefix(prefix)
+        // 如果是其他模式的命令前缀，不切换到launch模式（让上层命令解析器处理）
+        if text.hasPrefix("/") {
+            let otherPrefixes = ["/k", "/s", "/w", "/t", "/o"]
+            for otherPrefix in otherPrefixes {
+                if text.hasPrefix(otherPrefix) && otherPrefix != prefix {
+                    return false // 让上层处理其他模式的命令
+                }
+            }
+        }
+        
+        // 如果当前模式有前缀且输入不匹配该前缀，切换回launch模式
+        if !prefix.isEmpty && !text.hasPrefix(prefix) {
+            return true
+        }
+        
+        return false
     }
     
     func extractSearchText(from text: String) -> String {
@@ -91,12 +106,17 @@ class MainCommandProcessor: ObservableObject {
         }
     }
     
+    // 保持向后兼容
+    func getProcessor(for mode: LauncherMode) -> CommandProcessor? {
+        return getCommandProcessor(for: mode)
+    }
+    
     func processInput(_ text: String, in viewModel: LauncherViewModel) -> Bool {
-        // 在启动模式下检查命令
-        if viewModel.mode == .launch {
-            if let command = LauncherCommand.parseCommand(from: text) {
-                let processor = processors.first { $0.canHandle(command: command.trigger) }
-                return processor?.process(command: command.trigger, in: viewModel) ?? false
+        // 首先尝试解析命令（在任何模式下都可以切换）
+        if let command = LauncherCommand.parseCommand(from: text) {
+            let processor = processors.first { $0.canHandle(command: command.trigger) }
+            if let processor = processor {
+                return processor.process(command: command.trigger, in: viewModel)
             }
         }
         
@@ -107,8 +127,10 @@ class MainCommandProcessor: ObservableObject {
         
         // 检查是否应该切换回启动模式
         if modeHandler.shouldSwitchToLaunchMode(for: text) {
+            // 切换到启动模式，但不自动清空searchText
             viewModel.switchToLaunchMode()
-            if !text.isEmpty {
+            // 如果不是以"/"开头的前缀，立即搜索
+            if !text.hasPrefix("/") && !text.isEmpty {
                 viewModel.filterApps(searchText: text)
             }
             return true

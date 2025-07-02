@@ -98,21 +98,6 @@ extension LauncherViewModel {
         let historyItems = historyManager.getMatchingHistory(for: searchText, limit: 10)
         updateSearchHistory(historyItems)
     }
-}
-
-// MARK: - LauncherViewModel 扩展 - 搜索模式
-extension LauncherViewModel {
-    func switchToSearchMode() {
-        mode = .search
-        selectedIndex = 0
-        
-        // 立即加载搜索历史
-        let historyManager = SearchHistoryManager.shared
-        let searchText = self.searchText.hasPrefix("/s ") ? 
-            String(self.searchText.dropFirst(3)) : ""
-        let historyItems = historyManager.getMatchingHistory(for: searchText, limit: 10)
-        updateSearchHistory(historyItems)
-    }
     
     func updateSearchHistory(_ items: [SearchHistoryItem]) {
         searchHistory = items
@@ -127,7 +112,28 @@ extension LauncherViewModel {
         guard index >= 0 && index < searchHistory.count else { return false }
         let item = searchHistory[index]
         
-        // 直接执行网页搜索，避免递归
+        return executeWebSearch(item.query)
+    }
+    
+    func clearSearchHistory() {
+        SearchHistoryManager.shared.clearHistory()
+        searchHistory = []
+    }
+    
+    func removeSearchHistoryItem(_ item: SearchHistoryItem) {
+        SearchHistoryManager.shared.removeSearch(item: item)
+        searchHistory = SearchHistoryManager.shared.searchHistory
+    }
+    
+    func extractCleanSearchText() -> String {
+        let prefix = "/s "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    func executeWebSearch(_ query: String) -> Bool {
         let configManager = ConfigManager.shared
         let engine = configManager.config.modes.defaultSearchEngine
         
@@ -143,35 +149,17 @@ extension LauncherViewModel {
             searchEngine = "https://www.google.com/search?q={query}"
         }
         
-        let encodedQuery = item.query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? item.query
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
         let searchURL = searchEngine.replacingOccurrences(of: "{query}", with: encodedQuery)
         
         guard let url = URL(string: searchURL) else { return false }
         
-        // 保存到搜索历史（更新使用时间）
-        SearchHistoryManager.shared.addSearch(query: item.query, searchEngine: engine)
+        // 保存到搜索历史
+        SearchHistoryManager.shared.addSearch(query: query, searchEngine: engine)
         
         NSWorkspace.shared.open(url)
         resetToLaunchMode()
         return true
-    }
-    
-    func clearSearchHistory() {
-        SearchHistoryManager.shared.clearHistory()
-        searchHistory = []
-    }
-    
-    func removeSearchHistoryItem(_ item: SearchHistoryItem) {
-        SearchHistoryManager.shared.removeSearch(item: item)
-        searchHistory = SearchHistoryManager.shared.searchHistory
-    }
-    
-    private func extractCleanSearchText() -> String {
-        let prefix = "/s "
-        if searchText.hasPrefix(prefix) {
-            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -180,20 +168,22 @@ extension LauncherViewModel {
 class SearchModeHandler: ModeHandler {
     let prefix = "/s"
     let mode = LauncherMode.search
-    weak var mainProcessor: MainCommandProcessor?
-    
-    init(mainProcessor: MainCommandProcessor) {
-        self.mainProcessor = mainProcessor
-    }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        if let processor = mainProcessor?.getProcessor(for: .search) {
-            processor.handleSearch(text: text, in: viewModel)
-        }
+        viewModel.switchToSearchMode()
+        viewModel.updateSearchHistory(SearchHistoryManager.shared.searchHistory)
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return mainProcessor?.getProcessor(for: .search)?.executeAction(at: index, in: viewModel) ?? false
+        if index == 0 {
+            // 当前搜索项
+            let cleanText = viewModel.extractCleanSearchText()
+            return viewModel.executeWebSearch(cleanText)
+        } else {
+            // 历史记录项
+            let historyIndex = index - 1
+            return viewModel.executeSearchHistoryItem(at: historyIndex)
+        }
     }
 }
 
@@ -210,6 +200,7 @@ struct SearchCommandSuggestionProvider: CommandSuggestionProvider {
 }
 
 // MARK: - 自动注册处理器
+@MainActor
 private let _autoRegisterSearchProcessor: Void = {
     let processor = SearchCommandProcessor()
     let modeHandler = SearchModeHandler()

@@ -140,12 +140,52 @@ extension LauncherViewModel {
         browserItems = self.getBrowserDataManager().getDefaultBrowserItems(limit: 10)
     }
     
-    private func extractCleanWebText() -> String {
+    func extractCleanWebText() -> String {
         let prefix = "/w "
         if searchText.hasPrefix(prefix) {
             return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    func filterBrowserItems(searchText: String) {
+        if searchText.isEmpty {
+            browserItems = []
+        } else {
+            browserItems = self.getBrowserDataManager().searchBrowserData(query: searchText)
+        }
+    }
+    
+    func openWebURL(_ url: String) -> Bool {
+        var urlString = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        // 如果不包含协议，默认添加 https://
+        if !urlString.contains("://") {
+            if urlString.contains(".") {
+                // 看起来像是网址
+                urlString = "https://" + urlString
+            } else {
+                // 看起来像是搜索词，使用默认搜索引擎
+                return executeWebSearch(urlString)
+            }
+        }
+        
+        guard let url = URL(string: urlString) else { return false }
+        
+        NSWorkspace.shared.open(url)
+        resetToLaunchMode()
+        return true
+    }
+    
+    func openBrowserItem(at index: Int) -> Bool {
+        guard index >= 0 && index < browserItems.count else { return false }
+        let item = browserItems[index]
+        
+        guard let url = URL(string: item.url) else { return false }
+        
+        NSWorkspace.shared.open(url)
+        resetToLaunchMode()
+        return true
     }
 }
 
@@ -154,20 +194,24 @@ extension LauncherViewModel {
 class WebModeHandler: ModeHandler {
     let prefix = "/w"
     let mode = LauncherMode.web
-    weak var mainProcessor: MainCommandProcessor?
-    
-    init(mainProcessor: MainCommandProcessor) {
-        self.mainProcessor = mainProcessor
-    }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        if let processor = mainProcessor?.getProcessor(for: .web) {
-            processor.handleSearch(text: text, in: viewModel)
-        }
+        viewModel.switchToWebMode()
+        // 更新浏览器项目列表
+        let cleanText = viewModel.extractCleanWebText()
+        viewModel.filterBrowserItems(searchText: cleanText)
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return mainProcessor?.getProcessor(for: .web)?.executeAction(at: index, in: viewModel) ?? false
+        if index == 0 {
+            // 当前输入项
+            let cleanText = viewModel.extractCleanWebText()
+            return viewModel.openWebURL(cleanText)
+        } else {
+            // 浏览器项目
+            let browserIndex = index - 1
+            return viewModel.openBrowserItem(at: browserIndex)
+        }
     }
 }
 
@@ -184,6 +228,7 @@ struct WebCommandSuggestionProvider: CommandSuggestionProvider {
 }
 
 // MARK: - 自动注册处理器
+@MainActor
 private let _autoRegisterWebProcessor: Void = {
     let processor = WebCommandProcessor()
     let modeHandler = WebModeHandler()

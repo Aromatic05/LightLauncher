@@ -286,12 +286,35 @@ extension LauncherViewModel {
         selectedIndex = 0
     }
     
-    private func extractCleanTerminalText() -> String {
+    func extractCleanTerminalText() -> String {
         let prefix = "/t "
         if searchText.hasPrefix(prefix) {
             return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    func executeTerminalCommand(_ command: String) -> Bool {
+        guard !command.isEmpty else { return false }
+        
+        // 创建AppleScript来执行终端命令
+        let script = """
+            tell application "Terminal"
+                activate
+                do script "\(command.replacingOccurrences(of: "\"", with: "\\\""))"
+            end tell
+        """
+        
+        var error: NSDictionary?
+        if let scriptObject = NSAppleScript(source: script) {
+            scriptObject.executeAndReturnError(&error)
+            if error == nil {
+                resetToLaunchMode()
+                return true
+            }
+        }
+        
+        return false
     }
 }
 
@@ -300,20 +323,14 @@ extension LauncherViewModel {
 class TerminalModeHandler: ModeHandler {
     let prefix = "/t"
     let mode = LauncherMode.terminal
-    weak var mainProcessor: MainCommandProcessor?
-    
-    init(mainProcessor: MainCommandProcessor) {
-        self.mainProcessor = mainProcessor
-    }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        if let processor = mainProcessor?.getProcessor(for: .terminal) {
-            processor.handleSearch(text: text, in: viewModel)
-        }
+        viewModel.switchToTerminalMode()
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return mainProcessor?.getProcessor(for: .terminal)?.executeAction(at: index, in: viewModel) ?? false
+        let cleanText = viewModel.extractCleanTerminalText()
+        return viewModel.executeTerminalCommand(cleanText)
     }
 }
 
@@ -330,6 +347,7 @@ struct TerminalCommandSuggestionProvider: CommandSuggestionProvider {
 }
 
 // MARK: - 自动注册处理器
+@MainActor
 private let _autoRegisterTerminalProcessor: Void = {
     let processor = TerminalCommandProcessor()
     let modeHandler = TerminalModeHandler()

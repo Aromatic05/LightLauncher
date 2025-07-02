@@ -65,7 +65,11 @@ class LaunchModeHandler: ModeHandler {
     let mode = LauncherMode.launch
     
     func shouldSwitchToLaunchMode(for text: String) -> Bool {
-        return false // 已经在启动模式
+        return false // 已经在启动模式，不需要切换
+    }
+    
+    func extractSearchText(from text: String) -> String {
+        return text // Launch模式没有前缀，直接返回原文本
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
@@ -143,6 +147,12 @@ struct AppMatch {
 extension LauncherViewModel {
     func switchToLaunchMode() {
         mode = .launch
+        filteredApps = getMostUsedApps(from: allApps, limit: 6)
+        selectedIndex = 0
+    }
+    
+    func switchToLaunchModeAndClear() {
+        mode = .launch
         searchText = ""
         filteredApps = getMostUsedApps(from: allApps, limit: 6)
         selectedIndex = 0
@@ -191,7 +201,12 @@ extension LauncherViewModel {
         return success
     }
     
-    private func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
+    func incrementUsage(for appName: String) {
+        appUsageCount[appName, default: 0] += 1
+        saveUsageDataPublic()
+    }
+    
+    func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
         return apps
             .sorted { app1, app2 in
                 let usage1 = appUsageCount[app1.name, default: 0]
@@ -203,11 +218,6 @@ extension LauncherViewModel {
             }
             .prefix(limit)
             .map { $0 }
-    }
-    
-    private func incrementUsage(for appName: String) {
-        appUsageCount[appName, default: 0] += 1
-        saveUsageData()
     }
     
     func selectAppByNumber(_ number: Int) -> Bool {
@@ -231,6 +241,7 @@ extension LauncherViewModel {
 }
 
 // MARK: - 自动注册处理器
+@MainActor
 private let _autoRegisterLaunchProcessor: Void = {
     let processor = LaunchCommandProcessor()
     let modeHandler = LaunchModeHandler()

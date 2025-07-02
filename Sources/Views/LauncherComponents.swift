@@ -100,7 +100,7 @@ struct EmptyStateView: View {
                     .foregroundColor(.secondary.opacity(0.7))
             } else {
                 VStack(spacing: 4) {
-                    ForEach(CommandSuggestionProvider.getHelpText(for: mode), id: \.self) { helpText in
+                    ForEach(CommandSuggestionManager.getHelpText(for: mode), id: \.self) { helpText in
                         Text(helpText)
                             .font(.system(size: 14))
                             .foregroundColor(.secondary.opacity(0.7))

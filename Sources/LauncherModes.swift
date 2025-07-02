@@ -104,7 +104,9 @@ struct LauncherCommand {
     
     @MainActor
     static func parseCommand(from text: String) -> LauncherCommand? {
-        return getEnabledCommands().first { $0.trigger == text }
+        return getEnabledCommands().first { command in
+            text == command.trigger || text.hasPrefix(command.trigger + " ")
+        }
     }
     
     @MainActor

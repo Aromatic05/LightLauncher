@@ -122,8 +122,6 @@ class KillCommandProcessor: CommandProcessor, ModeHandler {
     func process(command: String, in viewModel: LauncherViewModel) -> Bool {
         if command == "/k" {
             viewModel.switchToKillMode()
-            // 设置搜索文本为 "/k"，保持前缀显示
-            viewModel.searchText = "/k"
             return true
         }
         return false
@@ -166,6 +164,7 @@ struct KillCommandSuggestionProvider: CommandSuggestionProvider {
 }
 
 // MARK: - 自动注册处理器
+@MainActor
 private let _autoRegisterKillProcessor: Void = {
     let processor = KillCommandProcessor()
     let modeHandler = KillModeHandler()
