@@ -73,6 +73,35 @@ class RunningAppsManager: @unchecked Sendable {
     }
 }
 
+// MARK: - 关闭应用命令处理器
+@MainActor
+class KillCommandProcessor: CommandProcessor, ModeHandler {
+    var prefix: String { "/k" }
+    var mode: LauncherMode { .kill }
+    
+    func canHandle(command: String) -> Bool {
+        return command == "/k"
+    }
+    
+    func process(command: String, in viewModel: LauncherViewModel) -> Bool {
+        if command == "/k" {
+            viewModel.switchToKillMode()
+            // 设置搜索文本为 "/k"，保持前缀显示
+            viewModel.searchText = "/k"
+            return true
+        }
+        return false
+    }
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        viewModel.filterRunningApps(searchText: text)
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return viewModel.killSelectedApp()
+    }
+}
+
 // MARK: - 关闭应用模式处理器
 @MainActor
 class KillModeHandler: ModeHandler {

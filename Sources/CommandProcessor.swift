@@ -153,61 +153,6 @@ class MainCommandProcessor: ObservableObject {
     }
 }
 
-// MARK: - 启动命令处理器
-@MainActor
-class LaunchCommandProcessor: CommandProcessor, ModeHandler {
-    var prefix: String { "" }
-    var mode: LauncherMode { .launch }
-    
-    func canHandle(command: String) -> Bool {
-        return command.isEmpty || !command.hasPrefix("/")
-    }
-    
-    func process(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 启动模式是默认模式，不需要特殊处理
-        return false
-    }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        viewModel.filterApps(searchText: text)
-    }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return viewModel.launchSelectedApp()
-    }
-}
-
-// MARK: - 关闭应用命令处理器
-@MainActor
-class KillCommandProcessor: CommandProcessor, ModeHandler {
-    var prefix: String { "/k" }
-    var mode: LauncherMode { .kill }
-    
-    func canHandle(command: String) -> Bool {
-        return command == "/k"
-    }
-    
-    func process(command: String, in viewModel: LauncherViewModel) -> Bool {
-        if command == "/k" {
-            viewModel.switchToKillMode()
-            // 设置搜索文本为 "/k"，保持前缀显示
-            viewModel.searchText = "/k"
-            return true
-        }
-        return false
-    }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        viewModel.filterRunningApps(searchText: text)
-    }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return viewModel.killSelectedApp()
-    }
-}
-
-// MARK: - 具体模式处理器实现
-
 // MARK: - 命令建议提供器
 struct CommandSuggestionProvider {
     static func getSuggestions(for text: String) -> [LauncherCommand] {

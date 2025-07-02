@@ -34,6 +34,30 @@ struct LaunchCommand: LauncherCommandHandler {
     }
 }
 
+// MARK: - 启动命令处理器
+@MainActor
+class LaunchCommandProcessor: CommandProcessor, ModeHandler {
+    var prefix: String { "" }
+    var mode: LauncherMode { .launch }
+    
+    func canHandle(command: String) -> Bool {
+        return command.isEmpty || !command.hasPrefix("/")
+    }
+    
+    func process(command: String, in viewModel: LauncherViewModel) -> Bool {
+        // 启动模式是默认模式，不需要特殊处理
+        return false
+    }
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        viewModel.filterApps(searchText: text)
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return viewModel.launchSelectedApp()
+    }
+}
+
 // MARK: - 启动模式处理器
 @MainActor
 class LaunchModeHandler: ModeHandler {
