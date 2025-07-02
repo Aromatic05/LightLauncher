@@ -140,3 +140,25 @@ extension LauncherViewModel {
         browserItems = self.getBrowserDataManager().getDefaultBrowserItems(limit: 10)
     }
 }
+
+// MARK: - 网页模式处理器
+@MainActor
+class WebModeHandler: ModeHandler {
+    let prefix = "/w"
+    let mode = LauncherMode.web
+    weak var mainProcessor: MainCommandProcessor?
+    
+    init(mainProcessor: MainCommandProcessor) {
+        self.mainProcessor = mainProcessor
+    }
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        if let processor = mainProcessor?.getProcessor(for: .web) {
+            processor.handleSearch(text: text, in: viewModel)
+        }
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return mainProcessor?.getProcessor(for: .web)?.executeAction(at: index, in: viewModel) ?? false
+    }
+}

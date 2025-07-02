@@ -277,8 +277,6 @@ class TerminalCommandProcessor: CommandProcessor {
             return false
         }
     }
-
-    // ...existing code...
 }
 
 // MARK: - LauncherViewModel 扩展
@@ -286,5 +284,27 @@ extension LauncherViewModel {
     func switchToTerminalMode() {
         mode = .terminal
         selectedIndex = 0
+    }
+}
+
+// MARK: - 终端模式处理器
+@MainActor
+class TerminalModeHandler: ModeHandler {
+    let prefix = "/t"
+    let mode = LauncherMode.terminal
+    weak var mainProcessor: MainCommandProcessor?
+    
+    init(mainProcessor: MainCommandProcessor) {
+        self.mainProcessor = mainProcessor
+    }
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        if let processor = mainProcessor?.getProcessor(for: .terminal) {
+            processor.handleSearch(text: text, in: viewModel)
+        }
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return mainProcessor?.getProcessor(for: .terminal)?.executeAction(at: index, in: viewModel) ?? false
     }
 }

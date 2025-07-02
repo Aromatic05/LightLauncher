@@ -99,3 +99,25 @@ extension LauncherViewModel {
         updateSearchHistory(historyItems)
     }
 }
+
+// MARK: - 搜索模式处理器
+@MainActor
+class SearchModeHandler: ModeHandler {
+    let prefix = "/s"
+    let mode = LauncherMode.search
+    weak var mainProcessor: MainCommandProcessor?
+    
+    init(mainProcessor: MainCommandProcessor) {
+        self.mainProcessor = mainProcessor
+    }
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        if let processor = mainProcessor?.getProcessor(for: .search) {
+            processor.handleSearch(text: text, in: viewModel)
+        }
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return mainProcessor?.getProcessor(for: .search)?.executeAction(at: index, in: viewModel) ?? false
+    }
+}

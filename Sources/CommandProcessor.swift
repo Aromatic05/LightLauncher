@@ -2,6 +2,35 @@ import Foundation
 import AppKit
 import Combine
 
+// MARK: - 模式处理器协议
+@MainActor
+protocol ModeHandler {
+    var prefix: String { get }
+    var mode: LauncherMode { get }
+    
+    func shouldSwitchToLaunchMode(for text: String) -> Bool
+    func extractSearchText(from text: String) -> String
+    func handleSearch(text: String, in viewModel: LauncherViewModel)
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool
+}
+
+// MARK: - 默认模式处理器实现
+@MainActor
+extension ModeHandler {
+    func shouldSwitchToLaunchMode(for text: String) -> Bool {
+        return !text.hasPrefix(prefix)
+    }
+    
+    func extractSearchText(from text: String) -> String {
+        if text.hasPrefix(prefix + " ") {
+            return String(text.dropFirst(prefix.count + 1))
+        } else if text.hasPrefix(prefix) {
+            return String(text.dropFirst(prefix.count))
+        }
+        return text
+    }
+}
+
 // MARK: - 命令处理器协议
 @MainActor
 protocol CommandProcessor {
@@ -15,9 +44,11 @@ protocol CommandProcessor {
 @MainActor
 class MainCommandProcessor: ObservableObject {
     private var processors: [CommandProcessor] = []
+    private var modeHandlers: [LauncherMode: ModeHandler] = [:]
     
     init() {
         setupProcessors()
+        setupModeHandlers()
     }
     
     private func setupProcessors() {
@@ -31,95 +62,69 @@ class MainCommandProcessor: ObservableObject {
         ]
     }
     
-    func processInput(_ text: String, in viewModel: LauncherViewModel) -> Bool {
-        // 处理各种模式下的前缀删除
-        switch viewModel.mode {
-        case .kill:
-            if !text.hasPrefix("/k") {
-                viewModel.switchToLaunchMode()
-                if !text.isEmpty {
-                    viewModel.filterApps(searchText: text)
-                }
-                return true
-            } else {
-                let searchText = String(text.dropFirst(2)) // 移除 "/k"
-                getCurrentProcessor(for: .kill)?.handleSearch(text: searchText, in: viewModel)
-                return false
-            }
-            
-        case .search:
-            if !text.hasPrefix("/s") {
-                viewModel.switchToLaunchMode()
-                if !text.isEmpty {
-                    viewModel.filterApps(searchText: text)
-                }
-                return true
-            } else {
-                // 正确处理 "/s " 前缀
-                let searchText = text.hasPrefix("/s ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
-                getCurrentProcessor(for: .search)?.handleSearch(text: searchText, in: viewModel)
-                return false
-            }
-            
-        case .web:
-            if !text.hasPrefix("/w") {
-                viewModel.switchToLaunchMode()
-                if !text.isEmpty {
-                    viewModel.filterApps(searchText: text)
-                }
-                return true
-            } else {
-                // 正确处理 "/w " 前缀
-                let searchText = text.hasPrefix("/w ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
-                getCurrentProcessor(for: .web)?.handleSearch(text: searchText, in: viewModel)
-                return false
-            }
-            
-        case .terminal:
-            if !text.hasPrefix("/t") {
-                viewModel.switchToLaunchMode()
-                if !text.isEmpty {
-                    viewModel.filterApps(searchText: text)
-                }
-                return true
-            } else {
-                // 正确处理 "/t " 前缀
-                let searchText = text.hasPrefix("/t ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
-                getCurrentProcessor(for: .terminal)?.handleSearch(text: searchText, in: viewModel)
-                return false
-            }
-            
-        case .file:
-            if !text.hasPrefix("/o") {
-                viewModel.switchToLaunchMode()
-                if !text.isEmpty {
-                    viewModel.filterApps(searchText: text)
-                }
-                return true
-            } else {
-                // 正确处理 "/o " 前缀
-                let searchText = text.hasPrefix("/o ") ? String(text.dropFirst(3)) : String(text.dropFirst(2))
-                getCurrentProcessor(for: .file)?.handleSearch(text: searchText, in: viewModel)
-                return false
-            }
-            
+    private func setupModeHandlers() {
+        modeHandlers = [
+            .launch: LaunchModeHandler(),
+            .kill: KillModeHandler(),
+            .search: SearchModeHandler(mainProcessor: self),
+            .web: WebModeHandler(mainProcessor: self),
+            .terminal: TerminalModeHandler(mainProcessor: self),
+            .file: FileModeHandler(mainProcessor: self)
+        ]
+    }
+    
+    // 为模式处理器提供访问CommandProcessor的方法
+    func getProcessor(for mode: LauncherMode) -> CommandProcessor? {
+        switch mode {
         case .launch:
-            // 检查是否是命令
+            return processors.first { $0 is LaunchCommandProcessor }
+        case .kill:
+            return processors.first { $0 is KillCommandProcessor }
+        case .search:
+            return processors.first { $0 is SearchCommandProcessor }
+        case .web:
+            return processors.first { $0 is WebCommandProcessor }
+        case .terminal:
+            return processors.first { $0 is TerminalCommandProcessor }
+        case .file:
+            return processors.first { $0 is FileCommandProcessor }
+        }
+    }
+    
+    func processInput(_ text: String, in viewModel: LauncherViewModel) -> Bool {
+        // 在启动模式下检查命令
+        if viewModel.mode == .launch {
             if let command = LauncherCommand.parseCommand(from: text) {
                 let processor = processors.first { $0.canHandle(command: command.trigger) }
                 return processor?.process(command: command.trigger, in: viewModel) ?? false
             }
-            
-            // 否则处理为搜索
-            let currentProcessor = getCurrentProcessor(for: viewModel.mode)
-            currentProcessor?.handleSearch(text: text, in: viewModel)
+        }
+        
+        // 获取当前模式的处理器
+        guard let modeHandler = modeHandlers[viewModel.mode] else {
             return false
         }
+        
+        // 检查是否应该切换回启动模式
+        if modeHandler.shouldSwitchToLaunchMode(for: text) {
+            viewModel.switchToLaunchMode()
+            if !text.isEmpty {
+                viewModel.filterApps(searchText: text)
+            }
+            return true
+        }
+        
+        // 提取搜索文本并处理
+        let searchText = modeHandler.extractSearchText(from: text)
+        modeHandler.handleSearch(text: searchText, in: viewModel)
+        return false
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        let processor = getCurrentProcessor(for: viewModel.mode)
-        return processor?.executeAction(at: index, in: viewModel) ?? false
+        if let modeHandler = modeHandlers[viewModel.mode] {
+            return modeHandler.executeAction(at: index, in: viewModel)
+        }
+        return false
     }
     
     func getCommandSuggestions(for text: String) -> [LauncherCommand] {
@@ -150,7 +155,10 @@ class MainCommandProcessor: ObservableObject {
 
 // MARK: - 启动命令处理器
 @MainActor
-class LaunchCommandProcessor: CommandProcessor {
+class LaunchCommandProcessor: CommandProcessor, ModeHandler {
+    var prefix: String { "" }
+    var mode: LauncherMode { .launch }
+    
     func canHandle(command: String) -> Bool {
         return command.isEmpty || !command.hasPrefix("/")
     }
@@ -171,7 +179,10 @@ class LaunchCommandProcessor: CommandProcessor {
 
 // MARK: - 关闭应用命令处理器
 @MainActor
-class KillCommandProcessor: CommandProcessor {
+class KillCommandProcessor: CommandProcessor, ModeHandler {
+    var prefix: String { "/k" }
+    var mode: LauncherMode { .kill }
+    
     func canHandle(command: String) -> Bool {
         return command == "/k"
     }
@@ -194,6 +205,8 @@ class KillCommandProcessor: CommandProcessor {
         return viewModel.killSelectedApp()
     }
 }
+
+// MARK: - 具体模式处理器实现
 
 // MARK: - 命令建议提供器
 struct CommandSuggestionProvider {

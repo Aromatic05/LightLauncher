@@ -72,3 +72,18 @@ class RunningAppsManager: @unchecked Sendable {
         return false
     }
 }
+
+// MARK: - 关闭应用模式处理器
+@MainActor
+class KillModeHandler: ModeHandler {
+    let prefix = "/k"
+    let mode = LauncherMode.kill
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        viewModel.filterRunningApps(searchText: text)
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return viewModel.killSelectedApp()
+    }
+}

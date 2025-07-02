@@ -33,3 +33,22 @@ struct LaunchCommand: LauncherCommandHandler {
         return viewModel.launchSelectedApp()
     }
 }
+
+// MARK: - 启动模式处理器
+@MainActor
+class LaunchModeHandler: ModeHandler {
+    let prefix = ""
+    let mode = LauncherMode.launch
+    
+    func shouldSwitchToLaunchMode(for text: String) -> Bool {
+        return false // 已经在启动模式
+    }
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        viewModel.filterApps(searchText: text)
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return viewModel.launchSelectedApp()
+    }
+}

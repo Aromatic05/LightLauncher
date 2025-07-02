@@ -221,3 +221,25 @@ extension LauncherViewModel {
         }
     }
 }
+
+// MARK: - 文件模式处理器
+@MainActor
+class FileModeHandler: ModeHandler {
+    let prefix = "/o"
+    let mode = LauncherMode.file
+    weak var mainProcessor: MainCommandProcessor?
+    
+    init(mainProcessor: MainCommandProcessor) {
+        self.mainProcessor = mainProcessor
+    }
+    
+    func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        if let processor = mainProcessor?.getProcessor(for: .file) {
+            processor.handleSearch(text: text, in: viewModel)
+        }
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        return mainProcessor?.getProcessor(for: .file)?.executeAction(at: index, in: viewModel) ?? false
+    }
+}
