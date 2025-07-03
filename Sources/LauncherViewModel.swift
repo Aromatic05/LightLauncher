@@ -31,30 +31,26 @@ class LauncherViewModel: ObservableObject {
 
     // 将私有属性改为内部访问级别，供 Commands 扩展使用
     var allApps: [AppInfo] = []
+    // 使用频率统计 - 改为内部访问级别
+    var appUsageCount: [String: Int] = [:]
+    private let userDefaults = UserDefaults.standard
     private let appScanner: AppScanner
     private var cancellables = Set<AnyCancellable>()
     private let commandProcessor = MainCommandProcessor()
     private let runningAppsManager = RunningAppsManager.shared
     private let browserDataManager = BrowserDataManager.shared
     
-    // 公共方法供其他地方访问
-    func getBrowserDataManager() -> BrowserDataManager {
-        return browserDataManager
-    }
-    
-    // 使用频率统计 - 改为内部访问级别
-    var appUsageCount: [String: Int] = [:]
-    private let userDefaults = UserDefaults.standard
-    
+    // 新增 Facade 属性
+    lazy var facade: LauncherFacade = LauncherFacade(viewModel: self)
+
     init(appScanner: AppScanner) {
         self.appScanner = appScanner
+        // 其余初始化和方法调用
         loadUsageData()
         setupObservers()
         initializeBrowserData()
-        
         // 设置全局处理器注册
         ProcessorRegistry.shared.setMainProcessor(commandProcessor)
-        
         // 手动注册所有处理器和模式处理器
         registerAllProcessors()
     }
@@ -198,13 +194,13 @@ class LauncherViewModel: ObservableObject {
     // MARK: - 使用频率管理
     
     private func loadUsageData() {
-        if let data = userDefaults.object(forKey: "appUsageCount") as? [String: Int] {
+        if let data = UserDefaults.standard.object(forKey: "appUsageCount") as? [String: Int] {
             appUsageCount = data
         }
     }
     
     private func saveUsageData() {
-        userDefaults.set(appUsageCount, forKey: "appUsageCount")
+        UserDefaults.standard.set(appUsageCount, forKey: "appUsageCount")
     }
     
     func getCurrentItems() -> [Any] {

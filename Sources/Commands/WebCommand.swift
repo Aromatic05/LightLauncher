@@ -107,6 +107,10 @@ class WebCommandProcessor: CommandProcessor {
 
 // MARK: - LauncherViewModel 扩展
 extension LauncherViewModel {
+    func getBrowserDataManager() -> BrowserDataManager {
+        return BrowserDataManager.shared
+    }
+
     func switchToWebMode() {
         mode = .web
         selectedIndex = 0
