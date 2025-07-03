@@ -68,14 +68,10 @@ class PluginPermissionManager: ObservableObject, @unchecked Sendable {
     
     @Published private(set) var pluginPermissions: [String: PluginPermissionConfig] = [:]
     
-    private let permissionsConfigPath: URL
     private let queue = DispatchQueue(label: "plugin.permissions", attributes: .concurrent)
     
     private init() {
-        let configDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/LightLauncher")
-        permissionsConfigPath = configDir.appendingPathComponent("plugin_permissions.json")
-        loadPermissions()
+        // 权限配置文件已废弃，不再加载/保存
     }
     
     // MARK: - 权限检查（线程安全）
@@ -98,35 +94,7 @@ class PluginPermissionManager: ObservableObject, @unchecked Sendable {
     }
     
     // MARK: - 数据持久化
-    private func loadPermissions() {
-        guard FileManager.default.fileExists(atPath: permissionsConfigPath.path) else {
-            return
-        }
-        do {
-            let data = try Data(contentsOf: permissionsConfigPath)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            pluginPermissions = try decoder.decode([String: PluginPermissionConfig].self, from: data)
-        } catch {
-            print("Failed to load plugin permissions: \(error)")
-        }
-    }
-    
-    private func savePermissions() {
-        do {
-            let configDir = permissionsConfigPath.deletingLastPathComponent()
-            if !FileManager.default.fileExists(atPath: configDir.path) {
-                try FileManager.default.createDirectory(at: configDir, withIntermediateDirectories: true, attributes: nil)
-            }
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(pluginPermissions)
-            try data.write(to: permissionsConfigPath)
-        } catch {
-            print("Failed to save plugin permissions: \(error)")
-        }
-    }
+    // 已废弃，不再持久化权限配置
     
     /// 由插件 manifest 初始化权限
     func initializePluginPermissions(pluginName: String, pluginCommand: String, permissions: [PluginPermissionSpec], pluginDirectory: String) {
@@ -135,9 +103,6 @@ class PluginPermissionManager: ObservableObject, @unchecked Sendable {
             if self.pluginPermissions[pluginCommand] == nil {
                 let config = PluginPermissionConfig(pluginName: pluginName, command: pluginCommand, permissions: permissions, pluginDirectory: pluginDirectory)
                 self.pluginPermissions[pluginCommand] = config
-                DispatchQueue.main.async {
-                    self.savePermissions()
-                }
             }
         }
     }

@@ -38,6 +38,19 @@ struct PluginSettingsView: View {
                     .controlSize(.regular)
                     .help("刷新插件列表")
                     
+                    // 重载插件配置文件
+                    Button(action: {
+                        ConfigManager.shared.pluginsConfig = ConfigManager.loadPluginsConfig(from: ConfigManager.shared.pluginsConfigURL) ?? PluginsConfig(plugins: [])
+                        pluginManager.reloadPlugins()
+                        refreshTrigger.toggle()
+                    }) {
+                        Image(systemName: "arrow.triangle.2.circlepath")
+                            .font(.system(size: 16))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                    .help("重载插件配置文件并重新发现插件")
+                    
                     // 打开插件文件夹
                     Button(action: {
                         let pluginsDir = FileManager.default.homeDirectoryForCurrentUser

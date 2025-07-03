@@ -36,7 +36,123 @@ class PluginManager: ObservableObject {
     /// 发现并加载所有插件
     func discoverPlugins() {
         Task {
-            await performPluginDiscovery()
+            await performPluginDiscoveryFromConfig()
+        }
+    }
+    
+    /// 生成 plugins.yaml 配置，自动发现所有插件
+    func buildPluginsConfig() -> PluginsConfig {
+        let pluginsDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/LightLauncher/plugins")
+        var metas: [PluginMeta] = []
+        if let pluginDirs = try? FileManager.default.contentsOfDirectory(at: pluginsDir, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) {
+            for dir in pluginDirs {
+                var isDir: ObjCBool = false
+                if FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue {
+                    // 读取 manifest.yaml/json
+                    let yamlManifest = dir.appendingPathComponent("manifest.yaml")
+                    let jsonManifest = dir.appendingPathComponent("manifest.json")
+                    var name = dir.lastPathComponent
+                    var command = "/" + name
+                    var version: String? = nil
+                    var desc: String? = nil
+                    if FileManager.default.fileExists(atPath: yamlManifest.path) {
+                        if let data = try? Data(contentsOf: yamlManifest),
+                           let dict = try? Yams.load(yaml: String(data: data, encoding: .utf8) ?? "") as? [String: Any] {
+                            name = dict["name"] as? String ?? name
+                            command = dict["command"] as? String ?? command
+                            version = dict["version"] as? String
+                            desc = dict["description"] as? String
+                        }
+                    } else if FileManager.default.fileExists(atPath: jsonManifest.path) {
+                        if let data = try? Data(contentsOf: jsonManifest),
+                           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            name = dict["name"] as? String ?? name
+                            command = dict["command"] as? String ?? command
+                            version = dict["version"] as? String
+                            desc = dict["description"] as? String
+                        }
+                    }
+                    let meta = PluginMeta(name: name, enabled: true, command: command, version: version, description: desc, path: dir.path)
+                    metas.append(meta)
+                }
+            }
+        }
+        let newConfig = PluginsConfig(plugins: metas)
+        // 保存新配置
+        let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/LightLauncher/plugins.yaml")
+        do {
+            let encoder = YAMLEncoder()
+            let yamlString = try encoder.encode(newConfig)
+            let commentedYaml = """
+# LightLauncher 插件管理配置
+# 管理插件启用、命令、元数据等
+
+\(yamlString)
+"""
+            try commentedYaml.write(to: url, atomically: true, encoding: .utf8)
+            print("插件配置已重建: \(url.path)")
+        } catch {
+            print("保存新插件配置文件失败: \(error)")
+        }
+        // 同步到 ConfigManager
+        ConfigManager.shared.pluginsConfig = newConfig
+        return newConfig
+    }
+
+    /// 从 plugins.yaml 配置发现插件
+    private func performPluginDiscoveryFromConfig() async {
+        isLoading = true
+        loadErrors.removeAll()
+        plugins.removeAll()
+        logger.info("Starting plugin discovery from plugins.yaml...")
+        var pluginMetas = ConfigManager.shared.pluginsConfig.plugins
+        // 检查 plugins.yaml 是否存在且可用，否则重建
+        let pluginsConfigURL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/LightLauncher/plugins.yaml")
+        if pluginMetas.isEmpty, !FileManager.default.fileExists(atPath: pluginsConfigURL.path) {
+            logger.info("plugins.yaml 不存在，自动生成...")
+            let newConfig = buildPluginsConfig()
+            pluginMetas = newConfig.plugins
+        } else if pluginMetas.isEmpty {
+            // 文件存在但内容为空，尝试解析
+            do {
+                let yamlString = try String(contentsOf: pluginsConfigURL, encoding: .utf8)
+                let decoder = YAMLDecoder()
+                let loaded = try decoder.decode(PluginsConfig.self, from: yamlString)
+                pluginMetas = loaded.plugins
+            } catch {
+                logger.warning("plugins.yaml 解析失败，自动重建: \(error)")
+                let newConfig = buildPluginsConfig()
+                pluginMetas = newConfig.plugins
+            }
+        }
+        for meta in pluginMetas {
+            guard meta.enabled, let path = meta.path else { continue }
+            let dirURL = URL(fileURLWithPath: path)
+            do {
+                let plugin = try await loadPlugin(from: dirURL)
+                // 检查命令冲突
+                if plugins[plugin.command] != nil {
+                    let error = "Duplicate command '\(plugin.command)' in plugin '\(plugin.name)'"
+                    loadErrors.append(error)
+                    logger.warning("\(error)")
+                    continue
+                }
+                plugins[plugin.command] = plugin
+                logger.info("Loaded plugin from config: \(plugin.name) (\(plugin.command))")
+            } catch let error as PluginError {
+                let errorMsg = "Failed to load plugin from \(dirURL.lastPathComponent): \(error.localizedDescription)"
+                loadErrors.append(errorMsg)
+                logger.error("\(errorMsg)")
+            } catch {
+                let errorMsg = "Unexpected error loading plugin from \(dirURL.lastPathComponent): \(error.localizedDescription)"
+                loadErrors.append(errorMsg)
+                logger.error("\(errorMsg)")
+            }
+        }
+        isLoading = false
+        logger.info("Plugin discovery from config completed. Loaded \(self.plugins.count) plugins")
+        if !self.loadErrors.isEmpty {
+            logger.warning("Plugin loading completed with \(self.loadErrors.count) errors")
         }
     }
     
@@ -106,20 +222,28 @@ class PluginManager: ObservableObject {
         return plugins.keys.contains(command)
     }
     
-    /// 重新加载所有插件
-    func reloadPlugins() {
-        plugins.removeAll()
-        loadErrors.removeAll()
-        discoverPlugins()
-    }
-    
     /// 启用/禁用插件
     func togglePlugin(command: String, enabled: Bool) {
         if var plugin = plugins[command] {
             plugin.isEnabled = enabled
             plugins[command] = plugin
+            // 同步到 plugins.yaml
+            if let meta = ConfigManager.shared.pluginsConfig.plugins.first(where: { $0.command == command }) {
+                if enabled {
+                    ConfigManager.shared.enablePlugin(meta.name)
+                } else {
+                    ConfigManager.shared.disablePlugin(meta.name)
+                }
+            }
             logger.info("Plugin \(plugin.name) \(enabled ? "enabled" : "disabled")")
         }
+    }
+    
+    /// 重新加载所有插件
+    func reloadPlugins() {
+        plugins.removeAll()
+        loadErrors.removeAll()
+        discoverPlugins()
     }
     
     /// 获取所有插件命令，用于命令建议
