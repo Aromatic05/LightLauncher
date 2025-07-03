@@ -43,9 +43,14 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
         
         // 初始化插件权限（如果需要）
         if !pluginName.isEmpty {
+            // 这里应从 manifest 解析权限，并传入插件目录
+            let permissions: [PluginPermissionSpec] = [] // TODO: manifest 解析
+            let pluginDir = dataDirectory.appendingPathComponent(pluginName).path
             PluginPermissionManager.shared.initializePluginPermissions(
-                pluginName: pluginName, 
-                pluginCommand: pluginCommand
+                pluginName: pluginName,
+                pluginCommand: pluginCommand,
+                permissions: permissions,
+                pluginDirectory: pluginDir
             )
         }
     }
@@ -193,7 +198,7 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
     
     @objc func writeConfig(_ content: String) -> Bool {
         let configPath = getConfigPath()
-        return writeFile(configPath, content: content)
+        return _writeFile(configPath, content: content)
     }
     
     @objc func fileExists(_ path: String) -> Bool {
@@ -201,11 +206,26 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
     }
     
     @objc func readFile(_ path: String) -> String? {
+        let configPath = getConfigPath()
+        let dataPath = getDataPath()
+        let resolvedPath = URL(fileURLWithPath: path).standardized.path
+        let allowConfig = resolvedPath == configPath || resolvedPath.hasPrefix(configPath + "/")
+        let allowData = resolvedPath == dataPath || resolvedPath.hasPrefix(dataPath + "/")
+        var allowed = allowConfig || allowData
+        if !allowed {
+            // 其它目录需检查 fileRead 权限
+            if let config = PluginPermissionManager.shared.getPluginPermissionConfig(for: pluginCommand) {
+                allowed = config.hasPermission(.fileRead, directory: resolvedPath)
+            }
+        }
+        if !allowed {
+            logger.error("Read denied: no permission for path: \(path)")
+            return nil
+        }
         guard isPathSafe(path) else {
             logger.error("Unsafe path access attempted: \(path)")
             return nil
         }
-        
         do {
             let content = try String(contentsOfFile: path, encoding: .utf8)
             logger.debug("Successfully read file: \(path)")
@@ -216,25 +236,37 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
         }
     }
     
-    @objc func writeFile(_ path: String, content: String) -> Bool {
-        // 检查路径是否在插件的数据目录内
-        let pluginDataPath = dataDirectory.appendingPathComponent(pluginName).path
-        let resolvedPath = URL(fileURLWithPath: path).standardized.path
-        
-        // 如果是在插件数据目录内，无需权限检查
-        let isInPluginDataDirectory = resolvedPath.hasPrefix(pluginDataPath)
-        
-        // 如果不在插件数据目录内，需要检查文件写入权限
-        if !isInPluginDataDirectory && !PluginPermissionManager.shared.checkFileWritePermission(for: pluginCommand) {
-            logger.warning("File write permission denied for path outside plugin data directory: \(path)")
+    @objc func writeFile(_ data: [String: Any]) -> Bool {
+        guard let path = data["path"] as? String,
+              let content = data["content"] as? String else {
+            logger.error("Invalid data format for writeFileWithData")
             return false
         }
         
+        return _writeFile(path, content: content)
+    }
+
+    private func _writeFile(_ path: String, content: String) -> Bool {
+        let configPath = getConfigPath()
+        let dataPath = getDataPath()
+        let resolvedPath = URL(fileURLWithPath: path).standardized.path
+        let allowConfig = resolvedPath == configPath || resolvedPath.hasPrefix(configPath + "/")
+        let allowData = resolvedPath == dataPath || resolvedPath.hasPrefix(dataPath + "/")
+        var allowed = allowConfig || allowData
+        if !allowed {
+            // 其它目录需检查 fileWrite 权限
+            if let config = PluginPermissionManager.shared.getPluginPermissionConfig(for: pluginCommand) {
+                allowed = config.hasPermission(.fileWrite, directory: resolvedPath)
+            }
+        }
+        if !allowed {
+            logger.warning("Write denied: no permission for path: \(path)")
+            return false
+        }
         guard isPathSafe(path) else {
             logger.error("Unsafe path access attempted: \(path)")
             return false
         }
-        
         return writeFileInternal(path: path, content: content)
     }
     
@@ -277,104 +309,6 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
             logger.error("Failed to create directory \(path): \(error.localizedDescription)")
             return false
         }
-    }
-    
-    // MARK: - 权限管理 API 实现
-    
-    @objc func hasNetworkPermission() -> Bool {
-        return PluginPermissionManager.shared.checkNetworkPermission(for: pluginCommand)
-    }
-    
-    @objc func hasFileWritePermission() -> Bool {
-        return PluginPermissionManager.shared.checkFileWritePermission(for: pluginCommand)
-    }
-    
-    @objc func hasSystemCommandPermission() -> Bool {
-        return PluginPermissionManager.shared.checkSystemCommandPermission(for: pluginCommand)
-    }
-    
-    @objc func requestPermission(_ permission: String, completion: JSValue) {
-        guard let pluginPermission = PluginPermission(rawValue: permission) else {
-            logger.error("Invalid permission requested: \(permission)")
-            
-            // 调用 JavaScript 回调，传递错误信息
-            if completion.isObject && !completion.isUndefined {
-                completion.call(withArguments: [false, "Invalid permission: \(permission)"])
-            }
-            return
-        }
-        
-        logger.info("Plugin \(self.pluginName) requesting permission: \(permission)")
-        
-        // 首先检查权限是否已经存在
-        let hasPermission = PluginPermissionManager.shared.hasPermission(
-            pluginCommand: self.pluginCommand,
-            permission: pluginPermission
-        )
-        
-        if hasPermission {
-            // 权限已授予，直接返回
-            if completion.isObject && !completion.isUndefined {
-                completion.call(withArguments: [true, "Permission already granted"])
-            }
-            return
-        }
-        
-        // 请求新权限
-        PluginPermissionManager.shared.requestPermission(
-            pluginName: self.pluginName,
-            pluginCommand: self.pluginCommand,
-            permission: pluginPermission
-        )
-        
-        // 回调，告知权限请求已提交
-        if completion.isObject && !completion.isUndefined {
-            completion.call(withArguments: [false, "Permission request submitted for user approval"])
-        }
-    }
-    
-    // MARK: - 调试方法
-    
-    @objc func debugListMethods() -> String {
-        let methods = [
-            ("registerCallback", "registerCallback:"),
-            ("registerActionHandler", "registerActionHandler:"), 
-            ("display", "display:"),
-            ("hide", "hide"),
-            ("log", "log:"),
-            ("getConfigPath", "getConfigPath"),
-            ("getDataPath", "getDataPath"),
-            ("readConfig", "readConfig"),
-            ("writeConfig", "writeConfig:"),
-            ("fileExists", "fileExists:"),
-            ("readFile", "readFile:"),
-            ("writeFile", "writeFile:content:"),
-            ("writeFileWithData", "writeFileWithData:"),  // 添加单参数包装方法
-            ("createDirectory", "createDirectory:"),
-            ("hasNetworkPermission", "hasNetworkPermission"),
-            ("hasFileWritePermission", "hasFileWritePermission"),
-            ("requestPermission", "requestPermission:completion:")
-        ]
-        
-        var result = "Plugin API Methods:\n"
-        for (name, selector) in methods {
-            let isAvailable = self.responds(to: Selector(selector))
-            result += "  \(name): \(isAvailable ? "✓" : "✗")\n"
-        }
-        
-        return result
-    }
-
-    // MARK: - 单参数包装方法（解决 JavaScriptCore 多参数问题）
-    
-    @objc func writeFileWithData(_ data: [String: Any]) -> Bool {
-        guard let path = data["path"] as? String,
-              let content = data["content"] as? String else {
-            logger.error("Invalid data format for writeFileWithData")
-            return false
-        }
-        
-        return writeFile(path, content: content)
     }
     
     // MARK: - 私有辅助方法

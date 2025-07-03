@@ -22,8 +22,11 @@ struct Plugin: Identifiable {
     let manifestPath: URL
     let scriptPath: URL
     
+    // 插件权限声明
+    let permissions: [PluginPermissionSpec]
+    
     init(name: String, version: String, description: String, command: String, 
-         pluginDirectory: URL, manifestPath: URL, scriptPath: URL, shouldHideWindowAfterAction: Bool = true) {
+         pluginDirectory: URL, manifestPath: URL, scriptPath: URL, shouldHideWindowAfterAction: Bool = true, permissions: [PluginPermissionSpec] = []) {
         self.name = name
         self.version = version
         self.description = description
@@ -32,6 +35,7 @@ struct Plugin: Identifiable {
         self.manifestPath = manifestPath
         self.scriptPath = scriptPath
         self.shouldHideWindowAfterAction = shouldHideWindowAfterAction
+        self.permissions = permissions
     }
 }
 

@@ -65,28 +65,6 @@ class PluginManager: ObservableObject {
             logger.info("Exposing lightlauncher object to JavaScript context for plugin: \(plugin.name, privacy: .public)")
             context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
             
-            // 验证对象是否正确暴露
-            let testResult = context.evaluateScript("typeof lightlauncher")
-            logger.info("lightlauncher object type in JS context: \(testResult?.toString() ?? "undefined", privacy: .public)")
-            
-            // 测试具体方法的可用性
-            let writeFileTest = context.evaluateScript("typeof lightlauncher.writeFile")
-            logger.info("lightlauncher.writeFile type in JS context: \(writeFileTest?.toString() ?? "undefined", privacy: .public)")
-            
-            let logTest = context.evaluateScript("typeof lightlauncher.log")
-            logger.info("lightlauncher.log type in JS context: \(logTest?.toString() ?? "undefined", privacy: .public)")
-            
-            // 测试所有API方法的可用性
-            let apiMethods = ["registerCallback", "registerActionHandler", "display", "hide", "log", 
-                             "getConfigPath", "getDataPath", "readConfig", "writeConfig", 
-                             "fileExists", "readFile", "writeFile", "createDirectory",
-                             "hasNetworkPermission", "hasFileWritePermission", "requestPermission"]
-            
-            for method in apiMethods {
-                let methodTest = context.evaluateScript("typeof lightlauncher.\(method)")
-                logger.info("lightlauncher.\(method, privacy: .public) type: \(methodTest?.toString() ?? "undefined", privacy: .public)")
-            }
-            
             // 重新执行插件的主脚本
             logger.info("Loading main script for plugin: \(plugin.name, privacy: .public)")
             do {

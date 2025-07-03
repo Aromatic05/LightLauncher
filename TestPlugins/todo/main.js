@@ -11,10 +11,9 @@ class TodoPlugin {
         
         // 权限状态
         this.permissions = {
-            fileWrite: false,
-            network: false,
-            clipboard: false,
-            notifications: false
+            fileWriteDirs: lightlauncher.getFileWriteDirectories ? lightlauncher.getFileWriteDirectories() : [],
+            fileReadDirs: lightlauncher.getFileReadDirectories ? lightlauncher.getFileReadDirectories() : [],
+            network: lightlauncher.hasNetworkPermission ? lightlauncher.hasNetworkPermission() : false
         };
         
         // 默认数据
@@ -48,12 +47,11 @@ class TodoPlugin {
     }
     
     checkPermissions() {
-        // 检查当前权限状态
-        this.permissions.fileWrite = lightlauncher.hasFileWritePermission();
-        this.permissions.network = lightlauncher.hasNetworkPermission();
-        
-        lightlauncher.log("Current permissions - External File Write: " + this.permissions.fileWrite + 
-                         ", Network: " + this.permissions.network);
+        // 只读权限，不再动态请求
+        this.permissions.fileWriteDirs = lightlauncher.getFileWriteDirectories ? lightlauncher.getFileWriteDirectories() : [];
+        this.permissions.fileReadDirs = lightlauncher.getFileReadDirectories ? lightlauncher.getFileReadDirectories() : [];
+        this.permissions.network = lightlauncher.hasNetworkPermission ? lightlauncher.hasNetworkPermission() : false;
+        lightlauncher.log("Current permissions - File Write Dirs: " + JSON.stringify(this.permissions.fileWriteDirs) + ", File Read Dirs: " + JSON.stringify(this.permissions.fileReadDirs) + ", Network: " + this.permissions.network);
     }
     
     loadConfig() {
@@ -208,15 +206,6 @@ settings:
         } else if (action === "show_permissions") {
             this.displayPermissionStatus();
             return true;
-        } else if (action === "request_file_permission") {
-            this.requestFileWritePermission();
-            return true;
-        } else if (action.startsWith("toggle_")) {
-            const todoId = parseInt(action.substring(7));
-            return this.toggleTodo(todoId);
-        } else if (action.startsWith("delete_")) {
-            const todoId = parseInt(action.substring(7));
-            return this.deleteTodo(todoId);
         }
         
         return false;
@@ -332,23 +321,26 @@ settings:
     
     displayPermissionStatus() {
         const results = [];
-        
-        // 权限状态标题
         results.push({
             title: "📋 Plugin Permissions Status",
             subtitle: "Current permission status for Todo plugin",
             icon: "checkmark.shield",
             action: "show_all"
         });
-        
         // 文件写入权限
         results.push({
-            title: this.permissions.fileWrite ? "✅ External File Write Access" : "❌ External File Write Access",
-            subtitle: this.permissions.fileWrite ? "Granted - Can write files outside plugin data directory" : "Denied - Cannot write files outside plugin data directory",
-            icon: this.permissions.fileWrite ? "checkmark.circle.fill" : "xmark.circle.fill",
-            action: this.permissions.fileWrite ? "show_all" : "request_file_permission"
+            title: this.permissions.fileWriteDirs.length > 0 ? "✅ File Write Access" : "❌ File Write Access",
+            subtitle: this.permissions.fileWriteDirs.length > 0 ? ("Granted - Can write files to: " + this.permissions.fileWriteDirs.join(", ")) : "Denied - No external file write access",
+            icon: this.permissions.fileWriteDirs.length > 0 ? "checkmark.circle.fill" : "xmark.circle.fill",
+            action: "show_all"
         });
-        
+        // 文件读取权限
+        results.push({
+            title: this.permissions.fileReadDirs.length > 0 ? "✅ File Read Access" : "❌ File Read Access",
+            subtitle: this.permissions.fileReadDirs.length > 0 ? ("Granted - Can read files from: " + this.permissions.fileReadDirs.join(", ")) : "Denied - No external file read access",
+            icon: this.permissions.fileReadDirs.length > 0 ? "checkmark.circle.fill" : "xmark.circle.fill",
+            action: "show_all"
+        });
         // 网络访问权限
         results.push({
             title: this.permissions.network ? "✅ Network Access" : "❌ Network Access",
@@ -356,25 +348,7 @@ settings:
             icon: this.permissions.network ? "wifi" : "wifi.slash",
             action: "show_all"
         });
-        
         lightlauncher.display(results);
-    }
-    
-    requestFileWritePermission() {
-        lightlauncher.log("Requesting external file write permission...");
-        
-        lightlauncher.requestPermission("file_write", (granted, message) => {
-            lightlauncher.log("External file write permission result: " + granted + " - " + message);
-            this.permissions.fileWrite = granted;
-            
-            // 显示结果
-            lightlauncher.display([{
-                title: granted ? "✅ Permission Granted" : "⏳ Permission Request Sent",
-                subtitle: message,
-                icon: granted ? "checkmark.circle.fill" : "clock.circle",
-                action: "show_permissions"
-            }]);
-        });
     }
 }
 
