@@ -200,46 +200,59 @@ struct KillCommandSuggestionProvider: CommandSuggestionProvider {
 
 // MARK: - LauncherViewModel 扩展 - 关闭应用模式
 extension LauncherViewModel {
+    // 兼容旧接口，转发到 StateController
+    var runningApps: [RunningAppInfo] {
+        (activeController as? KillStateController)?.runningApps ?? []
+    }
     func switchToKillMode() {
-        mode = .kill
-        // 不清空搜索文本，保持 "/k" 前缀
-        // searchText = ""  // 注释掉这行
-        loadRunningApps()
-        selectedIndex = 0
+        (activeController as? KillStateController)?.activate()
     }
-    
     func loadRunningApps() {
-        runningApps = RunningAppsManager.shared.loadRunningApps()
+        (activeController as? KillStateController)?.activate()
     }
-    
     func filterRunningApps(searchText: String) {
-        let allRunningApps = RunningAppsManager.shared.loadRunningApps()
-        runningApps = RunningAppsManager.shared.filterRunningApps(allRunningApps, with: searchText)
-        selectedIndex = 0
+        (activeController as? KillStateController)?.update(for: searchText)
     }
-    
     func killSelectedApp() -> Bool {
-        guard mode == .kill && selectedIndex < runningApps.count else { return false }
-        let selectedApp = runningApps[selectedIndex]
-        
-        let success = RunningAppsManager.shared.killApp(selectedApp)
-        if success {
-            // 刷新运行应用列表
-            loadRunningApps()
-            // 调整选择索引
-            if selectedIndex >= runningApps.count && runningApps.count > 0 {
-                selectedIndex = runningApps.count - 1
-            }
-        }
-        return success
+        guard let killController = activeController as? KillStateController else { return false }
+        let result = killController.executeAction(at: selectedIndex)
+        return result == .hideWindow
     }
-    
     func selectKillAppByNumber(_ number: Int) -> Bool {
-        let index = number - 1 // 转换为0基础索引
-        
-        guard mode == .kill else { return false }
-        guard index >= 0 && index < runningApps.count && index < 6 else { return false }
+        let index = number - 1
+        guard let killController = activeController as? KillStateController else { return false }
+        guard index >= 0 && index < killController.runningApps.count && index < 6 else { return false }
         selectedIndex = index
         return killSelectedApp()
+    }
+}
+
+@MainActor
+class KillStateController: NSObject, ModeStateController {
+    @Published var runningApps: [RunningAppInfo] = []
+    var displayableItems: [any DisplayableItem] { runningApps }
+    let mode: LauncherMode = .kill
+
+    func activate() {
+        runningApps = fetchRunningApps()
+    }
+    func deactivate() { runningApps = [] }
+    func update(for searchText: String) {
+        let all = fetchRunningApps()
+        runningApps = searchText.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+    func executeAction(at index: Int) -> PostAction? {
+        guard index < runningApps.count else { return nil }
+        let app = runningApps[index]
+        if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
+            runningApp.terminate()
+            return .hideWindow
+        }
+        return .keepWindowOpen
+    }
+    private func fetchRunningApps() -> [RunningAppInfo] {
+        // 这里假设有全局方法或单例可获取所有 RunningAppInfo
+        // 实际项目中请替换为真实数据源
+        []
     }
 }

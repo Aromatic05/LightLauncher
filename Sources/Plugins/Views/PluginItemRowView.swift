@@ -26,7 +26,7 @@ struct PluginItemRowView: View {
             }
             
             // 图标
-            Image(systemName: item.icon ?? "questionmark.circle")
+            Image(systemName: item.icon as? String ?? "questionmark.circle")
                 .font(.system(size: 20, weight: .medium))
                 .foregroundColor(isSelected ? .accentColor : .secondary)
                 .frame(width: 24, height: 24)
@@ -68,45 +68,3 @@ struct PluginItemRowView: View {
     }
 }
 
-// MARK: - 预览
-struct PluginItemRowView_Previews: PreviewProvider {
-    static var previews: some View {
-        VStack(spacing: 4) {
-            PluginItemRowView(
-                item: PluginItem(
-                    title: "Add new todo",
-                    subtitle: "Type 'add <task>' to create a new todo",
-                    icon: "plus.circle",
-                    action: "add_new"
-                ),
-                isSelected: true,
-                index: 0
-            )
-            
-            PluginItemRowView(
-                item: PluginItem(
-                    title: "✅ Learn JavaScript",
-                    subtitle: "Completed",
-                    icon: "checkmark.circle.fill",
-                    action: "toggle_1"
-                ),
-                isSelected: false,
-                index: 1
-            )
-            
-            PluginItemRowView(
-                item: PluginItem(
-                    title: "⭕ Build a plugin system",
-                    subtitle: "Todo",
-                    icon: "circle",
-                    action: "toggle_2"
-                ),
-                isSelected: false,
-                index: 2
-            )
-        }
-        .padding()
-        .background(Color(NSColor.windowBackgroundColor))
-        .previewLayout(.sizeThatFits)
-    }
-}

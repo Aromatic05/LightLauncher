@@ -112,45 +112,34 @@ class FileCommandProcessor: CommandProcessor {
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        // 解析文件路径输入
-        let cleanText = text.hasPrefix("/o ") ? 
-            String(text.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) : 
+        let cleanText = text.hasPrefix("/o ") ?
+            String(text.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) :
             text.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        if cleanText.isEmpty {
-            // 如果没有输入，显示起始路径选择界面
-            viewModel.showFileBrowserStartPaths()
-        } else {
-            // 根据输入过滤文件
-            viewModel.filterFiles(query: cleanText)
+        // 这里建议通过 StateController 处理
+        if let fileController = viewModel.activeController as? FileStateController {
+            if cleanText.isEmpty {
+                fileController.activate()
+            } else {
+                fileController.update(for: cleanText)
+            }
         }
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        guard viewModel.mode == .file else { return false }
-        
-        if viewModel.showStartPaths {
-            // 在起始路径选择模式下
-            guard let startPath = viewModel.getStartPath(at: index) else { return false }
-            viewModel.navigateToDirectory(URL(fileURLWithPath: startPath.path))
-            return false // 不关闭窗口，继续浏览
-        } else {
-            // 在文件浏览模式下
-            guard let fileItem = viewModel.getFileItem(at: index) else { return false }
-            return openFileItem(fileItem, in: viewModel)
-        }
+        guard let fileController = viewModel.activeController as? FileStateController else { return false }
+        let result = fileController.executeAction(at: index)
+        // 只有打开文件且成功时才关闭窗口
+        return result == .hideWindow
     }
     
-    private func openFileItem(_ fileItem: FileItem, in viewModel: LauncherViewModel) -> Bool {
+    private func openFileItem(_ fileItem: FileItem, in fileController: FileStateController) -> Bool {
         if fileItem.isDirectory {
-            // 如果是目录，进入该目录
-            viewModel.navigateToDirectory(fileItem.url)
-            return false // 不关闭窗口，继续浏览
+            fileController.navigateToDirectory(fileItem.url)
+            return false
         } else {
-            // 如果是文件，用默认方式打开
             let success = NSWorkspace.shared.open(fileItem.url)
             if success {
-                viewModel.resetToLaunchMode()
+                fileController.activate()
             }
             return success
         }
@@ -246,76 +235,42 @@ class FileManager_LightLauncher {
 
 // MARK: - LauncherViewModel 扩展
 extension LauncherViewModel {
-    func switchToFileMode() {
-        mode = .file
-        // 显示起始路径选择界面
-        showFileBrowserStartPaths()
-        selectedIndex = 0
+    // 兼容旧接口，转发到 StateController
+    var showStartPaths: Bool {
+        (activeController as? FileStateController)?.showStartPaths ?? false
     }
-    
-    func showFileBrowserStartPaths() {
-        showStartPaths = true
-        currentFiles = []
-        loadFileBrowserStartPaths()
-        selectedIndex = 0
+    var currentFiles: [FileItem] {
+        (activeController as? FileStateController)?.currentFiles ?? []
     }
-    
-    func loadFileBrowserStartPaths() {
-        let paths = ConfigManager.shared.getFileBrowserStartPaths()
-        fileBrowserStartPaths = paths.map { path in
-            FileBrowserStartPath(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
-        }
+    var fileBrowserStartPaths: [FileBrowserStartPath] {
+        (activeController as? FileStateController)?.fileBrowserStartPaths ?? []
     }
-    
-    func updateFileResults(path: String) {
-        showStartPaths = false
-        currentPath = path
-        currentFiles = FileManager_LightLauncher.shared.getFiles(at: path)
-        selectedIndex = 0
+    var currentPath: String {
+        (activeController as? FileStateController)?.currentPath ?? NSHomeDirectory()
     }
-    
-    func filterFiles(query: String) {
-        if showStartPaths {
-            // 在起始路径模式下过滤路径
-            let allPaths = ConfigManager.shared.getFileBrowserStartPaths().map { path in
-                FileBrowserStartPath(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
-            }
-            fileBrowserStartPaths = allPaths.filter { startPath in
-                startPath.displayName.localizedCaseInsensitiveContains(query) ||
-                startPath.displayPath.localizedCaseInsensitiveContains(query)
-            }
-        } else {
-            // 在文件浏览模式下过滤文件
-            let allFiles = FileManager_LightLauncher.shared.getFiles(at: currentPath)
-            currentFiles = FileManager_LightLauncher.shared.filterFiles(allFiles, query: query)
-        }
-        selectedIndex = 0
-    }
-    
-    func navigateToDirectory(_ url: URL) {
-        updateFileResults(path: url.path)
-    }
-    
     func getFileItem(at index: Int) -> FileItem? {
-        guard !showStartPaths, index >= 0 && index < currentFiles.count else { return nil }
-        return currentFiles[index]
+        currentFiles.indices.contains(index) ? currentFiles[index] : nil
     }
-    
     func getStartPath(at index: Int) -> FileBrowserStartPath? {
-        guard showStartPaths, index >= 0 && index < fileBrowserStartPaths.count else { return nil }
-        return fileBrowserStartPaths[index]
+        fileBrowserStartPaths.indices.contains(index) ? fileBrowserStartPaths[index] : nil
     }
-    
-    func openSelectedFileInFinder() {
-        if showStartPaths {
-            // 在起始路径模式下，打开选中的路径
-            guard let startPath = getStartPath(at: selectedIndex) else { return }
-            FileManager_LightLauncher.shared.openInFinder(URL(fileURLWithPath: startPath.path))
-        } else {
-            // 在文件浏览模式下，打开选中的文件
-            guard let fileItem = getFileItem(at: selectedIndex) else { return }
-            FileManager_LightLauncher.shared.openInFinder(fileItem.url)
-        }
+    func switchToFileMode() {
+        (activeController as? FileStateController)?.activate()
+    }
+    func filterFiles(query: String) {
+        (activeController as? FileStateController)?.update(for: query)
+    }
+    func navigateToDirectory(_ url: URL) {
+        (activeController as? FileStateController)?.navigateToDirectory(url)
+    }
+    func showFileBrowserStartPaths() {
+        (activeController as? FileStateController)?.activate()
+    }
+    func loadFileBrowserStartPaths() {
+        (activeController as? FileStateController)?.loadFileBrowserStartPaths()
+    }
+    func updateFileResults(path: String) {
+        (activeController as? FileStateController)?.navigateToDirectory(URL(fileURLWithPath: path))
     }
 }
 
@@ -370,3 +325,84 @@ struct FileCommandSuggestionProvider: CommandSuggestionProvider {
     }
 }
 
+// MARK: - 文件模式 StateController
+@MainActor
+class FileStateController: NSObject, ModeStateController {
+    @Published var currentFiles: [FileItem] = []
+    @Published var fileBrowserStartPaths: [FileBrowserStartPath] = []
+    @Published var showStartPaths: Bool = true
+    @Published var currentPath: String = NSHomeDirectory()
+    var displayableItems: [any DisplayableItem] {
+        if showStartPaths {
+            return fileBrowserStartPaths.map { $0 as! any DisplayableItem }
+        } else {
+            return currentFiles.map { $0 as any DisplayableItem }
+        }
+    }
+    let mode: LauncherMode = .file
+    func activate() {
+        showStartPaths = true
+        currentFiles = []
+        loadFileBrowserStartPaths()
+    }
+    func deactivate() {
+        currentFiles = []
+        fileBrowserStartPaths = []
+    }
+    func update(for searchText: String) {
+        if showStartPaths {
+            let allPaths = ConfigManager.shared.getFileBrowserStartPaths().map { path in
+                FileBrowserStartPath(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
+            }
+            fileBrowserStartPaths = allPaths.filter { startPath in
+                startPath.displayName.localizedCaseInsensitiveContains(searchText) ||
+                startPath.displayPath.localizedCaseInsensitiveContains(searchText)
+            }
+        } else {
+            let allFiles = FileManager_LightLauncher.shared.getFiles(at: currentPath)
+            currentFiles = FileManager_LightLauncher.shared.filterFiles(allFiles, query: searchText)
+        }
+    }
+    func executeAction(at index: Int) -> PostAction? {
+        if showStartPaths {
+            guard index >= 0 && index < fileBrowserStartPaths.count else { return nil }
+            let startPath = fileBrowserStartPaths[index]
+            navigateToDirectory(URL(fileURLWithPath: startPath.path))
+            return .keepWindowOpen
+        } else {
+            guard index >= 0 && index < currentFiles.count else { return nil }
+            let fileItem = currentFiles[index]
+            if fileItem.isDirectory {
+                navigateToDirectory(fileItem.url)
+                return .keepWindowOpen
+            } else {
+                let success = NSWorkspace.shared.open(fileItem.url)
+                if success {
+                    activate() // 返回起始界面
+                    return .hideWindow
+                }
+                return .keepWindowOpen
+            }
+        }
+    }
+    func loadFileBrowserStartPaths() {
+        let paths = ConfigManager.shared.getFileBrowserStartPaths()
+        fileBrowserStartPaths = paths.map { path in
+            FileBrowserStartPath(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
+        }
+    }
+    func navigateToDirectory(_ url: URL) {
+        showStartPaths = false
+        currentPath = url.path
+        currentFiles = FileManager_LightLauncher.shared.getFiles(at: url.path)
+    }
+    
+    // 在 Finder 中显示或选中文件
+    func openInFinder(_ url: URL) {
+        if url.hasDirectoryPath {
+            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
+        } else {
+            NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
+        }
+    }
+}

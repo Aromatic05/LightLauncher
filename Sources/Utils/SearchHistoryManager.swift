@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 // MARK: - 搜索历史项
 struct SearchHistoryItem: Codable, Identifiable, Hashable {
@@ -105,4 +106,11 @@ class SearchHistoryManager: ObservableObject {
             print("Failed to save search history: \(error)")
         }
     }
+}
+
+// MARK: - DisplayableItem 协议实现
+extension SearchHistoryItem: DisplayableItem {
+    var title: String { query }
+    var subtitle: String? { searchEngine }
+    var icon: NSImage? { nil }
 }

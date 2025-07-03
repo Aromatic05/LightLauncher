@@ -100,12 +100,8 @@ extension LauncherViewModel {
     }
     
     func updateSearchHistory(_ items: [SearchHistoryItem]) {
-        searchHistory = items
-        // 确保选中索引在有效范围内
-        let maxIndex = getCurrentItems().count - 1
-        if selectedIndex > maxIndex {
-            selectedIndex = 0
-        }
+        (activeController as? SearchStateController)?.searchHistory = items
+        // 校验 selectedIndex 可选
     }
     
     func executeSearchHistoryItem(at index: Int) -> Bool {
@@ -116,13 +112,11 @@ extension LauncherViewModel {
     }
     
     func clearSearchHistory() {
-        SearchHistoryManager.shared.clearHistory()
-        searchHistory = []
+        (activeController as? SearchStateController)?.searchHistory = []
     }
     
     func removeSearchHistoryItem(_ item: SearchHistoryItem) {
-        SearchHistoryManager.shared.removeSearch(item: item)
-        searchHistory = SearchHistoryManager.shared.searchHistory
+        (activeController as? SearchStateController)?.searchHistory.removeAll { $0.id == item.id }
     }
     
     func extractCleanSearchText() -> String {
@@ -206,6 +200,58 @@ struct SearchCommandSuggestionProvider: CommandSuggestionProvider {
             "Delete /s prefix to return to launch mode",
             "Press Esc to close"
         ]
+    }
+}
+
+// MARK: - 搜索模式 StateController
+@MainActor
+class SearchStateController: NSObject, ModeStateController {
+    @Published var searchHistory: [SearchHistoryItem] = []
+    @Published var currentQuery: String = ""
+    var displayableItems: [any DisplayableItem] {
+        // 第一个为当前搜索项，其余为历史项
+        let currentItem = SearchHistoryItem(query: currentQuery, searchEngine: ConfigManager.shared.config.modes.defaultSearchEngine)
+        return [currentItem as any DisplayableItem] + searchHistory.map { $0 as any DisplayableItem }
+    }
+    let mode: LauncherMode = .search
+    func activate() {
+        // 进入搜索模式时加载历史
+        searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: currentQuery, limit: 10)
+    }
+    func deactivate() {
+        searchHistory = []
+        currentQuery = ""
+    }
+    func update(for searchText: String) {
+        currentQuery = searchText.hasPrefix("/s ") ? String(searchText.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) : searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: currentQuery, limit: 10)
+    }
+    func executeAction(at index: Int) -> PostAction? {
+        if index == 0 {
+            // 当前搜索项
+            let cleanText = currentQuery
+            let result = NSWorkspace.shared.open(URL(string: getSearchURL(for: cleanText))!)
+            if result { return .hideWindow } else { return .keepWindowOpen }
+        } else if index > 0 && index <= searchHistory.count {
+            let item = searchHistory[index - 1]
+            let result = NSWorkspace.shared.open(URL(string: getSearchURL(for: item.query))!)
+            if result { return .hideWindow } else { return .keepWindowOpen }
+        }
+        return nil
+    }
+    private func getSearchURL(for query: String) -> String {
+        let engine = ConfigManager.shared.config.modes.defaultSearchEngine
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        switch engine {
+        case "baidu":
+            return "https://www.baidu.com/s?wd=\(encodedQuery)"
+        case "bing":
+            return "https://www.bing.com/search?q=\(encodedQuery)"
+        case "google":
+            fallthrough
+        default:
+            return "https://www.google.com/search?q=\(encodedQuery)"
+        }
     }
 }
 

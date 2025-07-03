@@ -145,107 +145,103 @@ struct AppMatch {
 
 // MARK: - LauncherViewModel 扩展 - 启动模式
 extension LauncherViewModel {
+    // 兼容旧接口，转发到 StateController
+    var filteredApps: [AppInfo] {
+        (activeController as? LaunchStateController)?.filteredApps ?? []
+    }
     func switchToLaunchMode() {
-        // 如果当前在插件模式，先清理插件状态
-        if mode == .plugin {
-            clearPluginState()
-        }
-        
-        mode = .launch
-        filteredApps = getMostUsedApps(from: allApps, limit: 6)
-        selectedIndex = 0
+        (activeController as? LaunchStateController)?.activate()
     }
-    
     func switchToLaunchModeAndClear() {
-        // 如果当前在插件模式，先清理插件状态
-        if mode == .plugin {
-            clearPluginState()
-        }
-        
-        mode = .launch
+        (activeController as? LaunchStateController)?.activate()
         searchText = ""
-        filteredApps = getMostUsedApps(from: allApps, limit: 6)
-        selectedIndex = 0
+    }
+    func filterApps(searchText: String) {
+        (activeController as? LaunchStateController)?.update(for: searchText)
+    }
+    func launchSelectedApp() -> Bool {
+        guard let launchController = activeController as? LaunchStateController else { return false }
+        let result = launchController.executeAction(at: selectedIndex)
+        return result == .hideWindow
+    }
+    func incrementUsage(for appName: String) {
+        // 仅用于兼容旧接口，实际应由 StateController 内部管理
+    }
+    func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
+        (activeController as? LaunchStateController)?.displayableItems.prefix(limit).compactMap { $0 as? AppInfo } ?? []
+    }
+    func selectAppByNumber(_ number: Int) -> Bool {
+        let index = number - 1
+        guard let launchController = activeController as? LaunchStateController else { return false }
+        guard index >= 0 && index < launchController.filteredApps.count && index < 6 else { return false }
+        selectedIndex = index
+        return launchSelectedApp()
+    }
+}
+
+// 启动模式 StateController
+import AppKit
+
+@MainActor
+class LaunchStateController: NSObject, ModeStateController {
+    @Published var filteredApps: [AppInfo] = []
+    private var allApps: [AppInfo]
+    private var appUsageCount: [String: Int]
+
+    var displayableItems: [any DisplayableItem] {
+        filteredApps
     }
     
-    func filterApps(searchText: String) {
+    let mode: LauncherMode = .launch
+
+    init(allApps: [AppInfo], usageCount: [String: Int]) {
+        self.allApps = allApps
+        self.appUsageCount = usageCount
+        super.init()
+    }
+
+    func activate() {
+        filteredApps = getMostUsedApps(from: allApps, limit: 6)
+    }
+
+    func deactivate() {
+        filteredApps = []
+    }
+    
+    func update(for searchText: String) {
         if searchText.isEmpty {
             filteredApps = getMostUsedApps(from: allApps, limit: 6)
         } else {
-            let matches = allApps.compactMap { app in
-                calculateMatch(for: app, query: searchText)
-            }
-            
-            // 按评分排序并取前6个
-            filteredApps = matches
-                .sorted { $0.score > $1.score }
-                .prefix(6)
-                .map { $0.app }
+            filteredApps = allApps.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
-        // 每当列表更新时，重置选择
-        selectedIndex = 0
     }
     
-    private func calculateMatch(for app: AppInfo, query: String) -> AppMatch? {
-        let commonAbbreviations = ConfigManager.shared.config.commonAbbreviations
-        return AppSearchMatcher.calculateMatch(
-            for: app,
-            query: query,
-            usageCount: appUsageCount,
-            commonAbbreviations: commonAbbreviations
-        )
-    }
-    
-    func launchSelectedApp() -> Bool {
-        guard selectedIndex < filteredApps.count else { return false }
-        let selectedApp = filteredApps[selectedIndex]
-        
-        let success = NSWorkspace.shared.open(selectedApp.url)
-        
+    func executeAction(at index: Int) -> PostAction? {
+        guard index < filteredApps.count else { return nil }
+        let app = filteredApps[index]
+        let success = NSWorkspace.shared.open(app.url)
         if success {
-            // 记录使用频率
-            incrementUsage(for: selectedApp.name)
-            clearSearch()
+            incrementUsage(for: app.name)
+            return .hideWindow
         }
-        
-        return success
+        return .keepWindowOpen
     }
-    
-    func incrementUsage(for appName: String) {
+
+    private func incrementUsage(for appName: String) {
         appUsageCount[appName, default: 0] += 1
-        saveUsageDataPublic()
+        // 可在此处添加持久化逻辑
     }
-    
-    func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
-        return apps
-            .sorted { app1, app2 in
-                let usage1 = appUsageCount[app1.name, default: 0]
-                let usage2 = appUsageCount[app2.name, default: 0]
-                if usage1 != usage2 {
-                    return usage1 > usage2
-                }
-                return app1.name.localizedCaseInsensitiveCompare(app2.name) == .orderedAscending
+
+    private func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
+        apps.sorted { app1, app2 in
+            let usage1 = appUsageCount[app1.name, default: 0]
+            let usage2 = appUsageCount[app2.name, default: 0]
+            if usage1 != usage2 {
+                return usage1 > usage2
             }
-            .prefix(limit)
-            .map { $0 }
-    }
-    
-    func selectAppByNumber(_ number: Int) -> Bool {
-        let index = number - 1 // 转换为0基础索引
-        
-        guard mode == .launch else { return false }
-        guard index >= 0 && index < filteredApps.count && index < 6 else { return false }
-        selectedIndex = index
-        
-        let selectedApp = filteredApps[selectedIndex]
-        let success = NSWorkspace.shared.open(selectedApp.url)
-        
-        if success {
-            // 记录使用频率
-            incrementUsage(for: selectedApp.name)
-            clearSearch()
+            return app1.name.localizedCaseInsensitiveCompare(app2.name) == .orderedAscending
         }
-        
-        return success
+        .prefix(limit)
+        .map { $0 }
     }
 }

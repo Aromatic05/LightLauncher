@@ -107,89 +107,34 @@ class WebCommandProcessor: CommandProcessor {
 
 // MARK: - LauncherViewModel 扩展
 extension LauncherViewModel {
-    func getBrowserDataManager() -> BrowserDataManager {
-        return BrowserDataManager.shared
+    // 兼容旧接口，转发到 StateController
+    var browserItems: [BrowserItem] {
+        (activeController as? WebStateController)?.browserItems ?? []
     }
-
     func switchToWebMode() {
-        mode = .web
-        selectedIndex = 0
-        
-        // 加载浏览器数据
-        self.getBrowserDataManager().loadBrowserData()
-        
-        // 如果有输入文本，立即搜索；否则显示默认建议
-        let webText = self.searchText.hasPrefix("/w ") ? String(self.searchText.dropFirst(3)) : ""
-        if !webText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            self.updateWebResults(query: webText)
-        } else {
-            // 显示最近访问的书签和历史记录
-            self.showDefaultWebSuggestions()
-        }
+        (activeController as? WebStateController)?.activate()
     }
-    
     func updateWebResults(query: String) {
-        guard mode == .web else { return }
-        
-        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            showDefaultWebSuggestions()
-        } else {
-            browserItems = self.getBrowserDataManager().searchBrowserData(query: query)
-        }
-        selectedIndex = 0
+        (activeController as? WebStateController)?.update(for: query)
     }
-    
-    private func showDefaultWebSuggestions() {
-        // 显示最近的书签和历史记录
-        browserItems = self.getBrowserDataManager().getDefaultBrowserItems(limit: 10)
-    }
-    
-    func extractCleanWebText() -> String {
-        let prefix = "/w "
-        if searchText.hasPrefix(prefix) {
-            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    
     func filterBrowserItems(searchText: String) {
-        if searchText.isEmpty {
-            browserItems = []
-        } else {
-            browserItems = self.getBrowserDataManager().searchBrowserData(query: searchText)
-        }
+        (activeController as? WebStateController)?.update(for: searchText)
     }
-    
     func openWebURL(_ url: String) -> Bool {
-        var urlString = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // 如果不包含协议，默认添加 https://
-        if !urlString.contains("://") {
-            if urlString.contains(".") {
-                // 看起来像是网址
-                urlString = "https://" + urlString
-            } else {
-                // 看起来像是搜索词，使用默认搜索引擎
-                return executeWebSearch(urlString)
-            }
-        }
-        
-        guard let url = URL(string: urlString) else { return false }
-        
-        NSWorkspace.shared.open(url)
-        resetToLaunchMode()
-        return true
+        guard let webController = activeController as? WebStateController else { return false }
+        return webController.openWebURL(url)
     }
-    
     func openBrowserItem(at index: Int) -> Bool {
-        guard index >= 0 && index < browserItems.count else { return false }
-        let item = browserItems[index]
-        
-        guard let url = URL(string: item.url) else { return false }
-        
-        NSWorkspace.shared.open(url)
-        resetToLaunchMode()
-        return true
+        guard let webController = activeController as? WebStateController else { return false }
+        return webController.openBrowserItem(at: index)
+    }
+    func extractCleanWebText() -> String {
+        (activeController as? WebStateController)?.extractCleanWebText(searchText) ?? ""
+    }
+    func resetToLaunchMode() {
+        mode = .launch
+        selectedIndex = 0
+        // 可根据需要清理其它模式状态
     }
 }
 
@@ -238,5 +183,91 @@ struct WebCommandSuggestionProvider: CommandSuggestionProvider {
             "Delete /w prefix to return to launch mode", 
             "Press Esc to close"
         ]
+    }
+}
+
+// 网页模式 StateController
+@MainActor
+class WebStateController: NSObject, ModeStateController {
+    @Published var browserItems: [BrowserItem] = []
+    let mode: LauncherMode = .web
+    var displayableItems: [any DisplayableItem] { browserItems.map { $0 as any DisplayableItem } }
+    func activate() {
+        browserItems = BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
+    }
+    func deactivate() { browserItems = [] }
+    func update(for searchText: String) {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if query.isEmpty {
+            activate()
+        } else {
+            browserItems = BrowserDataManager.shared.searchBrowserData(query: query)
+        }
+    }
+    func executeAction(at index: Int) -> PostAction? {
+        if index == 0 {
+            // 当前输入项
+            return .hideWindow // 具体行为由 openWebURL 驱动
+        } else if index > 0 && index <= browserItems.count {
+            let item = browserItems[index - 1]
+            if let url = URL(string: item.url) {
+                NSWorkspace.shared.open(url)
+                return .hideWindow
+            }
+        }
+        return .keepWindowOpen
+    }
+    func openWebURL(_ url: String) -> Bool {
+        let cleanText = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let url = URL(string: cleanText), url.scheme != nil {
+            NSWorkspace.shared.open(url)
+            return true
+        }
+        if isDomainName(cleanText) {
+            if let url = URL(string: "https://\(cleanText)") {
+                NSWorkspace.shared.open(url)
+                return true
+            }
+        }
+        let encodedQuery = cleanText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cleanText
+        let searchURL = getDefaultSearchEngine().replacingOccurrences(of: "{query}", with: encodedQuery)
+        if let url = URL(string: searchURL) {
+            NSWorkspace.shared.open(url)
+            return true
+        }
+        return false
+    }
+    func openBrowserItem(at index: Int) -> Bool {
+        guard index >= 0 && index < browserItems.count else { return false }
+        let item = browserItems[index]
+        if let url = URL(string: item.url) {
+            NSWorkspace.shared.open(url)
+            return true
+        }
+        return false
+    }
+    func extractCleanWebText(_ searchText: String) -> String {
+        let prefix = "/w "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    private func getDefaultSearchEngine() -> String {
+        let configManager = ConfigManager.shared
+        let engine = configManager.config.modes.defaultSearchEngine
+        switch engine {
+        case "baidu":
+            return "https://www.baidu.com/s?wd={query}"
+        case "bing":
+            return "https://www.bing.com/search?q={query}"
+        case "google":
+            fallthrough
+        default:
+            return "https://www.google.com/search?q={query}"
+        }
+    }
+    private func isDomainName(_ text: String) -> Bool {
+        return text.contains(".") && !text.contains(" ") && !text.hasPrefix(".")
     }
 }

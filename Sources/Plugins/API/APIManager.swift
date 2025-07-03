@@ -94,7 +94,6 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
             return PluginItem(
                 title: title,
                 subtitle: subtitle,
-                icon: icon,
                 action: action
             )
         }

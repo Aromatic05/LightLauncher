@@ -39,6 +39,41 @@ enum ClipboardItem: Codable, Equatable {
     }
 }
 
+extension ClipboardItem: DisplayableItem {
+    var id: UUID {
+        switch self {
+        case .text(let str):
+            return UUID(uuidString: str.hash.description) ?? UUID()
+        case .file(let url):
+            return UUID(uuidString: url.path.hash.description) ?? UUID()
+        }
+    }
+    var title: String {
+        switch self {
+        case .text(let str):
+            return str
+        case .file(let url):
+            return url.lastPathComponent
+        }
+    }
+    var subtitle: String? {
+        switch self {
+        case .text:
+            return nil
+        case .file(let url):
+            return url.path
+        }
+    }
+    var icon: NSImage? {
+        switch self {
+        case .text:
+            return nil
+        case .file:
+            return nil
+        }
+    }
+}
+
 /// 剪切板历史记录管理器
 @MainActor
 class ClipboardManager {

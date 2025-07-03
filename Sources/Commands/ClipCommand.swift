@@ -27,13 +27,8 @@ class ClipCommandProcessor: CommandProcessor {
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        // 剪切板模式下可实现历史项过滤（如需）
         let cleanText = text.hasPrefix("/v ") ? String(text.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines) : text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if cleanText.isEmpty {
-            viewModel.updateClipResults(filter: nil)
-        } else {
-            viewModel.updateClipResults(filter: cleanText)
-        }
+        viewModel.updateClipResults(filter: cleanText.isEmpty ? nil : cleanText)
     }
     
     func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
@@ -95,10 +90,45 @@ class ClipModeHandler: ModeHandler {
     }
     
     func handleSearch(text: String, in viewModel: LauncherViewModel) {
+        viewModel.updateClipResults(filter: text)
+    }
+    
+    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
+        guard viewModel.mode == .clip else { return false }
+        guard let item = viewModel.getClipItem(at: index) else { return false }
+        switch item {
+        case .text(let str):
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(str, forType: .string)
+        case .file(let url):
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.writeObjects([url as NSURL])
+        }
+        return true
+    }
+}
+
+// MARK: - ClipStateController
+@MainActor
+class ClipStateController: ModeStateController {
+    var currentClipItems: [ClipboardItem] = []
+    let mode: LauncherMode = .clip
+    
+    var displayableItems: [any DisplayableItem] {
+        currentClipItems.map { $0 as any DisplayableItem }
+    }
+    
+    func activate() {
+        currentClipItems = ClipboardManager.shared.getHistory()
+    }
+    func deactivate() {
+        currentClipItems = []
+    }
+    func update(for searchText: String) {
         let allItems = ClipboardManager.shared.getHistory()
-        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty {
-            viewModel.currentClipItems = allItems
+            currentClipItems = allItems
         } else {
             let scored: [(ClipboardItem, Double)] = allItems.compactMap { item in
                 switch item {
@@ -122,14 +152,12 @@ class ClipModeHandler: ModeHandler {
                     }
                 }
             }.sorted { $0.1 > $1.1 }
-            viewModel.currentClipItems = scored.map { $0.0 }
+            currentClipItems = scored.map { $0.0 }
         }
-        viewModel.selectedIndex = 0
     }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        guard viewModel.mode == .clip else { return false }
-        guard let item = viewModel.getClipItem(at: index) else { return false }
+    func executeAction(at index: Int) -> PostAction? {
+        guard index >= 0 && index < currentClipItems.count else { return .keepWindowOpen }
+        let item = currentClipItems[index]
         switch item {
         case .text(let str):
             NSPasteboard.general.clearContents()
@@ -138,39 +166,27 @@ class ClipModeHandler: ModeHandler {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.writeObjects([url as NSURL])
         }
-        return true
+        return .hideWindow
     }
 }
 
 // MARK: - LauncherViewModel 扩展
 extension LauncherViewModel {
+    // 兼容接口，转发到 StateController
+    var currentClipItems: [ClipboardItem] {
+        (activeController as? ClipStateController)?.currentClipItems ?? []
+    }
     func switchToClipMode() {
         mode = .clip
-        updateClipResults(filter: nil)
+        (activeController as? ClipStateController)?.activate()
         selectedIndex = 0
     }
-    
     func updateClipResults(filter: String?) {
-        let allItems = ClipboardManager.shared.getHistory()
-        if let filter = filter, !filter.isEmpty {
-            // 只对文本项做过滤，文件项全部展示
-            currentClipItems = allItems.filter {
-                switch $0 {
-                case .text(let str):
-                    return str.localizedCaseInsensitiveContains(filter)
-                case .file:
-                    return true
-                }
-            }
-        } else {
-            currentClipItems = allItems
-        }
+        (activeController as? ClipStateController)?.update(for: filter ?? "")
         selectedIndex = 0
     }
-    
     func getClipItem(at index: Int) -> ClipboardItem? {
-        guard index >= 0 && index < currentClipItems.count else { return nil }
-        return currentClipItems[index]
+        currentClipItems.indices.contains(index) ? currentClipItems[index] : nil
     }
 }
 
