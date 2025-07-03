@@ -63,6 +63,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // No dock icon
         
+        // 初始化剪切板历史管理器
+        _ = ClipboardManager.shared
+        
         setupViewModel()
         setupWindow()
         setupStatusItem()
