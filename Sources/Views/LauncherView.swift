@@ -436,9 +436,3 @@ struct ResultsListView: View {
         }
     }
 }
-
-// Notification names
-extension Notification.Name {
-    static let hideWindow = Notification.Name("hideWindow")
-    static let hideWindowWithoutActivating = Notification.Name("hideWindowWithoutActivating")
-}
