@@ -27,6 +27,7 @@ enum LauncherMode: String, CaseIterable {
     case web = "web"          // 网页打开模式 (/w)
     case terminal = "terminal" // 终端执行模式 (/t)
     case file = "file"        // 文件管理器模式 (/o)
+    case clip = "clip"        // 剪切板历史模式 (/clip)
     case plugin = "plugin"    // 插件模式 (动态)
     
     // 配置字典 - 数据驱动方法
@@ -70,6 +71,13 @@ enum LauncherMode: String, CaseIterable {
             placeholder: "Browse files and folders...",
             trigger: "/o",
             description: "Browse files and folders starting from home directory"
+        ),
+        .clip: ModeConfiguration(
+            displayName: "Clipboard History",
+            iconName: "doc.on.clipboard",
+            placeholder: "Search clipboard history...",
+            trigger: "/v",
+            description: "Browse and paste clipboard history (text/files)"
         ),
         .plugin: ModeConfiguration(
             displayName: "Plugin",
@@ -122,6 +130,8 @@ enum LauncherMode: String, CaseIterable {
             return settings.isTerminalModeEnabled
         case .file:
             return settings.isFileModeEnabled
+        case .clip:
+            return true // 剪切板模式始终启用
         case .plugin:
             return true // 插件模式始终启用（由插件管理器控制具体插件）
         }

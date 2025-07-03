@@ -114,9 +114,9 @@ struct EmptyStateView: View {
     
     private var emptyStateIcon: String {
         if hasSearchText {
-            return mode == .launch ? "magnifyingglass" : "xmark.circle"
+            return mode == .launch ? "magnifyingglass" : (mode == .clip ? "doc.on.clipboard" : "xmark.circle")
         } else {
-            return mode == .launch ? "app.badge" : "xmark.circle"
+            return mode == .launch ? "app.badge" : (mode == .clip ? "doc.on.clipboard" : "xmark.circle")
         }
     }
     
@@ -124,15 +124,33 @@ struct EmptyStateView: View {
         if hasSearchText {
             return .secondary.opacity(0.5)
         } else {
-            return mode == .launch ? .accentColor.opacity(0.7) : .red.opacity(0.7)
+            if mode == .launch {
+                return .accentColor.opacity(0.7)
+            } else if mode == .clip {
+                return .accentColor.opacity(0.7)
+            } else {
+                return .red.opacity(0.7)
+            }
         }
     }
     
     private var emptyStateTitle: String {
         if hasSearchText {
-            return mode == .launch ? "No applications found" : "No running apps found"
+            if mode == .launch {
+                return "No applications found"
+            } else if mode == .clip {
+                return "No clipboard history found"
+            } else {
+                return "No running apps found"
+            }
         } else {
-            return mode == .launch ? "Start typing to search" : "Type after /k to search apps"
+            if mode == .launch {
+                return "Start typing to search"
+            } else if mode == .clip {
+                return "No clipboard history yet"
+            } else {
+                return "Type after /k to search apps"
+            }
         }
     }
     
@@ -150,6 +168,8 @@ struct EmptyStateView: View {
             return TerminalCommandSuggestionProvider.getHelpText()
         case .file:
             return FileCommandSuggestionProvider.getHelpText()
+        case .clip:
+            return ClipCommandSuggestionProvider.getHelpText()
         case .plugin:
             return ["Plugin mode", "Functionality provided by active plugin"]
         }

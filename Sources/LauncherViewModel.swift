@@ -26,6 +26,9 @@ class LauncherViewModel: ObservableObject {
     @Published var pluginItems: [PluginItem] = []
     private var activePlugin: Plugin?
 
+    // 剪切板模式相关属性
+    @Published var currentClipItems: [ClipboardItem] = []
+
     // 将私有属性改为内部访问级别，供 Commands 扩展使用
     var allApps: [AppInfo] = []
     private let appScanner: AppScanner
@@ -177,10 +180,11 @@ class LauncherViewModel: ObservableObject {
         case .web:
             return !browserItems.isEmpty
         case .search, .terminal:
-            // 对于这些模式，总是显示输入框
             return true
         case .file:
             return showStartPaths ? !fileBrowserStartPaths.isEmpty : !currentFiles.isEmpty
+        case .clip:
+            return !currentClipItems.isEmpty
         case .plugin:
             return true // 插件模式总是显示，由插件控制内容
         }
@@ -225,6 +229,8 @@ class LauncherViewModel: ObservableObject {
         case .file:
             // 文件模式：显示起始路径或当前目录的文件和文件夹
             return showStartPaths ? fileBrowserStartPaths : currentFiles
+        case .clip:
+            return currentClipItems
         case .plugin:
             // 插件模式：返回插件项目
             return pluginItems
@@ -279,6 +285,12 @@ class LauncherViewModel: ObservableObject {
         let pluginProcessor = PluginCommandProcessor()
         commandProcessor.registerProcessor(pluginProcessor)
         commandProcessor.registerModeHandler(pluginProcessor)
+        
+        // 注册剪切板处理器
+        let clipProcessor = ClipCommandProcessor()
+        let clipModeHandler = ClipModeHandler()
+        commandProcessor.registerProcessor(clipProcessor)
+        commandProcessor.registerModeHandler(clipModeHandler)
     }
     
     // MARK: - 插件模式支持
@@ -361,6 +373,8 @@ class LauncherViewModel: ObservableObject {
             return searchHistory.count
         case .file:
             return currentFiles.count
+        case .clip:
+            return currentClipItems.count
         case .plugin:
             return pluginItems.count
         }

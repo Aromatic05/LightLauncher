@@ -24,7 +24,7 @@ extension ModeHandler {
             let inputCommand = text.components(separatedBy: " ").first ?? text
             
             // 检查是否是已知的内置命令
-            let knownCommands = ["/k", "/s", "/w", "/t", "/o"]
+            let knownCommands = ["/k", "/s", "/w", "/t", "/o", "/v"]
             
             // 检查是否是插件命令（精确匹配或者是插件命令的开始）
             let pluginCommands = PluginManager.shared.getAllPlugins().map { $0.command }
@@ -125,6 +125,8 @@ class MainCommandProcessor: ObservableObject {
                 return String(describing: type(of: processor)).contains("Terminal")
             case .file:
                 return String(describing: type(of: processor)).contains("File")
+            case .clip:
+                return String(describing: type(of: processor)).contains("Clip")
             case .plugin:
                 return String(describing: type(of: processor)).contains("Plugin")
             }

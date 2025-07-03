@@ -1,5 +1,44 @@
 import AppKit
 
+/// 剪切板历史记录项
+enum ClipboardItem: Codable, Equatable {
+    case text(String)
+    case file(URL)
+    
+    enum CodingKeys: String, CodingKey {
+        case type, value
+    }
+    
+    enum ItemType: String, Codable {
+        case text, file
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(ItemType.self, forKey: .type)
+        switch type {
+        case .text:
+            let value = try container.decode(String.self, forKey: .value)
+            self = .text(value)
+        case .file:
+            let value = try container.decode(URL.self, forKey: .value)
+            self = .file(value)
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .text(let value):
+            try container.encode(ItemType.text, forKey: .type)
+            try container.encode(value, forKey: .value)
+        case .file(let url):
+            try container.encode(ItemType.file, forKey: .type)
+            try container.encode(url, forKey: .value)
+        }
+    }
+}
+
 /// 剪切板历史记录管理器
 @MainActor
 class ClipboardManager {
@@ -7,7 +46,7 @@ class ClipboardManager {
     
     private let pasteboard = NSPasteboard.general
     private var changeCount: Int
-    private(set) var history: [String] = []
+    private(set) var history: [ClipboardItem] = []
     private let maxHistoryCount: Int
     private var timer: Timer?
     private var saveTimer: Timer?
@@ -55,16 +94,21 @@ class ClipboardManager {
     private func checkPasteboard() {
         if pasteboard.changeCount != changeCount {
             changeCount = pasteboard.changeCount
-            if let newString = pasteboard.string(forType: .string), !newString.isEmpty {
-                addToHistory(newString)
+            // 优先处理文件
+            if let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], !fileURLs.isEmpty {
+                for url in fileURLs {
+                    addToHistory(.file(url))
+                }
+            } else if let newString = pasteboard.string(forType: .string), !newString.isEmpty {
+                addToHistory(.text(newString))
             }
         }
     }
     
     /// 添加到历史记录
-    private func addToHistory(_ string: String) {
-        if history.first != string {
-            history.insert(string, at: 0)
+    private func addToHistory(_ item: ClipboardItem) {
+        if history.first != item {
+            history.insert(item, at: 0)
             if history.count > maxHistoryCount {
                 history = Array(history.prefix(maxHistoryCount))
             }
@@ -73,7 +117,7 @@ class ClipboardManager {
     }
     
     /// 获取全部历史
-    func getHistory() -> [String] {
+    func getHistory() -> [ClipboardItem] {
         return history
     }
     
@@ -96,7 +140,7 @@ class ClipboardManager {
             try FileManager.default.createDirectory(at: historyDirectory, withIntermediateDirectories: true)
             if FileManager.default.fileExists(atPath: historyFileURL.path) {
                 let data = try Data(contentsOf: historyFileURL)
-                let decoded = try JSONDecoder().decode([String].self, from: data)
+                let decoded = try JSONDecoder().decode([ClipboardItem].self, from: data)
                 self.history = Array(decoded.prefix(maxHistoryCount))
             }
         } catch {

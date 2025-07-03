@@ -274,6 +274,15 @@ struct LauncherView: View {
                             FileCommandInputView(currentPath: viewModel.currentPath)
                         }
                     }
+                case .clip:
+                    if !viewModel.currentClipItems.isEmpty {
+                        ClipModeResultsView(viewModel: viewModel)
+                    } else {
+                        EmptyStateView(
+                            mode: viewModel.mode,
+                            hasSearchText: !viewModel.searchText.isEmpty
+                        )
+                    }
                 case .plugin:
                     // 插件模式显示专用的插件视图
                     PluginModeView(viewModel: viewModel)
@@ -370,6 +379,16 @@ struct ResultsListView: View {
                                 .onTapGesture { handleItemSelection(at: index) }
                             }
                         }
+                    case .clip:
+                        ForEach(Array(viewModel.currentClipItems.enumerated()), id: \ .offset) { index, item in
+                            ClipItemRowView(
+                                item: item,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture { handleItemSelection(at: index) }
+                        }
                     case .search, .terminal, .plugin:
                         EmptyView()
                     }
@@ -399,7 +418,7 @@ struct ResultsListView: View {
         switch viewModel.mode {
         case .launch:
             return true
-        case .kill:
+        case .kill :
             return false // kill 模式不隐藏窗口
         case .web:
             return true
@@ -409,7 +428,7 @@ struct ResultsListView: View {
                 return !fileItem.isDirectory
             }
             return true
-        case .search, .terminal:
+        case .search, .terminal, .clip:
             return true
         case .plugin:
             // 插件模式：使用插件设置的窗口隐藏行为
