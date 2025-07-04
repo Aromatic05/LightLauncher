@@ -30,6 +30,16 @@ class LauncherViewModel: ObservableObject {
         ProcessorRegistry.shared.setMainProcessor(commandProcessor)
         registerAllProcessors()
         switchController(from: nil, to: .launch)
+        print("LauncherViewModel initialized with viewModel: \(self)")
+        bindSearchText()
+    }
+
+    private func bindSearchText() {
+        $searchText
+            .sink { [weak self] text in
+                self?.handleSearchTextChange(text: text)
+            }
+            .store(in: &cancellables)
     }
 
     private func setupControllers() {
@@ -61,6 +71,7 @@ class LauncherViewModel: ObservableObject {
     }
 
     private func updateCommandSuggestions(for text: String) {
+        print(searchText, text)
         if commandProcessor.shouldShowCommandSuggestions() && text.hasPrefix("/") {
             let allCommands = commandProcessor.getCommandSuggestions(for: text)
             if text.count > 1 {
@@ -83,6 +94,7 @@ class LauncherViewModel: ObservableObject {
     }
 
     func executeSelectedAction() -> Bool {
+        print(searchText, searchText)
         guard let controller = activeController else { return false }
         if let postAction = controller.executeAction(at: selectedIndex) {
             if postAction == .hideWindow {
