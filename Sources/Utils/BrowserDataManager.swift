@@ -63,7 +63,9 @@ class BrowserDataManager {
     private var lastLoadTime: Date?
     private var enabledBrowsers: Set<BrowserType> = [.safari] // 默认只启用 Safari
     
-    private init() {}
+    private init() {
+        enabledBrowsers = ConfigManager.shared.getEnabledBrowsers()
+    }
     
     func setEnabledBrowsers(_ browsers: Set<BrowserType>) {
         enabledBrowsers = browsers
@@ -75,13 +77,9 @@ class BrowserDataManager {
         return enabledBrowsers
     }
     
-    func loadBrowserData() {
-        // print("🔍 BrowserDataManager: loadBrowserData called")
-        // print("🔍 Enabled browsers: \(enabledBrowsers)")
-        
+    func loadBrowserData() {        
         // 避免频繁加载，缓存5分钟
         if let lastLoad = lastLoadTime, Date().timeIntervalSince(lastLoad) < 300 {
-            // print("🔍 Using cached data (last load: \(lastLoad))")
             return
         }
         
@@ -91,10 +89,9 @@ class BrowserDataManager {
             
             // 加载所有启用的浏览器数据
             for browser in await self.enabledBrowsers {
-                // print("🔍 Checking browser: \(browser.rawValue), installed: \(browser.isInstalled)")
+                // await print(self.enabledBrowsers)
                 if browser.isInstalled {
                     let (bookmarks, history) = await Self.loadBrowserData(for: browser)
-                    // print("🔍 Loaded from \(browser.rawValue): \(bookmarks.count) bookmarks, \(history.count) history items")
                     allBookmarks.append(contentsOf: bookmarks)
                     allHistory.append(contentsOf: history)
                 }

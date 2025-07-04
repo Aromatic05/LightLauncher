@@ -22,6 +22,7 @@ class WebModeController: NSObject, ModeStateController {
     }
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
+        BrowserDataManager.shared.loadBrowserData()
         browserItems = BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
         viewModel.selectedIndex = 0
     }
@@ -123,6 +124,7 @@ extension LauncherViewModel {
             controller.enterMode(with: "", viewModel: self)
         }
     }
+
     func updateWebResults(query: String) {
         if let controller = activeController as? WebModeController {
             controller.handleInput(query, viewModel: self)
