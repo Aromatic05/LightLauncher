@@ -2,13 +2,17 @@ import Foundation
 import AppKit
 
 // MARK: - 文件信息结构
-struct FileItem: Identifiable, Hashable {
+struct FileItem: Identifiable, Hashable, DisplayableItem {
     let id = UUID()
     let name: String
     let url: URL
     let isDirectory: Bool
     let size: Int64?
     let modificationDate: Date?
+
+    // DisplayableItem 协议实现
+    var title: String { name }
+    var subtitle: String? { url.path }
     
     var icon: NSImage? {
         if isDirectory {

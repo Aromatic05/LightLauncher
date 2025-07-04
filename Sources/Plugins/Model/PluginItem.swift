@@ -2,12 +2,26 @@ import Foundation
 import AppKit
 
 // MARK: - 插件返回的结果项
-struct PluginItem: Identifiable, Hashable, Sendable {
+struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     let id = UUID()
     let title: String
     let subtitle: String?
     let iconName: String? // SF Symbol 名称或 Base64 图片字符串
     let action: String? // 执行动作的标识符
+    var icon: NSImage? {
+        // 根据 iconName 的类型返回对应的 NSImage
+        if let iconName = iconName {
+            if iconName.hasPrefix("SF:") {
+                return NSImage(systemSymbolName: String(iconName.dropFirst(3)), accessibilityDescription: nil)
+            } else if iconName.hasPrefix("base64:") {
+                if let data = Data(base64Encoded: String(iconName.dropFirst(7))),
+                   let image = NSImage(data: data) {
+                    return image
+                }
+            }
+        }
+        return nil
+    }
     
     init(title: String, subtitle: String? = nil, iconName: String? = nil, 
          action: String? = nil) {

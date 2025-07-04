@@ -2,6 +2,13 @@ import Foundation
 import AppKit
 import Combine
 
+// MARK: - DisplayableItem 协议
+protocol DisplayableItem: Hashable, Identifiable {
+    var title: String { get }
+    var subtitle: String? { get }
+    var icon: NSImage? { get }
+}
+
 // MARK: - 模式状态控制器协议（清晰版）
 @MainActor
 protocol ModeStateController {
