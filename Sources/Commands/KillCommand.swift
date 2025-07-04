@@ -23,12 +23,14 @@ struct KillCommand: LauncherCommandHandler {
 }
 
 // MARK: - 运行中应用信息结构
-struct RunningAppInfo: Identifiable, Hashable {
+struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
     let id = UUID()
     let name: String
     let bundleIdentifier: String
     let processIdentifier: pid_t
     let isHidden: Bool
+    var title: String { name }
+    var subtitle: String? { bundleIdentifier }
     
     var icon: NSImage? {
         if let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == processIdentifier }) {
@@ -36,6 +38,9 @@ struct RunningAppInfo: Identifiable, Hashable {
         }
         return nil
     }
+    // DisplayableItem 协议实现
+    var displayName: String { name }
+    // 如有其它协议要求属性/方法，请在此补充
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -109,79 +114,46 @@ class RunningAppsManager: @unchecked Sendable {
     }
 }
 
-// MARK: - 关闭应用命令处理器
+// MARK: - 关闭应用模式控制器
 @MainActor
-class KillCommandProcessor: CommandProcessor, ModeHandler {
-    var prefix: String { "/k" }
-    var mode: LauncherMode { .kill }
+class KillModeController: NSObject, ModeStateController {
+    @Published var runningApps: [RunningAppInfo] = []
+    var prefix: String? { "/k" }
     
-    func canHandle(command: String) -> Bool {
-        return command == "/k"
+    // 可显示项插槽
+    var displayableItems: [any DisplayableItem] {
+        runningApps.map { $0 as any DisplayableItem }
     }
     
-    func process(command: String, in viewModel: LauncherViewModel) -> Bool {
-        if command == "/k" {
-            viewModel.switchToKillMode()
-            
-            // 检查当前搜索文本是否包含搜索内容
-            let currentText = viewModel.searchText
-            if currentText.hasPrefix("/k ") {
-                let searchText = String(currentText.dropFirst(3))
-                viewModel.filterRunningApps(searchText: searchText)
-            }
-            
-            return true
-        }
-        return false
+    // 1. 触发条件
+    func shouldActivate(for text: String) -> Bool {
+        return text.hasPrefix("/k")
     }
-    
-    func extractSearchText(from text: String) -> String {
-        // 优先处理带空格的标准格式：/k space searchText
-        if text.hasPrefix(prefix + " ") {
-            return String(text.dropFirst(prefix.count + 1))
-        } else if text == prefix {
-            return "" // 只有 /k 前缀时，返回空字符串显示所有应用
-        } else if text.hasPrefix(prefix) {
-            // 兼容无空格格式：/ksearchText
-            return String(text.dropFirst(prefix.count))
-        }
-        return text
+    // 2. 进入模式
+    func enterMode(with text: String, viewModel: LauncherViewModel) {
+        runningApps = RunningAppsManager.shared.loadRunningApps()
+        viewModel.selectedIndex = 0
     }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        viewModel.filterRunningApps(searchText: text)
+    // 3. 处理输入
+    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+        let all = RunningAppsManager.shared.loadRunningApps()
+        runningApps = text.isEmpty ? all : RunningAppsManager.shared.filterRunningApps(all, with: text)
+        viewModel.selectedIndex = 0
     }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return viewModel.killSelectedApp()
+    // 4. 执行动作
+    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+        guard index < runningApps.count else { return false }
+        let app = runningApps[index]
+        return RunningAppsManager.shared.killApp(app)
     }
-}
-
-// MARK: - 关闭应用模式处理器
-@MainActor
-class KillModeHandler: ModeHandler {
-    let prefix = "/k"
-    let mode = LauncherMode.kill
-    
-    func extractSearchText(from text: String) -> String {
-        // 优先处理带空格的标准格式：/k space searchText
-        if text.hasPrefix(prefix + " ") {
-            return String(text.dropFirst(prefix.count + 1))
-        } else if text == prefix {
-            return "" // 只有 /k 前缀时，返回空字符串显示所有应用
-        } else if text.hasPrefix(prefix) {
-            // 兼容无空格格式：/ksearchText
-            return String(text.dropFirst(prefix.count))
-        }
-        return text
+    // 5. 退出条件
+    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+        // 删除 /k 前缀或切换到其他模式时退出
+        return !text.hasPrefix("/k")
     }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        viewModel.filterRunningApps(searchText: text)
-    }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return viewModel.killSelectedApp()
+    // 6. 清理操作
+    func cleanup(viewModel: LauncherViewModel) {
+        runningApps = []
     }
 }
 
@@ -202,57 +174,33 @@ struct KillCommandSuggestionProvider: CommandSuggestionProvider {
 extension LauncherViewModel {
     // 兼容旧接口，转发到 StateController
     var runningApps: [RunningAppInfo] {
-        (activeController as? KillStateController)?.runningApps ?? []
+        (activeController as? KillModeController)?.runningApps ?? []
     }
     func switchToKillMode() {
-        (activeController as? KillStateController)?.activate()
+        if let controller = activeController as? KillModeController {
+            controller.enterMode(with: "", viewModel: self)
+        }
     }
     func loadRunningApps() {
-        (activeController as? KillStateController)?.activate()
+        if let controller = activeController as? KillModeController {
+            controller.enterMode(with: "", viewModel: self)
+        }
     }
     func filterRunningApps(searchText: String) {
-        (activeController as? KillStateController)?.update(for: searchText)
+        if let controller = activeController as? KillModeController {
+            controller.handleInput(searchText, viewModel: self)
+        }
     }
     func killSelectedApp() -> Bool {
-        guard let killController = activeController as? KillStateController else { return false }
-        let result = killController.executeAction(at: selectedIndex)
-        return result == .hideWindow
+        guard let killController = activeController as? KillModeController else { return false }
+        return killController.executeAction(at: selectedIndex, viewModel: self)
     }
     func selectKillAppByNumber(_ number: Int) -> Bool {
         let index = number - 1
-        guard let killController = activeController as? KillStateController else { return false }
+        guard let killController = activeController as? KillModeController else { return false }
         guard index >= 0 && index < killController.runningApps.count && index < 6 else { return false }
         selectedIndex = index
         return killSelectedApp()
     }
 }
 
-@MainActor
-class KillStateController: NSObject, ModeStateController {
-    @Published var runningApps: [RunningAppInfo] = []
-    var displayableItems: [any DisplayableItem] { runningApps }
-    let mode: LauncherMode = .kill
-
-    func activate() {
-        runningApps = fetchRunningApps()
-    }
-    func deactivate() { runningApps = [] }
-    func update(for searchText: String) {
-        let all = fetchRunningApps()
-        runningApps = searchText.isEmpty ? all : all.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
-    }
-    func executeAction(at index: Int) -> PostAction? {
-        guard index < runningApps.count else { return nil }
-        let app = runningApps[index]
-        if let runningApp = NSRunningApplication(processIdentifier: app.processIdentifier) {
-            runningApp.terminate()
-            return .hideWindow
-        }
-        return .keepWindowOpen
-    }
-    private func fetchRunningApps() -> [RunningAppInfo] {
-        // 这里假设有全局方法或单例可获取所有 RunningAppInfo
-        // 实际项目中请替换为真实数据源
-        []
-    }
-}

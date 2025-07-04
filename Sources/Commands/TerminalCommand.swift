@@ -1,92 +1,79 @@
 import Foundation
 import AppKit
 
-// MARK: - 终端命令处理器
+// MARK: - 终端模式控制器
 @MainActor
-class TerminalCommandProcessor: CommandProcessor {
-    func canHandle(command: String) -> Bool {
-        return command == "/t"
+class TerminalModeController: NSObject, ModeStateController {
+    var prefix: String? { "/t" }
+    // 可显示项插槽
+    var displayableItems: [any DisplayableItem] { [] }
+    // 1. 触发条件
+    func shouldActivate(for text: String) -> Bool {
+        return text.hasPrefix("/t")
     }
-    
-    func process(command: String, in viewModel: LauncherViewModel) -> Bool {
-        guard command == "/t" else { return false }
-        viewModel.switchToTerminalMode()
-        return true
+    // 2. 进入模式
+    func enterMode(with text: String, viewModel: LauncherViewModel) {
+        viewModel.selectedIndex = 0
     }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        // 在终端模式下，直接显示命令文本，不需要过滤
-        // 用户按回车时会执行命令
+    // 3. 处理输入
+    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+        viewModel.selectedIndex = 0
     }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        guard viewModel.mode == .terminal else { return false }
-        
-        // 提取命令文本，去掉 "/t " 前缀
-        let commandText = viewModel.searchText.hasPrefix("/t ") ? 
-            String(viewModel.searchText.dropFirst(3)) : viewModel.searchText
-        
-        guard !commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return false
-        }
-        
-        return executeTerminalCommand(command: commandText, in: viewModel)
+    // 4. 执行动作
+    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+        let cleanText = viewModel.extractCleanTerminalText()
+        return executeTerminalCommandWithDetection(command: cleanText, viewModel: viewModel)
     }
-    
-    private func executeTerminalCommand(command: String, in viewModel: LauncherViewModel) -> Bool {
-        let cleanCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+    // 5. 退出条件
+    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+        return !text.hasPrefix("/t")
+    }
+    // 6. 清理操作
+    func cleanup(viewModel: LauncherViewModel) {}
+
+    // --- 终端检测与执行相关辅助方法 ---
+    private func executeTerminalCommandWithDetection(command: String, viewModel: LauncherViewModel) -> Bool {
         let configManager = ConfigManager.shared
         let preferredTerminal = configManager.config.modes.preferredTerminal
-        
+        let cleanCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
         switch preferredTerminal {
         case "auto":
-            return executeWithAutoDetection(command: cleanCommand, in: viewModel)
+            return executeWithAutoDetection(command: cleanCommand, viewModel: viewModel)
         case "terminal":
-            return executeWithTerminal(command: cleanCommand, in: viewModel)
+            return executeWithTerminal(command: cleanCommand, viewModel: viewModel)
         case "iterm2":
-            return executeWithITerm2(command: cleanCommand, in: viewModel) ||
-                   executeWithFallback(command: cleanCommand, in: viewModel)
+            return executeWithITerm2(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
         case "ghostty":
-            return executeWithGhostty(command: cleanCommand, in: viewModel) ||
-                   executeWithFallback(command: cleanCommand, in: viewModel)
+            return executeWithGhostty(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
         case "kitty":
-            return executeWithKitty(command: cleanCommand, in: viewModel) ||
-                   executeWithFallback(command: cleanCommand, in: viewModel)
+            return executeWithKitty(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
         case "alacritty":
-            return executeWithAlacritty(command: cleanCommand, in: viewModel) ||
-                   executeWithFallback(command: cleanCommand, in: viewModel)
+            return executeWithAlacritty(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
         case "wezterm":
-            return executeWithWezTerm(command: cleanCommand, in: viewModel) ||
-                   executeWithFallback(command: cleanCommand, in: viewModel)
+            return executeWithWezTerm(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
         default:
-            return executeWithAutoDetection(command: cleanCommand, in: viewModel)
+            return executeWithAutoDetection(command: cleanCommand, viewModel: viewModel)
         }
     }
-    
-    private func executeWithAutoDetection(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 首先尝试检测系统默认终端
+    private func executeWithAutoDetection(command: String, viewModel: LauncherViewModel) -> Bool {
         if let defaultTerminal = getSystemDefaultTerminal() {
-            print("检测到系统默认终端: \(defaultTerminal)")
             switch defaultTerminal {
             case "com.apple.Terminal":
-                if executeWithTerminal(command: command, in: viewModel) { return true }
+                if executeWithTerminal(command: command, viewModel: viewModel) { return true }
             case "com.googlecode.iterm2":
-                if executeWithITerm2(command: command, in: viewModel) { return true }
+                if executeWithITerm2(command: command, viewModel: viewModel) { return true }
             case "com.mitchellh.ghostty":
-                if executeWithGhostty(command: command, in: viewModel) { return true }
+                if executeWithGhostty(command: command, viewModel: viewModel) { return true }
             case "net.kovidgoyal.kitty":
-                if executeWithKitty(command: command, in: viewModel) { return true }
+                if executeWithKitty(command: command, viewModel: viewModel) { return true }
             case "io.alacritty":
-                if executeWithAlacritty(command: command, in: viewModel) { return true }
+                if executeWithAlacritty(command: command, viewModel: viewModel) { return true }
             case "com.github.wez.wezterm":
-                if executeWithWezTerm(command: command, in: viewModel) { return true }
-            default:
-                break
+                if executeWithWezTerm(command: command, viewModel: viewModel) { return true }
+            default: break
             }
         }
-        
-        // 如果默认检测失败，按优先级尝试
-        let terminalPriority = [
+        let terminalPriority: [(String, (String, LauncherViewModel) -> Bool)] = [
             ("iTerm2", executeWithITerm2),
             ("Ghostty", executeWithGhostty),
             ("Kitty", executeWithKitty),
@@ -94,28 +81,18 @@ class TerminalCommandProcessor: CommandProcessor {
             ("Alacritty", executeWithAlacritty),
             ("Terminal", executeWithTerminal)
         ]
-        
-        for (name, executor) in terminalPriority {
-            if executor(command, viewModel) {
-                print("成功使用 \(name) 执行命令")
-                return true
-            }
+        for (_, executor) in terminalPriority {
+            if executor(command, viewModel) { return true }
         }
-        
-        // 最后降级到直接执行
-        return executeDirectly(command: command, in: viewModel)
+        return executeDirectly(command: command, viewModel: viewModel)
     }
-    
     private func getSystemDefaultTerminal() -> String? {
-        // 检测 .sh 文件的默认打开应用
         let workspace = NSWorkspace.shared
         let tempShellScript = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("temp.sh")
-        
         do {
             try "#!/bin/bash\necho test".write(to: tempShellScript, atomically: true, encoding: .utf8)
             let defaultApp = workspace.urlForApplication(toOpen: tempShellScript)
             try FileManager.default.removeItem(at: tempShellScript)
-            
             if let appURL = defaultApp {
                 let bundle = Bundle(url: appURL)
                 return bundle?.bundleIdentifier
@@ -123,151 +100,96 @@ class TerminalCommandProcessor: CommandProcessor {
         } catch {
             print("检测默认终端失败: \(error)")
         }
-        
         return nil
     }
-    
-    private func executeWithFallback(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 降级策略：先尝试系统默认，然后是常见终端，最后直接执行
-        return executeWithAutoDetection(command: command, in: viewModel)
+    private func executeWithFallback(command: String, viewModel: LauncherViewModel) -> Bool {
+        return executeWithAutoDetection(command: command, viewModel: viewModel)
     }
-    
-    private func executeWithTerminal(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 创建 AppleScript 来在 Terminal.app 中执行命令
+    private func executeWithTerminal(command: String, viewModel: LauncherViewModel) -> Bool {
         let appleScript = """
-        tell application "Terminal"
+        tell application \"Terminal\"
             activate
-            do script "\(command.replacingOccurrences(of: "\"", with: "\\\""))"
+            do script \"\(command.replacingOccurrences(of: "\"", with: "\\\""))\"
         end tell
         """
-        
-        guard let script = NSAppleScript(source: appleScript) else {
-            return false
-        }
-        
+        guard let script = NSAppleScript(source: appleScript) else { return false }
         var error: NSDictionary?
         script.executeAndReturnError(&error)
-        
-        if error != nil {
-            return false
-        }
-        
+        if error != nil { return false }
         viewModel.resetToLaunchMode()
         return true
     }
-    
-    private func executeWithITerm2(command: String, in viewModel: LauncherViewModel) -> Bool {
+    private func executeWithITerm2(command: String, viewModel: LauncherViewModel) -> Bool {
         let appleScript = """
-        tell application "iTerm"
+        tell application \"iTerm\"
             activate
             tell current window
                 create tab with default profile
                 tell current session
-                    write text "\(command.replacingOccurrences(of: "\"", with: "\\\""))"
+                    write text \"\(command.replacingOccurrences(of: "\"", with: "\\\""))\"
                 end tell
             end tell
         end tell
         """
-        
-        guard let script = NSAppleScript(source: appleScript) else {
-            // 如果两个都失败，直接执行命令
-            return executeDirectly(command: command, in: viewModel)
-        }
-        
+        guard let script = NSAppleScript(source: appleScript) else { return executeDirectly(command: command, viewModel: viewModel) }
         var error: NSDictionary?
         script.executeAndReturnError(&error)
-        
-        if error != nil {
-            return executeDirectly(command: command, in: viewModel)
-        }
-        
+        if error != nil { return executeDirectly(command: command, viewModel: viewModel) }
         viewModel.resetToLaunchMode()
         return true
     }
-    
-    private func executeWithGhostty(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 检查 Ghostty 是否已安装
+    private func executeWithGhostty(command: String, viewModel: LauncherViewModel) -> Bool {
         guard isApplicationInstalled("com.mitchellh.ghostty") else { return false }
-        
-        // Ghostty 支持 -e 参数来执行命令
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "Ghostty", "--args", "-e", "zsh", "-c", command]
-        
         do {
             try process.run()
             viewModel.resetToLaunchMode()
             return true
-        } catch {
-            return false
-        }
+        } catch { return false }
     }
-    
-    private func executeWithKitty(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 检查 Kitty 是否已安装
+    private func executeWithKitty(command: String, viewModel: LauncherViewModel) -> Bool {
         guard isApplicationInstalled("net.kovidgoyal.kitty") else { return false }
-        
-        // Kitty 使用 --hold 保持窗口打开，-e 执行命令
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "kitty", "--args", "--hold", "-e", "zsh", "-c", command]
-        
         do {
             try process.run()
             viewModel.resetToLaunchMode()
             return true
-        } catch {
-            return false
-        }
+        } catch { return false }
     }
-    
-    private func executeWithAlacritty(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 检查 Alacritty 是否已安装
+    private func executeWithAlacritty(command: String, viewModel: LauncherViewModel) -> Bool {
         guard isApplicationInstalled("io.alacritty") else { return false }
-        
-        // Alacritty 使用 --hold 和 -e 执行命令
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "Alacritty", "--args", "--hold", "-e", "zsh", "-c", command]
-        
         do {
             try process.run()
             viewModel.resetToLaunchMode()
             return true
-        } catch {
-            return false
-        }
+        } catch { return false }
     }
-    
-    private func executeWithWezTerm(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 检查 WezTerm 是否已安装
+    private func executeWithWezTerm(command: String, viewModel: LauncherViewModel) -> Bool {
         guard isApplicationInstalled("com.github.wez.wezterm") else { return false }
-        
-        // WezTerm 使用 start -- 来执行命令
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "WezTerm", "--args", "start", "--", "zsh", "-c", command]
-        
         do {
             try process.run()
             viewModel.resetToLaunchMode()
             return true
-        } catch {
-            return false
-        }
+        } catch { return false }
     }
-    
     private func isApplicationInstalled(_ bundleIdentifier: String) -> Bool {
         let workspace = NSWorkspace.shared
         return workspace.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
     }
-    
-    private func executeDirectly(command: String, in viewModel: LauncherViewModel) -> Bool {
-        // 作为最后的备选方案，直接在后台执行命令
+    private func executeDirectly(command: String, viewModel: LauncherViewModel) -> Bool {
         let process = Process()
         process.launchPath = "/bin/zsh"
         process.arguments = ["-c", command]
-        
         do {
             try process.run()
             viewModel.resetToLaunchMode()
@@ -292,55 +214,6 @@ extension LauncherViewModel {
             return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    
-    func executeTerminalCommand(_ command: String) -> Bool {
-        guard !command.isEmpty else { return false }
-        
-        // 创建AppleScript来执行终端命令
-        let script = """
-            tell application "Terminal"
-                activate
-                do script "\(command.replacingOccurrences(of: "\"", with: "\\\""))"
-            end tell
-        """
-        
-        var error: NSDictionary?
-        if let scriptObject = NSAppleScript(source: script) {
-            scriptObject.executeAndReturnError(&error)
-            if error == nil {
-                resetToLaunchMode()
-                return true
-            }
-        }
-        
-        return false
-    }
-}
-
-// MARK: - 终端模式处理器
-@MainActor
-class TerminalModeHandler: ModeHandler {
-    let prefix = "/t"
-    let mode = LauncherMode.terminal
-    
-    func extractSearchText(from text: String) -> String {
-        // 要求空格分隔符：/t space command
-        if text.hasPrefix(prefix + " ") {
-            return String(text.dropFirst(prefix.count + 1))
-        } else if text == prefix {
-            return "" // 只有 /t 前缀时，返回空字符串
-        }
-        return "" // 如果没有空格分隔符，不进行搜索
-    }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        viewModel.switchToTerminalMode()
-    }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        let cleanText = viewModel.extractCleanTerminalText()
-        return viewModel.executeTerminalCommand(cleanText)
     }
 }
 

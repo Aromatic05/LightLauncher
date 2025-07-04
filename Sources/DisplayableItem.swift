@@ -7,20 +7,6 @@ protocol DisplayableItem: Hashable, Identifiable {
     var icon: NSImage? { get }
 }
 
-// AppInfo 遵守 DisplayableItem 协议
-extension AppInfo: DisplayableItem {
-    var title: String { name }
-    var subtitle: String? { url.path }
-    // id 和 icon 已在 AppInfo 内部实现
-}
-
-// RunningAppInfo 遵守 DisplayableItem 协议
-extension RunningAppInfo: DisplayableItem {
-    var title: String { name }
-    var subtitle: String? { bundleIdentifier }
-    // id 和 icon 已在结构体内部实现
-}
-
 // FileItem 遵守 DisplayableItem 协议
 extension FileItem: DisplayableItem {
     var title: String { name }
@@ -36,8 +22,4 @@ extension PluginItem: DisplayableItem {
     }
 }
 
-// BrowserItem 遵守 DisplayableItem 协议
-extension BrowserItem: DisplayableItem {
-    var subtitle: String? { url }
-    var icon: NSImage? { nil }
-}
+

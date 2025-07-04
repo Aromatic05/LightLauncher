@@ -13,120 +13,30 @@ struct ClipModeData: ModeData {
     }
 }
 
-// MARK: - 剪切板命令处理器
+// MARK: - 剪切板模式控制器
 @MainActor
-class ClipCommandProcessor: CommandProcessor {
-    func canHandle(command: String) -> Bool {
-        return command == "/v"
-    }
+class ClipModeController: NSObject, ModeStateController {
+    @Published var currentClipItems: [ClipboardItem] = []
+    var prefix: String? { "/v" }
     
-    func process(command: String, in viewModel: LauncherViewModel) -> Bool {
-        guard command == "/v" else { return false }
-        viewModel.switchToClipMode()
-        return true
-    }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        let cleanText = text.hasPrefix("/v ") ? String(text.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines) : text.trimmingCharacters(in: .whitespacesAndNewlines)
-        viewModel.updateClipResults(filter: cleanText.isEmpty ? nil : cleanText)
-    }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        guard viewModel.mode == .clip else { return false }
-        guard let item = viewModel.getClipItem(at: index) else { return false }
-        switch item {
-        case .text(let str):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(str, forType: .string)
-        case .file(let url):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.writeObjects([url as NSURL])
-        }
-        // 可扩展：自动粘贴、关闭窗口等
-        return true
-    }
-}
-
-// MARK: - 剪切板模式处理器
-@MainActor
-class ClipModeHandler: ModeHandler {
-    let prefix = "/v"
-    let mode: LauncherMode = .clip
-    
-    func shouldSwitchToLaunchMode(for text: String) -> Bool {
-        // 复用默认实现
-        if text.hasPrefix("/") {
-            let inputCommand = text.components(separatedBy: " ").first ?? text
-            let knownCommands = ["/k", "/s", "/w", "/t", "/o", "/v"]
-            let pluginCommands = PluginManager.shared.getAllPlugins().map { $0.command }
-            if knownCommands.contains(inputCommand) || pluginCommands.contains(inputCommand) {
-                return false
-            }
-            let allCommands = knownCommands + pluginCommands
-            let hasMatchingPrefix = allCommands.contains { command in
-                command.hasPrefix(inputCommand) && command != inputCommand
-            }
-            if hasMatchingPrefix {
-                return false
-            }
-            if !prefix.isEmpty && inputCommand != prefix && !inputCommand.hasPrefix(prefix + " ") {
-                return true
-            }
-        } else {
-            if !prefix.isEmpty && !text.hasPrefix(prefix) {
-                return true
-            }
-        }
-        return false
-    }
-    
-    func extractSearchText(from text: String) -> String {
-        if text.hasPrefix(prefix + " ") {
-            return String(text.dropFirst(prefix.count + 1))
-        } else if text.hasPrefix(prefix) {
-            return String(text.dropFirst(prefix.count))
-        }
-        return text
-    }
-    
-    func handleSearch(text: String, in viewModel: LauncherViewModel) {
-        viewModel.updateClipResults(filter: text)
-    }
-    
-    func executeAction(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        guard viewModel.mode == .clip else { return false }
-        guard let item = viewModel.getClipItem(at: index) else { return false }
-        switch item {
-        case .text(let str):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(str, forType: .string)
-        case .file(let url):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.writeObjects([url as NSURL])
-        }
-        return true
-    }
-}
-
-// MARK: - ClipStateController
-@MainActor
-class ClipStateController: ModeStateController {
-    var currentClipItems: [ClipboardItem] = []
-    let mode: LauncherMode = .clip
-    
+    // 可显示项插槽
     var displayableItems: [any DisplayableItem] {
-        currentClipItems.map { $0 as any DisplayableItem }
+        currentClipItems
     }
     
-    func activate() {
+    // 1. 触发条件
+    func shouldActivate(for text: String) -> Bool {
+        return text.hasPrefix("/v")
+    }
+    // 2. 进入模式
+    func enterMode(with text: String, viewModel: LauncherViewModel) {
         currentClipItems = ClipboardManager.shared.getHistory()
+        viewModel.selectedIndex = 0
     }
-    func deactivate() {
-        currentClipItems = []
-    }
-    func update(for searchText: String) {
+    // 3. 处理输入
+    func handleInput(_ text: String, viewModel: LauncherViewModel) {
         let allItems = ClipboardManager.shared.getHistory()
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if query.isEmpty {
             currentClipItems = allItems
         } else {
@@ -154,9 +64,11 @@ class ClipStateController: ModeStateController {
             }.sorted { $0.1 > $1.1 }
             currentClipItems = scored.map { $0.0 }
         }
+        viewModel.selectedIndex = 0
     }
-    func executeAction(at index: Int) -> PostAction? {
-        guard index >= 0 && index < currentClipItems.count else { return .keepWindowOpen }
+    // 4. 执行动作
+    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+        guard index >= 0 && index < currentClipItems.count else { return false }
         let item = currentClipItems[index]
         switch item {
         case .text(let str):
@@ -166,7 +78,16 @@ class ClipStateController: ModeStateController {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.writeObjects([url as NSURL])
         }
-        return .hideWindow
+        return true
+    }
+    // 5. 退出条件
+    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+        // 删除 /v 前缀或切换到其他模式时退出
+        return !text.hasPrefix("/v")
+    }
+    // 6. 清理操作
+    func cleanup(viewModel: LauncherViewModel) {
+        currentClipItems = []
     }
 }
 
@@ -174,15 +95,15 @@ class ClipStateController: ModeStateController {
 extension LauncherViewModel {
     // 兼容接口，转发到 StateController
     var currentClipItems: [ClipboardItem] {
-        (activeController as? ClipStateController)?.currentClipItems ?? []
+        (activeController as? ClipModeController)?.currentClipItems ?? []
     }
     func switchToClipMode() {
         mode = .clip
-        (activeController as? ClipStateController)?.activate()
+        (activeController as? ClipModeController)?.enterMode(with: "", viewModel: self)
         selectedIndex = 0
     }
     func updateClipResults(filter: String?) {
-        (activeController as? ClipStateController)?.update(for: filter ?? "")
+        (activeController as? ClipModeController)?.handleInput(filter ?? "", viewModel: self)
         selectedIndex = 0
     }
     func getClipItem(at index: Int) -> ClipboardItem? {

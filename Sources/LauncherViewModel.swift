@@ -28,7 +28,6 @@ class LauncherViewModel: ObservableObject {
     init() {
         setupControllers()
         ProcessorRegistry.shared.setMainProcessor(commandProcessor)
-        registerAllProcessors()
         switchController(from: nil, to: .launch)
         print("LauncherViewModel initialized with viewModel: \(self)")
         bindSearchText()
@@ -43,30 +42,29 @@ class LauncherViewModel: ObservableObject {
     }
 
     private func setupControllers() {
-        controllers[.launch] = LaunchStateController()
-        controllers[.kill] = KillStateController()
-        controllers[.file] = FileStateController()
-        controllers[.plugin] = PluginStateController()
-        controllers[.search] = SearchStateController()
-        controllers[.web] = WebStateController()
-        controllers[.clip] = ClipStateController()
+        controllers[.launch] = LaunchModeController()
+        controllers[.kill] = KillModeController()
+        controllers[.file] = FileModeController()
+        controllers[.plugin] = PluginModeController()
+        controllers[.search] = SearchModeController()
+        controllers[.web] = WebModeController()
+        controllers[.clip] = ClipModeController()
     }
 
     private func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
         if let oldMode = oldMode, let oldController = controllers[oldMode] {
-            oldController.deactivate()
+            oldController.cleanup(viewModel: self)
         }
         if let newController = controllers[newMode] {
             activeController = newController
-            newController.activate()
-            newController.update(for: searchText)
+            newController.enterMode(with: searchText, viewModel: self)
         }
         selectedIndex = 0
     }
 
     private func handleSearchTextChange(text: String) {
         updateCommandSuggestions(for: text)
-        activeController?.update(for: text)
+        activeController?.handleInput(text, viewModel: self)
         _ = commandProcessor.processInput(text, in: self)
     }
 
@@ -96,13 +94,7 @@ class LauncherViewModel: ObservableObject {
     func executeSelectedAction() -> Bool {
         print(searchText, searchText)
         guard let controller = activeController else { return false }
-        if let postAction = controller.executeAction(at: selectedIndex) {
-            if postAction == .hideWindow {
-                hideLauncher()
-            }
-            return true
-        }
-        return false
+        return controller.executeAction(at: selectedIndex, viewModel: self)
     }
 
     func moveSelectionUp() {
@@ -119,39 +111,6 @@ class LauncherViewModel: ObservableObject {
         return !(activeController?.displayableItems.isEmpty ?? true)
     }
 
-    private func registerAllProcessors() {
-        let launchProcessor = LaunchCommandProcessor()
-        let launchModeHandler = LaunchModeHandler()
-        commandProcessor.registerProcessor(launchProcessor)
-        commandProcessor.registerModeHandler(launchModeHandler)
-        let killProcessor = KillCommandProcessor()
-        let killModeHandler = KillModeHandler()
-        commandProcessor.registerProcessor(killProcessor)
-        commandProcessor.registerModeHandler(killModeHandler)
-        let searchProcessor = SearchCommandProcessor()
-        let searchModeHandler = SearchModeHandler()
-        commandProcessor.registerProcessor(searchProcessor)
-        commandProcessor.registerModeHandler(searchModeHandler)
-        let webProcessor = WebCommandProcessor()
-        let webModeHandler = WebModeHandler()
-        commandProcessor.registerProcessor(webProcessor)
-        commandProcessor.registerModeHandler(webModeHandler)
-        let terminalProcessor = TerminalCommandProcessor()
-        let terminalModeHandler = TerminalModeHandler()
-        commandProcessor.registerProcessor(terminalProcessor)
-        commandProcessor.registerModeHandler(terminalModeHandler)
-        let fileProcessor = FileCommandProcessor()
-        let fileModeHandler = FileModeHandler()
-        commandProcessor.registerProcessor(fileProcessor)
-        commandProcessor.registerModeHandler(fileModeHandler)
-        let pluginProcessor = PluginCommandProcessor()
-        commandProcessor.registerProcessor(pluginProcessor)
-        commandProcessor.registerModeHandler(pluginProcessor)
-        let clipProcessor = ClipCommandProcessor()
-        let clipModeHandler = ClipModeHandler()
-        commandProcessor.registerProcessor(clipProcessor)
-        commandProcessor.registerModeHandler(clipModeHandler)
-    }
     func hideLauncher() {
         NotificationCenter.default.post(name: .hideWindow, object: nil)
     }
@@ -180,9 +139,9 @@ class LauncherViewModel: ObservableObject {
         selectedIndex = selectedIndex < commandSuggestions.count - 1 ? selectedIndex + 1 : 0
     }
 
-    // 插件相关接口全部转发到 PluginStateController
+    // 插件相关接口全部转发到 PluginModeController
     func switchToPluginMode(with plugin: Plugin) {
-        (controllers[.plugin] as? PluginStateController)?.switchToPluginMode(with: plugin)
+        // (controllers[.plugin] as? PluginModeController)?.switchToPluginMode(with: plugin)
         mode = .plugin
         activePlugin = plugin
         selectedIndex = 0
@@ -200,6 +159,11 @@ class LauncherViewModel: ObservableObject {
 
     // 兼容接口：获取当前模式下所有可显示项
     func getCurrentItems() -> [any DisplayableItem] {
+        displayableItems
+    }
+
+    // --- displayableItems 插槽 ---
+    var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []
     }
 }
