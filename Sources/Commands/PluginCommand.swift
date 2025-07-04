@@ -9,7 +9,7 @@ class PluginModeController: NSObject, ModeStateController {
     @Published var pluginItems: [PluginItem] = []
     private let pluginManager = PluginManager.shared
     private var activePlugin: Plugin?
-    var prefix: String? { activePlugin?.command ?? "" }
+    var prefix: String? { activePlugin?.command ?? "!" }
     // 可显示项插槽
     var displayableItems: [any DisplayableItem] {
         pluginItems.map { $0 as any DisplayableItem }

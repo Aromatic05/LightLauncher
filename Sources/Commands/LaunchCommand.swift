@@ -216,12 +216,7 @@ extension LauncherViewModel {
             controller.enterMode(with: "", viewModel: self)
         }
     }
-    func switchToLaunchModeAndClear() {
-        if let controller = activeController as? LaunchModeController {
-            controller.enterMode(with: "", viewModel: self)
-        }
-        searchText = ""
-    }
+
     func filterApps(searchText: String) {
         if let controller = activeController as? LaunchModeController {
             controller.handleInput(searchText, viewModel: self)

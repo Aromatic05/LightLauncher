@@ -27,12 +27,13 @@ class LauncherViewModel: ObservableObject {
     init() {
         setupControllers()
         switchController(from: nil, to: .launch)
-        print("LauncherViewModel initialized with viewModel: \(self)")
         bindSearchText()
     }
 
     private func bindSearchText() {
         $searchText
+            // 处理搜索文本变化，使用防抖机制
+            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .sink { [weak self] text in
                 self?.handleSearchTextChange(text: text)
             }
@@ -47,15 +48,24 @@ class LauncherViewModel: ObservableObject {
         controllers[.search] = SearchModeController()
         controllers[.web] = WebModeController()
         controllers[.clip] = ClipModeController()
+        controllers[.terminal] = TerminalModeController() // 补全 terminal 模式 controller
     }
 
     private func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
         if let oldMode = oldMode, let oldController = controllers[oldMode] {
             oldController.cleanup(viewModel: self)
         }
+        // 保证 .launch 模式下 controller 永远有效
         if let newController = controllers[newMode] {
             activeController = newController
             newController.enterMode(with: searchText, viewModel: self)
+        } else if newMode == .launch {
+            let launchController = LaunchModeController()
+            controllers[.launch] = launchController
+            activeController = launchController
+            launchController.enterMode(with: searchText, viewModel: self)
+        } else {
+            activeController = nil
         }
         selectedIndex = 0
     }
@@ -67,25 +77,41 @@ class LauncherViewModel: ObservableObject {
     }
 
     private func updateCommandSuggestions(for text: String) {
-        // print(searchText, text)
         if shouldShowCommandSuggestions() && text.hasPrefix("/") {
             let allCommands = getCommandSuggestions(for: text)
+            let newSuggestions: [LauncherCommand]
             if text.count > 1 {
                 let searchPrefix = text.lowercased()
-                commandSuggestions = allCommands.filter { command in
+                newSuggestions = allCommands.filter { command in
                     command.trigger.lowercased().hasPrefix(searchPrefix) ||
                     command.description.lowercased().contains(searchPrefix.dropFirst())
                 }
             } else {
-                commandSuggestions = allCommands
+                newSuggestions = allCommands
             }
-            showCommandSuggestions = !commandSuggestions.isEmpty
-            if !commandSuggestions.isEmpty {
+            let shouldShow = !newSuggestions.isEmpty
+            // 防抖：只有变化时才 set
+            let isSame = commandSuggestions.elementsEqual(newSuggestions) { $0.trigger == $1.trigger }
+            if !isSame {
+                commandSuggestions = newSuggestions
+            }
+            if showCommandSuggestions != shouldShow {
+                showCommandSuggestions = shouldShow
+            }
+            if shouldShow && selectedIndex != 0 {
                 selectedIndex = 0
             }
         } else {
-            showCommandSuggestions = false
-            commandSuggestions = []
+            if showCommandSuggestions {
+                showCommandSuggestions = false
+            }
+            if !commandSuggestions.isEmpty {
+                commandSuggestions = []
+            }
+            // 修复：命令建议消失时重置 selectedIndex
+            if selectedIndex != 0 {
+                selectedIndex = 0
+            }
         }
     }
 
@@ -94,11 +120,10 @@ class LauncherViewModel: ObservableObject {
         LauncherCommand.getCommandSuggestions(for: text)
     }
     private func shouldShowCommandSuggestions() -> Bool {
-        SettingsManager.shared.showCommandSuggestions
+        return SettingsManager.shared.showCommandSuggestions
     }
 
     func executeSelectedAction() -> Bool {
-        print(searchText, searchText)
         guard let controller = activeController else { return false }
         return controller.executeAction(at: selectedIndex, viewModel: self)
     }
@@ -127,6 +152,16 @@ class LauncherViewModel: ObservableObject {
         selectedIndex = 0
     }
 
+    func switchToLaunchModeAndClear() {
+        mode = .launch // 关键：同步切换模式
+        if let controller = controllers[.launch] {
+            activeController = controller
+            controller.enterMode(with: "", viewModel: self)
+        }
+        searchText = ""
+        selectedIndex = 0
+    }
+
     func applySelectedCommand(_ command: LauncherCommand) {
         searchText = command.trigger + " "
         showCommandSuggestions = false
@@ -147,7 +182,6 @@ class LauncherViewModel: ObservableObject {
 
     // 插件相关接口全部转发到 PluginModeController
     func switchToPluginMode(with plugin: Plugin) {
-        // (controllers[.plugin] as? PluginModeController)?.switchToPluginMode(with: plugin)
         mode = .plugin
         activePlugin = plugin
         selectedIndex = 0
@@ -183,17 +217,19 @@ class LauncherViewModel: ObservableObject {
             let knownCommands = ["/k", "/s", "/w", "/t", "/o", "/v"]
             let pluginCommands = PluginManager.shared.getAllPlugins().map { $0.command }
             let allCommands = knownCommands + pluginCommands
-            // 完全匹配内置或插件命令，切换到对应模式
-            if let matched = allCommands.first(where: { $0 == inputCommand }) {
-                if let mode = LauncherMode.fromPrefix(matched) {
+            // 只有完全匹配有效命令时才切换模式
+            if allCommands.contains(inputCommand) {
+                if let mode = LauncherMode.fromPrefix(inputCommand) {
                     modeSwitchIfNeeded(to: mode, text: text)
                     return true
-                } else if pluginCommands.contains(matched) {
-                    // 插件命令，切换到插件模式
+                } else if pluginCommands.contains(inputCommand) {
                     self.mode = .plugin
-                    // 激活插件等后续逻辑可在 PluginModeController 内部处理
                     return true
                 }
+            }
+            // 如果只输入了 '/'，不切换模式，直接返回
+            if inputCommand == "/" {
+                return false
             }
         }
         // 2. 检查当前模式是否应切回 launch
@@ -221,27 +257,20 @@ class LauncherViewModel: ObservableObject {
 // MARK: - ModeStateController 默认实现扩展
 extension ModeStateController {
     func shouldSwitchToLaunchMode(for text: String) -> Bool {
-        // 如果是以"/"开头的命令，需要更精确的匹配
         if let prefix = self.prefix, !prefix.isEmpty {
             if text.hasPrefix("/") {
                 let inputCommand = text.components(separatedBy: " ").first ?? text
                 let knownCommands = ["/k", "/s", "/w", "/t", "/o", "/v"]
                 let pluginCommands = PluginManager.shared.getAllPlugins().map { $0.command }
-                if knownCommands.contains(inputCommand) || pluginCommands.contains(inputCommand) {
-                    return false
-                }
                 let allCommands = knownCommands + pluginCommands
-                let hasMatchingPrefix = allCommands.contains { command in
-                    command.hasPrefix(inputCommand) && command != inputCommand
-                }
-                if hasMatchingPrefix {
-                    return false
-                }
-                if inputCommand != prefix && !inputCommand.hasPrefix(prefix + " ") {
+                let should = !allCommands.contains(inputCommand) && inputCommand != prefix
+                if should {
                     return true
                 }
+                return false
             } else {
-                if !text.hasPrefix(prefix) {
+                let should = !text.hasPrefix(prefix)
+                if should {
                     return true
                 }
             }

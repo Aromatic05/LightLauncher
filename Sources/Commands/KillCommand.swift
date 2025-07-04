@@ -74,23 +74,20 @@ class RunningAppsManager: @unchecked Sendable {
         let workspace = NSWorkspace.shared
         let runningApplications = workspace.runningApplications
         
-        return runningApplications.compactMap { app in
-            // 过滤掉系统应用和没有界面的应用
-            guard let bundleId = app.bundleIdentifier,
-                  let appName = app.localizedName,
-                  app.activationPolicy == .regular
-            else {
-                // !bundleId.hasPrefix("com.apple.") || appName.contains("Finder")
-                return nil
-            }
-            
+        let validApps = runningApplications.compactMap { app -> RunningAppInfo? in
+            guard app.activationPolicy == .regular else { return nil }
+            guard let bundleId = app.bundleIdentifier else { return nil }
+            guard let appName = app.localizedName, !appName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            // 过滤掉包含非法字符的名称
+            if appName.rangeOfCharacter(from: .controlCharacters) != nil { return nil }
             return RunningAppInfo(
                 name: appName,
                 bundleIdentifier: bundleId,
                 processIdentifier: app.processIdentifier,
                 isHidden: app.isHidden
             )
-        }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        }
+        return validApps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
     
     func filterRunningApps(_ apps: [RunningAppInfo], with searchText: String) -> [RunningAppInfo] {
