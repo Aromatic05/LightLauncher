@@ -83,3 +83,15 @@ class PluginModeController: NSObject, ModeStateController {
         self.activePlugin = nil
     }
 }
+
+// MARK: - 插件命令建议提供器
+struct PluginCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type to search applications",
+            "Press ↑↓ arrows or numbers 1-6 to select",
+            "Type / to see all commands",
+            "Press Esc to close"
+        ]
+    }
+}

@@ -190,18 +190,6 @@ struct LaunchModeData: ModeData {
     }
 }
 
-// MARK: - 启动命令建议提供器
-struct LaunchCommandSuggestionProvider: CommandSuggestionProvider {
-    static func getHelpText() -> [String] {
-        return [
-            "Type to search applications",
-            "Press ↑↓ arrows or numbers 1-6 to select",
-            "Type / to see all commands",
-            "Press Esc to close"
-        ]
-    }
-}
-
 // MARK: - 应用匹配结果结构
 struct AppMatch {
     let app: AppInfo
@@ -255,5 +243,17 @@ extension LauncherViewModel {
         guard index >= 0 && index < controller.filteredApps.count && index < 6 else { return false }
         selectedIndex = index
         return launchSelectedApp()
+    }
+}
+
+// MARK: - 启动命令建议提供器
+struct LaunchCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type to search applications",
+            "Press ↑↓ arrows or numbers 1-6 to select",
+            "Type / to see all commands",
+            "Press Esc to close"
+        ]
     }
 }

@@ -157,19 +157,6 @@ class KillModeController: NSObject, ModeStateController {
     }
 }
 
-// MARK: - 關閉應用命令建議提供器
-struct KillCommandSuggestionProvider: CommandSuggestionProvider {
-    static func getHelpText() -> [String] {
-        return [
-            "Type '/k ' (with space) then search text to find running apps",
-            "Example: '/k chrome' to search for Chrome",
-            "Press ↑↓ arrows or numbers 1-6 to select", 
-            "Delete /k prefix to return to launch mode",
-            "Press Esc to close"
-        ]
-    }
-}
-
 // MARK: - LauncherViewModel 扩展 - 关闭应用模式
 extension LauncherViewModel {
     // 兼容旧接口，转发到 StateController
@@ -204,3 +191,15 @@ extension LauncherViewModel {
     }
 }
 
+// MARK: - 关闭命令建议提供器
+struct KillCommandSuggestionProvider: CommandSuggestionProvider {
+    static func getHelpText() -> [String] {
+        return [
+            "Type '/k ' (with space) then search text to find running apps",
+            "Example: '/k chrome' to search for Chrome",
+            "Press ↑↓ arrows or numbers 1-6 to select", 
+            "Delete /k prefix to return to launch mode",
+            "Press Esc to close"
+        ]
+    }
+}
