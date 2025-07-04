@@ -5,15 +5,19 @@ struct PluginModeView: View {
     @ObservedObject var viewModel: LauncherViewModel
     
     var body: some View {
-        ScrollViewReader { proxy in
+        let pluginController = viewModel.controllers[.plugin] as? PluginStateController
+        let pluginItems = pluginController?.pluginItems ?? []
+        let isEmpty = pluginItems.isEmpty
+        
+        return ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    if viewModel.pluginItems.isEmpty {
+                    if isEmpty {
                         // 空状态视图
-                        PluginEmptyStateView(viewModel: viewModel)
+                        PluginEmptyStateView(viewModel: viewModel, pluginController: pluginController)
                     } else {
                         // 插件结果列表
-                        ForEach(Array(viewModel.pluginItems.enumerated()), id: \.offset) { index, item in
+                        ForEach(Array(pluginItems.enumerated()), id: \.offset) { index, item in
                             PluginItemRowView(
                                 item: item,
                                 isSelected: index == viewModel.selectedIndex,
@@ -23,8 +27,7 @@ struct PluginModeView: View {
                             .onTapGesture {
                                 viewModel.selectedIndex = index
                                 if viewModel.executeSelectedAction() {
-                                    // 插件动作执行后，根据插件设置决定是否隐藏窗口
-                                    if viewModel.getPluginShouldHideWindowAfterAction() {
+                                    if pluginController?.getPluginShouldHideWindowAfterAction() == true {
                                         NotificationCenter.default.post(name: .hideWindow, object: nil)
                                     }
                                 }
@@ -47,6 +50,7 @@ struct PluginModeView: View {
 // MARK: - 插件空状态视图
 struct PluginEmptyStateView: View {
     @ObservedObject var viewModel: LauncherViewModel
+    let pluginController: PluginStateController?
     
     var body: some View {
         VStack(spacing: 16) {
@@ -58,7 +62,7 @@ struct PluginEmptyStateView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
             
-            if let plugin = viewModel.getActivePlugin() {
+            if let plugin = pluginController?.getActivePlugin() {
                 Text("Plugin: \(plugin.displayName)")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary.opacity(0.8))

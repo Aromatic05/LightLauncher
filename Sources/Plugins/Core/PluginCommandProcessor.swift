@@ -108,7 +108,11 @@ class PluginCommandProcessor: CommandProcessor, ModeHandler {
         }
         
         // 在插件模式下，从 viewModel 获取插件结果
-        let pluginItems = viewModel.pluginItems
+        guard let pluginController = viewModel.controllers[.plugin] as? PluginStateController else {
+            logger.error("Controller for .plugin is not a PluginModeStateController")
+            return false
+        }
+        let pluginItems = pluginController.pluginItems
         
         guard index >= 0 && index < pluginItems.count else {
             logger.error("Invalid action index: \(index)")

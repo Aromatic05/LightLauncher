@@ -147,7 +147,10 @@ extension LauncherFacade {
             case .search, .terminal, .clip:
                 return true
             case .plugin:
-                return viewModel.getPluginShouldHideWindowAfterAction()
+                if let pluginController = viewModel.controllers[.plugin] as? PluginStateController {
+                    return pluginController.getPluginShouldHideWindowAfterAction()
+                }
+                return true
             }
         }, default: false)
     }
@@ -212,7 +215,8 @@ extension LauncherFacade {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
         case .plugin:
-            if viewModel.getPluginShouldHideWindowAfterAction() {
+            if let pluginController = viewModel.controllers[.plugin] as? PluginStateController,
+               pluginController.getPluginShouldHideWindowAfterAction() {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
         default:
@@ -235,8 +239,11 @@ extension LauncherFacade {
             viewModel.commandSuggestions = []
             return
         }
-        if viewModel.mode == .file {
-            viewModel.openSelectedFileInFinder()
+        if viewModel.mode == .file,
+           let fileController = viewModel.controllers[.file] as? FileStateController,
+           !viewModel.showStartPaths,
+           let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex) {
+            fileController.openInFinder(fileItem.url)
         }
     }
 
@@ -254,7 +261,8 @@ extension LauncherFacade {
             case .kill:
                 break
             case .plugin:
-                if viewModel.getPluginShouldHideWindowAfterAction() {
+                if let pluginController = viewModel.controllers[.plugin] as? PluginStateController,
+                   pluginController.getPluginShouldHideWindowAfterAction() {
                     NotificationCenter.default.post(name: .hideWindow, object: nil)
                 }
             default:

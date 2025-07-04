@@ -15,7 +15,7 @@ class LauncherViewModel: ObservableObject {
     @Published var showCommandSuggestions = false
     @Published private(set) var activeController: (any ModeStateController)?
 
-    private var controllers: [LauncherMode: any ModeStateController] = [:]
+    var controllers: [LauncherMode: any ModeStateController] = [:]
     private var cancellables = Set<AnyCancellable>()
     private let commandProcessor = MainCommandProcessor()
 
@@ -149,12 +149,7 @@ class LauncherViewModel: ObservableObject {
         searchText = ""
         selectedIndex = 0
     }
-    func getPluginShouldHideWindowAfterAction() -> Bool {
-        guard mode == .plugin, let plugin = activePlugin else {
-            return true // 默认隐藏窗口
-        }
-        return PluginManager.shared.getPluginShouldHideWindowAfterAction(command: plugin.command)
-    }
+
     func applySelectedCommand(_ command: LauncherCommand) {
         searchText = command.trigger + " "
         showCommandSuggestions = false
@@ -162,44 +157,25 @@ class LauncherViewModel: ObservableObject {
         selectedIndex = 0
         _ = commandProcessor.processInput(command.trigger, in: self)
     }
+
     func moveCommandSuggestionUp() {
         guard showCommandSuggestions && !commandSuggestions.isEmpty else { return }
         selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : commandSuggestions.count - 1
     }
+
     func moveCommandSuggestionDown() {
         guard showCommandSuggestions && !commandSuggestions.isEmpty else { return }
         selectedIndex = selectedIndex < commandSuggestions.count - 1 ? selectedIndex + 1 : 0
     }
-    // --- 恢复所有原有方法，保留全局交互、插件、命令建议等逻辑 ---
-    // 插件相关
+
+    // 插件相关接口全部转发到 PluginStateController
     func switchToPluginMode(with plugin: Plugin) {
+        (controllers[.plugin] as? PluginStateController)?.switchToPluginMode(with: plugin)
         mode = .plugin
         activePlugin = plugin
         selectedIndex = 0
     }
-    func getActivePlugin() -> Plugin? {
-        return activePlugin
-    }
-    func updatePluginResults(_ items: [PluginItem]) {
-        if let pluginController = controllers[.plugin] as? PluginStateController {
-            pluginController.pluginItems = items
-        }
-        selectedIndex = 0
-    }
-    func executePluginAction() -> Bool {
-        guard mode == .plugin, let pluginController = controllers[.plugin] as? PluginStateController else { return false }
-        return pluginController.executeAction(at: selectedIndex) == .hideWindow
-    }
-    func handlePluginSearch(_ text: String) {
-        guard mode == .plugin, let pluginController = controllers[.plugin] as? PluginStateController else { return }
-        pluginController.update(for: text)
-    }
-    func clearPluginState() {
-        activePlugin = nil
-        if let pluginController = controllers[.plugin] as? PluginStateController {
-            pluginController.pluginItems = []
-        }
-    }
+
     // 命令建议相关
     func selectCurrentCommandSuggestion() -> Bool {
         guard showCommandSuggestions,
@@ -209,22 +185,7 @@ class LauncherViewModel: ObservableObject {
         applySelectedCommand(selectedCommand)
         return true
     }
-    // 兼容接口：插件模式结果
-    var pluginItems: [PluginItem] {
-        (activeController as? PluginStateController)?.pluginItems ?? []
-    }
-    // 兼容接口：在 Finder 中显示当前选中文件或文件夹
-    func openSelectedFileInFinder() {
-        guard mode == .file,
-              let fileController = controllers[.file] as? FileStateController,
-              !showStartPaths,
-              let fileItem = getFileItem(at: selectedIndex) else { return }
-        fileController.openInFinder(fileItem.url)
-    }
-    // 兼容接口：搜索历史
-    // var searchHistory: [SearchHistoryItem] {
-    //     (activeController as? SearchStateController)?.searchHistory ?? []
-    // }
+
     // 兼容接口：获取当前模式下所有可显示项
     func getCurrentItems() -> [any DisplayableItem] {
         activeController?.displayableItems ?? []
