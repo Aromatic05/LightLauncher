@@ -79,12 +79,7 @@ class LaunchModeController: NSObject, ModeStateController {
     
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
-        if text.isEmpty {
-            filteredApps = getMostUsedApps(from: allApps, limit: 6)
-        } else {
-            filteredApps = allApps.filter { $0.name.localizedCaseInsensitiveContains(text) }
-        }
-        viewModel.selectedIndex = 0
+        filterApps(searchText: text, viewModel: viewModel)
     }
     
     // 4. 执行动作
@@ -148,6 +143,34 @@ class LaunchModeController: NSObject, ModeStateController {
         }
         .prefix(limit)
         .map { $0 }
+    }
+
+    func filterApps(searchText: String, viewModel: LauncherViewModel) {
+        if searchText.isEmpty {
+            filteredApps = getMostUsedApps(from: allApps, limit: 6)
+        } else {
+            let matches = allApps.compactMap { app in
+                calculateMatch(for: app, query: searchText)
+            }
+            
+            // 按评分排序并取前6个
+            filteredApps = matches
+                .sorted { $0.score > $1.score }
+                .prefix(6)
+                .map { $0.app }
+        }
+        // 每当列表更新时，重置选择
+        viewModel.selectedIndex = 0
+    }
+
+    private func calculateMatch(for app: AppInfo, query: String) -> AppMatch? {
+        let commonAbbreviations = ConfigManager.shared.config.commonAbbreviations
+        return AppSearchMatcher.calculateMatch(
+            for: app,
+            query: query,
+            usageCount: appUsageCount,
+            commonAbbreviations: commonAbbreviations
+        )
     }
 }
 
