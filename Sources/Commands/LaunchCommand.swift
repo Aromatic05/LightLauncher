@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import Combine
 
 // MARK: - 基础命令协议
 @MainActor
@@ -185,8 +186,13 @@ import AppKit
 @MainActor
 class LaunchStateController: NSObject, ModeStateController {
     @Published var filteredApps: [AppInfo] = []
-    private var allApps: [AppInfo]
-    private var appUsageCount: [String: Int]
+    // 公开属性，便于 ViewModel 兼容接口访问
+    var allApps: [AppInfo]
+    var appUsageCount: [String: Int]
+    private let appScanner: AppScanner
+    private let userDefaults = UserDefaults.standard
+    private var cancellables = Set<AnyCancellable>()
+    private var searchTextProvider: (() -> String)?
 
     var displayableItems: [any DisplayableItem] {
         filteredApps
@@ -194,10 +200,14 @@ class LaunchStateController: NSObject, ModeStateController {
     
     let mode: LauncherMode = .launch
 
-    init(allApps: [AppInfo], usageCount: [String: Int]) {
-        self.allApps = allApps
-        self.appUsageCount = usageCount
+    override init() {
+        self.allApps = []
+        self.appUsageCount = [:]
+        self.appScanner = AppScanner()
         super.init()
+        loadUsageData()
+        setupObservers()
+        appScanner.scanForApplications()
     }
 
     func activate() {
@@ -208,6 +218,32 @@ class LaunchStateController: NSObject, ModeStateController {
         filteredApps = []
     }
     
+    private func setupObservers() {
+        appScanner.$applications
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] apps in
+                guard let self = self else { return }
+                self.allApps = apps
+                self.update(for: self.searchTextProvider?() ?? "")
+            }
+            .store(in: &cancellables)
+    }
+
+    // 提供外部注入 searchText 的闭包
+    func bindSearchTextProvider(_ provider: @escaping () -> String) {
+        self.searchTextProvider = provider
+    }
+
+    // --- 全局辅助方法和初始化逻辑 ---
+    private func loadUsageData() {
+        if let data = userDefaults.object(forKey: "appUsageCount") as? [String: Int] {
+            self.appUsageCount = data
+        }
+    }
+    private func saveUsageData() {
+        userDefaults.set(appUsageCount, forKey: "appUsageCount")
+    }
+
     func update(for searchText: String) {
         if searchText.isEmpty {
             filteredApps = getMostUsedApps(from: allApps, limit: 6)

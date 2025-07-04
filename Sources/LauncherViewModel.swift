@@ -16,15 +16,10 @@ class LauncherViewModel: ObservableObject {
     @Published private(set) var activeController: (any ModeStateController)?
 
     private var controllers: [LauncherMode: any ModeStateController] = [:]
-    private let appScanner: AppScanner
     private var cancellables = Set<AnyCancellable>()
     private let commandProcessor = MainCommandProcessor()
-    private let runningAppsManager = RunningAppsManager.shared
+    // private let runningAppsManager = RunningAppsManager.shared
     // private let browserDataManager = BrowserDataManager.shared
-    private let userDefaults = UserDefaults.standard
-    var allApps: [AppInfo] = []
-    var appUsageCount: [String: Int] = [:]
-    // 其他全局依赖...
 
     // 新增 Facade 属性
     lazy var facade: LauncherFacade = LauncherFacade(viewModel: self)
@@ -32,19 +27,15 @@ class LauncherViewModel: ObservableObject {
     // 插件激活状态
     private var activePlugin: Plugin?
 
-    init(appScanner: AppScanner) {
-        self.appScanner = appScanner
-        loadUsageData()
+    init() {
         setupControllers()
-        setupObservers()
         ProcessorRegistry.shared.setMainProcessor(commandProcessor)
         registerAllProcessors()
         switchController(from: nil, to: .launch)
     }
 
     private func setupControllers() {
-        let appUsageData = appUsageCount
-        controllers[.launch] = LaunchStateController(allApps: appScanner.applications, usageCount: appUsageData)
+        controllers[.launch] = LaunchStateController()
         controllers[.kill] = KillStateController()
         controllers[.file] = FileStateController()
         controllers[.plugin] = PluginStateController()
@@ -63,26 +54,6 @@ class LauncherViewModel: ObservableObject {
             newController.update(for: searchText)
         }
         selectedIndex = 0
-    }
-
-    private func setupObservers() {
-        appScanner.$applications
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] apps in
-                guard let self = self else { return }
-                self.allApps = apps
-                if let launchController = self.controllers[.launch] as? LaunchStateController {
-                    launchController.update(for: self.searchText)
-                }
-                self.selectedIndex = 0
-            }
-            .store(in: &cancellables)
-        $searchText
-            .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
-            .sink { [weak self] text in
-                self?.handleSearchTextChange(text: text)
-            }
-            .store(in: &cancellables)
     }
 
     private func handleSearchTextChange(text: String) {
@@ -138,15 +109,6 @@ class LauncherViewModel: ObservableObject {
         return !(activeController?.displayableItems.isEmpty ?? true)
     }
 
-    // --- 全局辅助方法和初始化逻辑 ---
-    private func loadUsageData() {
-        if let data = userDefaults.object(forKey: "appUsageCount") as? [String: Int] {
-            appUsageCount = data
-        }
-    }
-    private func saveUsageData() {
-        userDefaults.set(appUsageCount, forKey: "appUsageCount")
-    }
     private func registerAllProcessors() {
         let launchProcessor = LaunchCommandProcessor()
         let launchModeHandler = LaunchModeHandler()

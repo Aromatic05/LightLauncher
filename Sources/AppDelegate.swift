@@ -3,7 +3,6 @@ import SwiftUI
 import Carbon
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    private var appScanner = AppScanner()
     private var viewModel: LauncherViewModel?
     private var settingsManager = SettingsManager.shared
     private var configManager = ConfigManager.shared
@@ -21,11 +20,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusMenuManager()
         setupHotkeyManager()
         setupPluginSystem()
-        appScanner.scanForApplications()
     }
     
     private func setupViewModel() {
-        viewModel = LauncherViewModel(appScanner: appScanner)
+        viewModel = LauncherViewModel()
     }
     
     private func setupHotkeyManager() {
