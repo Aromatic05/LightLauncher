@@ -104,6 +104,10 @@ extension LauncherViewModel {
         // 校验 selectedIndex 可选
     }
     
+    var searchHistory: [SearchHistoryItem] {
+        (activeController as? SearchStateController)?.searchHistory ?? []
+    }
+
     func executeSearchHistoryItem(at index: Int) -> Bool {
         guard index >= 0 && index < searchHistory.count else { return false }
         let item = searchHistory[index]

@@ -18,8 +18,6 @@ class LauncherViewModel: ObservableObject {
     private var controllers: [LauncherMode: any ModeStateController] = [:]
     private var cancellables = Set<AnyCancellable>()
     private let commandProcessor = MainCommandProcessor()
-    // private let runningAppsManager = RunningAppsManager.shared
-    // private let browserDataManager = BrowserDataManager.shared
 
     // 新增 Facade 属性
     lazy var facade: LauncherFacade = LauncherFacade(viewModel: self)
@@ -224,9 +222,9 @@ class LauncherViewModel: ObservableObject {
         fileController.openInFinder(fileItem.url)
     }
     // 兼容接口：搜索历史
-    var searchHistory: [SearchHistoryItem] {
-        (activeController as? SearchStateController)?.searchHistory ?? []
-    }
+    // var searchHistory: [SearchHistoryItem] {
+    //     (activeController as? SearchStateController)?.searchHistory ?? []
+    // }
     // 兼容接口：获取当前模式下所有可显示项
     func getCurrentItems() -> [any DisplayableItem] {
         activeController?.displayableItems ?? []
