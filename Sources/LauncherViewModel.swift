@@ -49,7 +49,9 @@ class LauncherViewModel: ObservableObject {
         controllers[.kill] = KillStateController()
         controllers[.file] = FileStateController()
         controllers[.plugin] = PluginStateController()
-        // 其他模式...
+        controllers[.search] = SearchStateController()
+        controllers[.web] = WebStateController()
+        controllers[.clip] = ClipStateController()
     }
 
     private func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
@@ -273,6 +275,4 @@ class LauncherViewModel: ObservableObject {
     func getCurrentItems() -> [any DisplayableItem] {
         activeController?.displayableItems ?? []
     }
-    // 其他全局方法、命令建议、插件相关、辅助方法等可继续保留或迁移
-    // ...existing code...
 }
