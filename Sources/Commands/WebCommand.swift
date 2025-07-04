@@ -192,6 +192,14 @@ class WebStateController: NSObject, ModeStateController {
     @Published var browserItems: [BrowserItem] = []
     let mode: LauncherMode = .web
     var displayableItems: [any DisplayableItem] { browserItems.map { $0 as any DisplayableItem } }
+    
+    override init() {
+        super.init()
+        let enabledBrowsers = ConfigManager.shared.getEnabledBrowsers()
+        BrowserDataManager.shared.setEnabledBrowsers(enabledBrowsers)
+        BrowserDataManager.shared.loadBrowserData()
+    }
+    
     func activate() {
         browserItems = BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
     }

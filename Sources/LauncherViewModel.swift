@@ -20,7 +20,7 @@ class LauncherViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let commandProcessor = MainCommandProcessor()
     private let runningAppsManager = RunningAppsManager.shared
-    private let browserDataManager = BrowserDataManager.shared
+    // private let browserDataManager = BrowserDataManager.shared
     private let userDefaults = UserDefaults.standard
     var allApps: [AppInfo] = []
     var appUsageCount: [String: Int] = [:]
@@ -37,7 +37,6 @@ class LauncherViewModel: ObservableObject {
         loadUsageData()
         setupControllers()
         setupObservers()
-        initializeBrowserData()
         ProcessorRegistry.shared.setMainProcessor(commandProcessor)
         registerAllProcessors()
         switchController(from: nil, to: .launch)
@@ -147,11 +146,6 @@ class LauncherViewModel: ObservableObject {
     }
     private func saveUsageData() {
         userDefaults.set(appUsageCount, forKey: "appUsageCount")
-    }
-    private func initializeBrowserData() {
-        let enabledBrowsers = ConfigManager.shared.getEnabledBrowsers()
-        browserDataManager.setEnabledBrowsers(enabledBrowsers)
-        browserDataManager.loadBrowserData()
     }
     private func registerAllProcessors() {
         let launchProcessor = LaunchCommandProcessor()
