@@ -4,39 +4,13 @@ import SwiftUI
 struct PluginModeView: View {
     @ObservedObject var viewModel: LauncherViewModel
     
+    private var items: [any DisplayableItem] { viewModel.displayableItems }
+    private var isEmpty: Bool { items.isEmpty }
+    
     var body: some View {
-        let pluginController = viewModel.controllers[.plugin] as? PluginStateController
-        let pluginItems = pluginController?.pluginItems ?? []
-        let isEmpty = pluginItems.isEmpty
-        
-        return ScrollViewReader { proxy in
+        ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 4) {
-                    if isEmpty {
-                        // 空状态视图
-                        PluginEmptyStateView(viewModel: viewModel, pluginController: pluginController)
-                    } else {
-                        // 插件结果列表
-                        ForEach(Array(pluginItems.enumerated()), id: \.offset) { index, item in
-                            PluginItemRowView(
-                                item: item,
-                                isSelected: index == viewModel.selectedIndex,
-                                index: index
-                            )
-                            .id(index)
-                            .onTapGesture {
-                                viewModel.selectedIndex = index
-                                if viewModel.executeSelectedAction() {
-                                    if pluginController?.getPluginShouldHideWindowAfterAction() == true {
-                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                contentView
             }
             .onChange(of: viewModel.selectedIndex) { newIndex in
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -45,12 +19,44 @@ struct PluginModeView: View {
             }
         }
     }
+    
+    @ViewBuilder
+    private var contentView: some View {
+        VStack(spacing: 4) {
+            if isEmpty {
+                // 空状态视图
+                PluginEmptyStateView(viewModel: viewModel, pluginController: viewModel.controllers[.plugin] as? PluginModeController)
+            } else {
+                // 插件结果列表
+                ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                    if let pluginItem = item as? PluginItem {
+                        PluginItemRowView(
+                            item: pluginItem,
+                            isSelected: index == viewModel.selectedIndex,
+                            index: index
+                        )
+                        .id(index)
+                        .onTapGesture {
+                            viewModel.selectedIndex = index
+                            if viewModel.executeSelectedAction() {
+                                // if (viewModel.controllers[.plugin] as? PluginModeController)?.getPluginShouldHideWindowAfterAction() == true {
+                                //     NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                // }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
 }
 
 // MARK: - 插件空状态视图
 struct PluginEmptyStateView: View {
     @ObservedObject var viewModel: LauncherViewModel
-    let pluginController: PluginStateController?
+    let pluginController: PluginModeController?
     
     var body: some View {
         VStack(spacing: 16) {

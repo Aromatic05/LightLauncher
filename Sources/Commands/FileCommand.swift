@@ -60,7 +60,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
         ("/", "Root")
     ]
     
-    var title: String {
+    var displayName: String {
         if let match = Self.specialPaths.first(where: { $0.0 == path }) {
             return match.1
         }
@@ -76,6 +76,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
     }
     
     // DisplayableItem 协议补充实现
+    var title: String { displayName }
     var subtitle: String? { displayPath }
     // 如有其它协议要求属性/方法，请在此补充
     

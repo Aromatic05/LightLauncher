@@ -100,7 +100,7 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
         
         // 在主线程更新 ViewModel
         DispatchQueue.main.async { [weak self] in
-            if let pluginController = self?.viewModel?.controllers[.plugin] as? PluginStateController {
+            if let pluginController = self?.viewModel?.controllers[.plugin] as? PluginModeController {
                 pluginController.updatePluginResults(pluginItems)
             }
         }
