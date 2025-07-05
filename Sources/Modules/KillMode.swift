@@ -149,6 +149,16 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
     func cleanup(viewModel: LauncherViewModel) {
         viewModel.displayableItems = []
     }
+
+    static func getHelpText() -> [String] {
+        return [
+            "Type '/k ' (with space) then search text to find running apps",
+            "Example: '/k chrome' to search for Chrome",
+            "Press ↑↓ arrows or numbers 1-6 to select", 
+            "Delete /k prefix to return to launch mode",
+            "Press Esc to close"
+        ]
+    }
 }
 
 // MARK: - LauncherViewModel 扩展 - 关闭应用模式
@@ -181,18 +191,5 @@ extension LauncherViewModel {
         guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
         selectedIndex = index
         return killSelectedApp()
-    }
-}
-
-// MARK: - 关闭命令建议提供器
-struct KillCommandSuggestionProvider: CommandSuggestionProvider {
-    static func getHelpText() -> [String] {
-        return [
-            "Type '/k ' (with space) then search text to find running apps",
-            "Example: '/k chrome' to search for Chrome",
-            "Press ↑↓ arrows or numbers 1-6 to select", 
-            "Delete /k prefix to return to launch mode",
-            "Press Esc to close"
-        ]
     }
 }

@@ -36,21 +36,6 @@ protocol ModeStateController {
 
     // 6. 模式退出或切换时的清理操作
     func cleanup(viewModel: LauncherViewModel)
-}
 
-protocol CommandSuggestionProvider {
     static func getHelpText() -> [String]
-}
-
-// MARK: - 通用命令建议管理器
-@MainActor
-struct CommandSuggestionManager {
-    static func getSuggestions(for text: String) -> [LauncherCommand] {
-        if text.isEmpty {
-            return []
-        }
-        
-        // 统一使用 getCommandSuggestions，这个方法已经包含了插件命令
-        return LauncherCommand.getCommandSuggestions(for: text)
-    }
 }

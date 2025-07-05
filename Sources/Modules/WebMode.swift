@@ -139,6 +139,15 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
     private func isDomainName(_ text: String) -> Bool {
         return text.contains(".") && !text.contains(" ") && !text.hasPrefix(".")
     }
+
+    static func getHelpText() -> [String] {
+        return [
+            "Type after /w to open website or URL",
+            "Press Enter to open in browser",
+            "Delete /w prefix to return to launch mode", 
+            "Press Esc to close"
+        ]
+    }
 }
 
 // MARK: - LauncherViewModel 扩展
@@ -178,17 +187,5 @@ extension LauncherViewModel {
         mode = .launch
         selectedIndex = 0
         // 可根据需要清理其它模式状态
-    }
-}
-
-// MARK: - 网页命令建议提供器
-struct WebCommandSuggestionProvider: CommandSuggestionProvider {
-    static func getHelpText() -> [String] {
-        return [
-            "Type after /w to open website or URL",
-            "Press Enter to open in browser",
-            "Delete /w prefix to return to launch mode", 
-            "Press Esc to close"
-        ]
     }
 }

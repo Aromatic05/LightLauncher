@@ -91,6 +91,15 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
         NSWorkspace.shared.open(url)
         return true
     }
+
+    static func getHelpText() -> [String] {
+        return [
+            "Type after /s to search the web",
+            "Press Enter to execute search",
+            "Delete /s prefix to return to launch mode",
+            "Press Esc to close"
+        ]
+    }
 }
 
 // MARK: - LauncherViewModel 扩展
@@ -166,18 +175,6 @@ extension LauncherViewModel {
         NSWorkspace.shared.open(url)
         resetToLaunchMode()
         return true
-    }
-}
-
-// MARK: - 搜索命令建议提供器
-struct SearchCommandSuggestionProvider: CommandSuggestionProvider {
-    static func getHelpText() -> [String] {
-        return [
-            "Type after /s to search the web",
-            "Press Enter to execute search",
-            "Delete /s prefix to return to launch mode",
-            "Press Esc to close"
-        ]
     }
 }
 

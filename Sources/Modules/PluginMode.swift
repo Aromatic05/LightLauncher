@@ -82,10 +82,7 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
         self.pluginItems = []
         self.activePlugin = nil
     }
-}
 
-// MARK: - 插件命令建议提供器
-struct PluginCommandSuggestionProvider: CommandSuggestionProvider {
     static func getHelpText() -> [String] {
         return [
             "Type to search applications",

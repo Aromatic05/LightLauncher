@@ -157,19 +157,19 @@ struct EmptyStateView: View {
     private func getHelpText(for mode: LauncherMode) -> [String] {
         switch mode {
         case .launch:
-            return LaunchCommandSuggestionProvider.getHelpText()
+            return LaunchModeController.getHelpText()
         case .kill:
-            return KillCommandSuggestionProvider.getHelpText()
+            return KillModeController.getHelpText()
         case .search:
-            return SearchCommandSuggestionProvider.getHelpText()
+            return SearchModeController.getHelpText()
         case .web:
-            return WebCommandSuggestionProvider.getHelpText()
+            return WebModeController.getHelpText()
         case .terminal:
-            return TerminalCommandSuggestionProvider.getHelpText()
+            return TerminalModeController.getHelpText()
         case .file:
-            return FileCommandSuggestionProvider.getHelpText()
+            return FileModeController.getHelpText()
         case .clip:
-            return ClipCommandSuggestionProvider.getHelpText()
+            return ClipModeController.getHelpText()
         case .plugin:
             return ["Plugin mode", "Functionality provided by active plugin"]
         }

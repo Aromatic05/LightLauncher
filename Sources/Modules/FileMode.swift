@@ -290,6 +290,16 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
             NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
         }
     }
+
+    static func getHelpText() -> [String] {
+        return [
+            "Browse files and folders starting from home directory",
+            "Press Enter to open files or navigate folders",
+            "Press Space to open current folder in Finder",
+            "Delete /o prefix to return to launch mode",
+            "Press Esc to close"
+        ]
+    }
 }
 
 // MARK: - LauncherViewModel 扩展
@@ -336,18 +346,5 @@ extension LauncherViewModel {
     }
     func updateFileResults(path: String) {
         (activeController as? FileModeController)?.navigateToDirectory(URL(fileURLWithPath: path), viewModel: self)
-    }
-}
-
-// MARK: - 文件命令建议提供器
-struct FileCommandSuggestionProvider: CommandSuggestionProvider {
-    static func getHelpText() -> [String] {
-        return [
-            "Browse files and folders starting from home directory",
-            "Press Enter to open files or navigate folders",
-            "Press Space to open current folder in Finder",
-            "Delete /o prefix to return to launch mode",
-            "Press Esc to close"
-        ]
     }
 }

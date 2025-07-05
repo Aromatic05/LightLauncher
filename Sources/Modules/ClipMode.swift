@@ -101,6 +101,14 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     func cleanup(viewModel: LauncherViewModel) {
         viewModel.displayableItems = []
     }
+
+    static func getHelpText() -> [String] {
+        return [
+            "浏览和粘贴剪切板历史（文本/文件）",
+            "回车复制选中项到剪切板",
+            "输入过滤文本历史，Esc 返回主模式"
+        ]
+    }
 }
 
 // MARK: - LauncherViewModel 扩展
@@ -120,16 +128,5 @@ extension LauncherViewModel {
     }
     func getClipItem(at index: Int) -> ClipboardItem? {
         currentClipItems.indices.contains(index) ? currentClipItems[index] : nil
-    }
-}
-
-// MARK: - 剪切板命令建议
-struct ClipCommandSuggestionProvider: CommandSuggestionProvider {
-    static func getHelpText() -> [String] {
-        return [
-            "浏览和粘贴剪切板历史（文本/文件）",
-            "回车复制选中项到剪切板",
-            "输入过滤文本历史，Esc 返回主模式"
-        ]
     }
 }
