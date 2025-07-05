@@ -40,7 +40,7 @@ extension LauncherFacade {
                         EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
                     }
                 case .web:
-                    if viewModel.hasResults || !viewModel.displayableItems.isEmpty {
+                    if viewModel.hasResults {
                         ResultsListView(viewModel: viewModel)
                     } else {
                         WebCommandInputView(searchText: viewModel.searchText)
@@ -51,20 +51,20 @@ extension LauncherFacade {
                     TerminalCommandInputView(searchText: viewModel.searchText)
                 case .file:
                     if viewModel.showStartPaths {
-                        if !viewModel.fileBrowserStartPaths.isEmpty {
+                        if !viewModel.displayableItems.isEmpty {
                             ResultsListView(viewModel: viewModel)
                         } else {
                             FileCommandInputView(currentPath: viewModel.currentPath)
                         }
                     } else {
-                        if !viewModel.currentFiles.isEmpty {
+                        if !viewModel.displayableItems.isEmpty {
                             ResultsListView(viewModel: viewModel)
                         } else {
                             FileCommandInputView(currentPath: viewModel.currentPath)
                         }
                     }
                 case .clip:
-                    if !viewModel.currentClipItems.isEmpty {
+                    if !viewModel.displayableItems.isEmpty {
                         ClipModeResultsView(viewModel: viewModel)
                     } else {
                         EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)

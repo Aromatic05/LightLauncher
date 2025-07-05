@@ -11,6 +11,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowManager: WindowManager?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
+        AppScanner.shared.scanForApplications()
         NSApp.setActivationPolicy(.accessory) // No dock icon
         _ = ClipboardManager.shared
         setupViewModel()
@@ -20,6 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusMenuManager()
         setupHotkeyManager()
         setupPluginSystem()
+
     }
     
     private func setupViewModel() {

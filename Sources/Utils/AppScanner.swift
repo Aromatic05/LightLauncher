@@ -3,6 +3,7 @@ import AppKit
 
 @MainActor
 class AppScanner: ObservableObject {
+    static let shared = AppScanner()
     @Published var applications: [AppInfo] = []
     private var isScanning = false
     private let configManager = ConfigManager.shared

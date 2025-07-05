@@ -140,7 +140,7 @@ class LauncherViewModel: ObservableObject {
     }
 
     var hasResults: Bool {
-        return !(activeController?.displayableItems.isEmpty ?? true)
+        return !displayableItems.isEmpty
     }
 
     func hideLauncher() {
@@ -232,7 +232,9 @@ class LauncherViewModel: ObservableObject {
         if let controller = activeController, controller.shouldSwitchToLaunchMode(for: text) {
             switchToLaunchModeAndClear()
             if !text.hasPrefix("/") && !text.isEmpty {
-                filterApps(searchText: text)
+                if let launchController = controllers[.launch] as? LaunchModeController {
+                    launchController.filterApps(searchText: text, viewModel: self)
+                }
             }
             return true
         }

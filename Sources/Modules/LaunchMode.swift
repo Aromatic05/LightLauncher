@@ -2,39 +2,6 @@ import Foundation
 import AppKit
 import Combine
 
-// MARK: - 基础命令协议
-@MainActor
-protocol LauncherCommandHandler {
-    var trigger: String { get }
-    var description: String { get }
-    var mode: LauncherMode { get }
-    
-    func execute(in viewModel: LauncherViewModel) -> Bool
-    func handleInput(_ text: String, in viewModel: LauncherViewModel)
-    func executeSelection(at index: Int, in viewModel: LauncherViewModel) -> Bool
-}
-
-// MARK: - 默认启动命令
-@MainActor
-struct LaunchCommand: LauncherCommandHandler {
-    let trigger = ""
-    let description = "Launch applications"
-    let mode = LauncherMode.launch
-    
-    func execute(in viewModel: LauncherViewModel) -> Bool {
-        viewModel.switchToLaunchMode()
-        return true
-    }
-    
-    func handleInput(_ text: String, in viewModel: LauncherViewModel) {
-        viewModel.filterApps(searchText: text)
-    }
-    
-    func executeSelection(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return viewModel.launchSelectedApp()
-    }
-}
-
 // MARK: - 启动模式控制器
 @MainActor
 class LaunchModeController: NSObject, ModeStateController, ObservableObject {
@@ -43,7 +10,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     // 应用列表和使用次数
     private(set) var allApps: [AppInfo] = []
     private var appUsageCount: [String: Int] = [:]
-    private let appScanner: AppScanner
+    private let appScanner = AppScanner.shared
     private let userDefaults = UserDefaults.standard
     private var cancellables = Set<AnyCancellable>()
     private var searchTextProvider: (() -> String)?
@@ -59,11 +26,10 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     var prefix: String? { "" } // 启动模式无前缀
     
     override init() {
-        self.appScanner = AppScanner()
         super.init()
         loadUsageData()
         setupObservers()
-        appScanner.scanForApplications()
+        // appScanner.scanForApplications()
     }
     
     // 1. 触发条件
@@ -234,20 +200,12 @@ struct AppMatch {
 // MARK: - LauncherViewModel 扩展 - 启动模式
 extension LauncherViewModel {
     // 兼容旧接口，转发到 State Controller
-    var filteredApps: [AppInfo] {
-        displayableItems.compactMap { $0 as? AppInfo }
-    }
     func switchToLaunchMode() {
         if let controller = activeController as? LaunchModeController {
             controller.enterMode(with: "", viewModel: self)
         }
     }
 
-    func filterApps(searchText: String) {
-        if let controller = activeController as? LaunchModeController {
-            controller.handleInput(searchText, viewModel: self)
-        }
-    }
     func launchSelectedApp() -> Bool {
         guard let controller = activeController as? LaunchModeController else { return false }
         return controller.executeAction(at: selectedIndex, viewModel: self)

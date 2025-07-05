@@ -1,27 +1,6 @@
 import Foundation
 import AppKit
 
-// MARK: - 关闭应用命令
-@MainActor
-struct KillCommand: LauncherCommandHandler {
-    let trigger = "/k"
-    let description = "Close running applications"
-    let mode = LauncherMode.kill
-    
-    func execute(in viewModel: LauncherViewModel) -> Bool {
-        viewModel.switchToKillMode()
-        return true
-    }
-    
-    func handleInput(_ text: String, in viewModel: LauncherViewModel) {
-        viewModel.filterRunningApps(searchText: text)
-    }
-    
-    func executeSelection(at index: Int, in viewModel: LauncherViewModel) -> Bool {
-        return viewModel.killSelectedApp()
-    }
-}
-
 // MARK: - 运行中应用信息结构
 struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
     let id = UUID()
