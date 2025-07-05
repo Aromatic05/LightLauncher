@@ -125,18 +125,18 @@ class LauncherViewModel: ObservableObject {
     }
 
     func executeSelectedAction() -> Bool {
-        guard let controller = activeController else { return false }
-        return controller.executeAction(at: selectedIndex, viewModel: self)
+        guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count else { return false }
+        return activeController?.executeAction(at: selectedIndex, viewModel: self) ?? false
     }
 
     func moveSelectionUp() {
-        guard let items = activeController?.displayableItems, !items.isEmpty else { return }
-        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : items.count - 1
+        guard !displayableItems.isEmpty else { return }
+        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : displayableItems.count - 1
     }
 
     func moveSelectionDown() {
-        guard let items = activeController?.displayableItems, !items.isEmpty else { return }
-        selectedIndex = selectedIndex < items.count - 1 ? selectedIndex + 1 : 0
+        guard !displayableItems.isEmpty else { return }
+        selectedIndex = selectedIndex < displayableItems.count - 1 ? selectedIndex + 1 : 0
     }
 
     var hasResults: Bool {

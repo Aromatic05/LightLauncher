@@ -25,15 +25,12 @@ struct WebModeResultsView: View {
                                     }
                                 }
                             }
-                            .focusable(false)
                         }
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .focusable(false)
             }
-            .focusable(false)
             .onChange(of: viewModel.selectedIndex) { newIndex in
                 withAnimation(.easeInOut(duration: 0.2)) {
                     proxy.scrollTo(newIndex, anchor: .center)

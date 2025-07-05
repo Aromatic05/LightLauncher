@@ -38,6 +38,8 @@ struct LaunchCommand: LauncherCommandHandler {
 // MARK: - 启动模式控制器
 @MainActor
 class LaunchModeController: NSObject, ModeStateController, ObservableObject {
+    var displayableItems: [any DisplayableItem] = []
+
     // 应用列表和使用次数
     private(set) var allApps: [AppInfo] = []
     private var appUsageCount: [String: Int] = [:]
@@ -46,13 +48,12 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var searchTextProvider: (() -> String)?
     
-    // 当前过滤结果
-    @Published var filteredApps: [AppInfo] = []
+    // 移除 filteredApps，统一用 viewModel.displayableItems
     
     // 可显示项插槽
-    var displayableItems: [any DisplayableItem] {
-        filteredApps.map { $0 as any DisplayableItem }
-    }
+    // var displayableItems: [any DisplayableItem] {
+    //     filteredApps.map { $0 as any DisplayableItem }
+    // }
     
     // --- ModeStateController 协议实现 ---
     var prefix: String? { "" } // 启动模式无前缀
@@ -73,7 +74,8 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
-        filteredApps = getMostUsedApps(from: allApps, limit: 6)
+        let items = getMostUsedApps(from: allApps, limit: 6)
+        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     
@@ -84,8 +86,8 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        guard index < filteredApps.count else { return false }
-        let app = filteredApps[index]
+        guard index < viewModel.displayableItems.count else { return false }
+        guard let app = viewModel.displayableItems[index] as? AppInfo else { return false }
         let success = NSWorkspace.shared.open(app.url)
         if success {
             incrementUsage(for: app.name)
@@ -101,7 +103,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        filteredApps = []
+        viewModel.displayableItems = []
     }
     
     // --- 其他辅助方法 ---
@@ -147,17 +149,18 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
 
     func filterApps(searchText: String, viewModel: LauncherViewModel) {
         if searchText.isEmpty {
-            filteredApps = getMostUsedApps(from: allApps, limit: 6)
+            let items = getMostUsedApps(from: allApps, limit: 6)
+            viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         } else {
             let matches = allApps.compactMap { app in
                 calculateMatch(for: app, query: searchText)
             }
-            
             // 按评分排序并取前6个
-            filteredApps = matches
+            let items = matches
                 .sorted { $0.score > $1.score }
                 .prefix(6)
                 .map { $0.app }
+            viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         }
         // 每当列表更新时，重置选择
         viewModel.selectedIndex = 0
@@ -232,7 +235,7 @@ struct AppMatch {
 extension LauncherViewModel {
     // 兼容旧接口，转发到 State Controller
     var filteredApps: [AppInfo] {
-        (activeController as? LaunchModeController)?.filteredApps ?? []
+        displayableItems.compactMap { $0 as? AppInfo }
     }
     func switchToLaunchMode() {
         if let controller = activeController as? LaunchModeController {
@@ -253,12 +256,11 @@ extension LauncherViewModel {
         // 仅用于兼容旧接口，实际应由 State Controller 内部管理
     }
     func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
-        (activeController as? LaunchModeController)?.filteredApps.prefix(limit).map { $0 } ?? []
+        displayableItems.compactMap { $0 as? AppInfo }.prefix(limit).map { $0 }
     }
     func selectAppByNumber(_ number: Int) -> Bool {
         let index = number - 1
-        guard let controller = activeController as? LaunchModeController else { return false }
-        guard index >= 0 && index < controller.filteredApps.count && index < 6 else { return false }
+        guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
         selectedIndex = index
         return launchSelectedApp()
     }

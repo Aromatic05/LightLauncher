@@ -6,7 +6,7 @@ import AppKit
 class WebModeController: NSObject, ModeStateController, ObservableObject  {
     var browserItems: [BrowserItem] = [] // 仅做内部缓存
     var prefix: String? { "/w" }
-    var displayableItems: [any DisplayableItem] { browserItems.map { $0 as any DisplayableItem } }
+    var displayableItems: [any DisplayableItem] = []
 
     // MARK: - ModeStateController Protocol Requirements
 

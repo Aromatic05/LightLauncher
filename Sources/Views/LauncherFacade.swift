@@ -82,49 +82,35 @@ extension LauncherFacade {
     @ViewBuilder
     func resultsListContent(handleItemSelection: @escaping (Int) -> Void) -> some View {
         if let viewModel = viewModel {
-            switch viewModel.mode {
-            case .launch:
-                ForEach(Array(viewModel.filteredApps.enumerated()), id: \.element) { index, app in
+            ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                switch item {
+                case let app as AppInfo:
                     AppRowView(app: app, isSelected: index == viewModel.selectedIndex, index: index, mode: .launch)
                         .id(index)
                         .onTapGesture { handleItemSelection(index) }
-                }
-            case .kill:
-                ForEach(Array(viewModel.runningApps.enumerated()), id: \.element) { index, app in
-                    RunningAppRowView(app: app, isSelected: index == viewModel.selectedIndex, index: index)
+                case let runningApp as RunningAppInfo:
+                    RunningAppRowView(app: runningApp, isSelected: index == viewModel.selectedIndex, index: index)
                         .id(index)
                         .onTapGesture { handleItemSelection(index) }
-                }
-            case .web:
-                ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
-                    if let browserItem = item as? BrowserItem {
-                        BrowserItemRowView(item: browserItem, isSelected: index == viewModel.selectedIndex, index: index)
-                            .id(index)
-                            .onTapGesture { handleItemSelection(index) }
-                    }
-                }
-            case .file:
-                if viewModel.showStartPaths {
-                    ForEach(Array(viewModel.fileBrowserStartPaths.enumerated()), id: \.offset) { index, startPath in
-                        StartPathRowView(startPath: startPath, isSelected: index == viewModel.selectedIndex, index: index)
-                            .id(index)
-                            .onTapGesture { handleItemSelection(index) }
-                    }
-                } else {
-                    ForEach(Array(viewModel.currentFiles.enumerated()), id: \.offset) { index, item in
-                        FileRowView(file: item, isSelected: index == viewModel.selectedIndex, index: index)
-                            .id(index)
-                            .onTapGesture { handleItemSelection(index) }
-                    }
-                }
-            case .clip:
-                ForEach(Array(viewModel.currentClipItems.enumerated()), id: \.offset) { index, item in
-                    ClipItemRowView(item: item, isSelected: index == viewModel.selectedIndex, index: index)
+                case let browserItem as BrowserItem:
+                    BrowserItemRowView(item: browserItem, isSelected: index == viewModel.selectedIndex, index: index)
                         .id(index)
                         .onTapGesture { handleItemSelection(index) }
+                case let file as FileItem:
+                    FileRowView(file: file, isSelected: index == viewModel.selectedIndex, index: index)
+                        .id(index)
+                        .onTapGesture { handleItemSelection(index) }
+                case let startPath as FileBrowserStartPath:
+                    StartPathRowView(startPath: startPath, isSelected: index == viewModel.selectedIndex, index: index)
+                        .id(index)
+                        .onTapGesture { handleItemSelection(index) }
+                case let clip as ClipboardItem:
+                    ClipItemRowView(item: clip, isSelected: index == viewModel.selectedIndex, index: index)
+                        .id(index)
+                        .onTapGesture { handleItemSelection(index) }
+                default:
+                    EmptyView()
                 }
-            case .search, .terminal, .plugin:
-                EmptyView()
             }
         } else {
             EmptyView()

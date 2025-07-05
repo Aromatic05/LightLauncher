@@ -114,14 +114,13 @@ class RunningAppsManager: @unchecked Sendable {
 // MARK: - 关闭应用模式控制器
 @MainActor
 class KillModeController: NSObject, ModeStateController, ObservableObject {
-    @Published var runningApps: [RunningAppInfo] = []
+    var displayableItems: [any DisplayableItem] = []
+
     var prefix: String? { "/k" }
-    
     // 可显示项插槽
-    var displayableItems: [any DisplayableItem] {
-        runningApps.map { $0 as any DisplayableItem }
-    }
-    
+    // var displayableItems: [any DisplayableItem] {
+    //     runningApps.map { $0 as any DisplayableItem }
+    // }
     // 工具方法：生成“当前可关闭应用项”
     private func makeKillItems(for text: String) -> [RunningAppInfo] {
         let all = RunningAppsManager.shared.loadRunningApps()
@@ -140,7 +139,6 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
             return RunningAppsManager.shared.filterRunningApps(all, with: trimmedText)
         }
     }
-
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/k")
@@ -148,21 +146,19 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         let items = makeKillItems(for: text)
-        runningApps = items
         viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
         let items = makeKillItems(for: text)
-        runningApps = items
         viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        guard index < runningApps.count else { return false }
-        let app = runningApps[index]
+        guard index < viewModel.displayableItems.count else { return false }
+        guard let app = viewModel.displayableItems[index] as? RunningAppInfo else { return false }
         return RunningAppsManager.shared.killApp(app)
     }
     // 5. 退出条件
@@ -172,7 +168,7 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
     }
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        runningApps = []
+        viewModel.displayableItems = []
     }
 }
 
@@ -180,7 +176,7 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
 extension LauncherViewModel {
     // 兼容旧接口，转发到 StateController
     var runningApps: [RunningAppInfo] {
-        (activeController as? KillModeController)?.runningApps ?? []
+        displayableItems.compactMap { $0 as? RunningAppInfo }
     }
     func switchToKillMode() {
         if let controller = activeController as? KillModeController {
@@ -203,8 +199,7 @@ extension LauncherViewModel {
     }
     func selectKillAppByNumber(_ number: Int) -> Bool {
         let index = number - 1
-        guard let killController = activeController as? KillModeController else { return false }
-        guard index >= 0 && index < killController.runningApps.count && index < 6 else { return false }
+        guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
         selectedIndex = index
         return killSelectedApp()
     }

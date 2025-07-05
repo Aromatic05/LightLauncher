@@ -16,14 +16,12 @@ struct ClipModeData: ModeData {
 // MARK: - 剪切板模式控制器
 @MainActor
 class ClipModeController: NSObject, ModeStateController, ObservableObject {
-    @Published var currentClipItems: [ClipboardItem] = []
+    var displayableItems: [any DisplayableItem] = []
     var prefix: String? { "/v" }
-    
     // 可显示项插槽
-    var displayableItems: [any DisplayableItem] {
-        currentClipItems
-    }
-    
+    // var displayableItems: [any DisplayableItem] {
+    //     currentClipItems
+    // }
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/v")
@@ -71,21 +69,19 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         let items = makeClipItems(for: text)
-        currentClipItems = items
         viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
         let items = makeClipItems(for: text)
-        currentClipItems = items
         viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        guard index >= 0 && index < currentClipItems.count else { return false }
-        let item = currentClipItems[index]
+        guard index >= 0 && index < viewModel.displayableItems.count else { return false }
+        guard let item = viewModel.displayableItems[index] as? ClipboardItem else { return false }
         switch item {
         case .text(let str):
             NSPasteboard.general.clearContents()
@@ -103,7 +99,7 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     }
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        currentClipItems = []
+        viewModel.displayableItems = []
     }
 }
 
@@ -111,7 +107,7 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
 extension LauncherViewModel {
     // 兼容接口，转发到 StateController
     var currentClipItems: [ClipboardItem] {
-        (activeController as? ClipModeController)?.currentClipItems ?? []
+        displayableItems.compactMap { $0 as? ClipboardItem }
     }
     func switchToClipMode() {
         mode = .clip
