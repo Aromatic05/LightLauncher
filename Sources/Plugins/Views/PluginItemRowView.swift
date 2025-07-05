@@ -26,10 +26,17 @@ struct PluginItemRowView: View {
             }
             
             // 图标
-            Image(systemName: item.icon as? String ?? "questionmark.circle")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(isSelected ? .accentColor : .secondary)
-                .frame(width: 24, height: 24)
+            if let nsImage = item.icon {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 24, height: 24)
+            } else {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(isSelected ? .accentColor : .secondary)
+                    .frame(width: 24, height: 24)
+            }
             
             // 内容
             VStack(alignment: .leading, spacing: 2) {
