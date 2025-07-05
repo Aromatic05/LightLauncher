@@ -3,7 +3,7 @@ import AppKit
 
 // MARK: - 搜索模式控制器
 @MainActor
-class SearchModeController: NSObject, ModeStateController {
+class SearchModeController: NSObject, ModeStateController, ObservableObject {
     @Published var searchHistory: [SearchHistoryItem] = []
     @Published var currentQuery: String = ""
     

@@ -242,7 +242,7 @@ extension LauncherViewModel {
 
 // MARK: - 文件模式控制器
 @MainActor
-class FileModeController: NSObject, ModeStateController {
+class FileModeController: NSObject, ModeStateController, ObservableObject {
     @Published var currentFiles: [FileItem] = []
     @Published var fileBrowserStartPaths: [FileBrowserStartPath] = []
     @Published var showStartPaths: Bool = true

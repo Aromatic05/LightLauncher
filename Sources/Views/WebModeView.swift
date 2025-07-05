@@ -2,51 +2,6 @@ import SwiftUI
 import AppKit
 
 // MARK: - Web Mode Views
-struct WebCurrentInputView: View {
-    let input: String
-    let isSelected: Bool
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Text("")
-                .font(.caption)
-                .foregroundColor(.clear)
-                .frame(width: 20, alignment: .trailing)
-            
-            Image(systemName: "globe")
-                .font(.system(size: 16))
-                .foregroundColor(.green)
-                .frame(width: 20)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("打开: \(input)")
-                    .font(.system(size: 14))
-                    .lineLimit(1)
-                
-                Text("按回车打开网页")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            Image(systemName: "return")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.green.opacity(0.05))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSelected ? Color.accentColor : Color.green.opacity(0.3), lineWidth: 1)
-        )
-    }
-}
-
 struct WebModeResultsView: View {
     @ObservedObject var viewModel: LauncherViewModel
     
@@ -54,40 +9,24 @@ struct WebModeResultsView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    // 在web模式下首先显示当前输入项
-                    let cleanWebText = extractCleanWebText()
-                    WebCurrentInputView(
-                        input: cleanWebText.isEmpty ? "..." : cleanWebText,
-                        isSelected: 0 == viewModel.selectedIndex
-                    )
-                    .id(0)
-                    .onTapGesture {
-                        viewModel.selectedIndex = 0
-                        if viewModel.executeSelectedAction() {
-                            NotificationCenter.default.post(name: .hideWindow, object: nil)
-                        }
-                    }
-                    .focusable(false)
-                    
-                    // 然后显示浏览器历史项目
-                    ForEach(Array(viewModel.browserItems.enumerated()), id: \.element) { index, item in
-                        let displayIndex = index + 1 // 因为当前输入项占用了索引0
-                        BrowserItemRowView(
-                            item: item,
-                            isSelected: displayIndex == viewModel.selectedIndex,
-                            index: index
-                        )
-                        .id(displayIndex)
-                        .onTapGesture {
-                            viewModel.selectedIndex = displayIndex
-                            if viewModel.executeSelectedAction() {
-                                // 在kill模式下不隐藏窗口
-                                if viewModel.mode != .kill {
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                    ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                        if let browserItem = item as? BrowserItem {
+                            BrowserItemRowView(
+                                item: browserItem,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture {
+                                viewModel.selectedIndex = index
+                                if viewModel.executeSelectedAction() {
+                                    if viewModel.mode != .web {
+                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    }
                                 }
                             }
+                            .focusable(false)
                         }
-                        .focusable(false)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -101,14 +40,6 @@ struct WebModeResultsView: View {
                 }
             }
         }
-    }
-    
-    private func extractCleanWebText() -> String {
-        let prefix = "/w "
-        if viewModel.searchText.hasPrefix(prefix) {
-            return String(viewModel.searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -182,5 +113,17 @@ struct WebCommandInputView: View {
             return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
         return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+struct DebugTextView: View {
+    let message: String
+    var body: some View {
+        Text(message)
+            .font(.caption)
+            .foregroundColor(.red)
+            .padding(4)
+            .background(Color.yellow.opacity(0.2))
+            .cornerRadius(4)
     }
 }

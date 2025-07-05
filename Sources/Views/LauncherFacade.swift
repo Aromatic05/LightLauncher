@@ -40,7 +40,7 @@ extension LauncherFacade {
                         EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
                     }
                 case .web:
-                    if viewModel.hasResults || !viewModel.browserItems.isEmpty {
+                    if viewModel.hasResults || !viewModel.displayableItems.isEmpty {
                         ResultsListView(viewModel: viewModel)
                     } else {
                         WebCommandInputView(searchText: viewModel.searchText)
@@ -96,10 +96,12 @@ extension LauncherFacade {
                         .onTapGesture { handleItemSelection(index) }
                 }
             case .web:
-                ForEach(Array(viewModel.browserItems.enumerated()), id: \.offset) { index, item in
-                    BrowserItemRowView(item: item, isSelected: index == viewModel.selectedIndex, index: index)
-                        .id(index)
-                        .onTapGesture { handleItemSelection(index) }
+                ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                    if let browserItem = item as? BrowserItem {
+                        BrowserItemRowView(item: browserItem, isSelected: index == viewModel.selectedIndex, index: index)
+                            .id(index)
+                            .onTapGesture { handleItemSelection(index) }
+                    }
                 }
             case .file:
                 if viewModel.showStartPaths {

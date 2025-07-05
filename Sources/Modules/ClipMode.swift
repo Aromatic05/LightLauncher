@@ -15,7 +15,7 @@ struct ClipModeData: ModeData {
 
 // MARK: - 剪切板模式控制器
 @MainActor
-class ClipModeController: NSObject, ModeStateController {
+class ClipModeController: NSObject, ModeStateController, ObservableObject {
     @Published var currentClipItems: [ClipboardItem] = []
     var prefix: String? { "/v" }
     

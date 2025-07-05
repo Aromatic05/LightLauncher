@@ -1,62 +1,101 @@
 import Foundation
 import AppKit
 
-// BrowserItem 遵守 DisplayableItem 协议
-extension BrowserItem: DisplayableItem {
-    var subtitle: String? { url }
-    var icon: NSImage? { nil }
-}
-
 // MARK: - 网页模式控制器
 @MainActor
-class WebModeController: NSObject, ModeStateController {
-    @Published var browserItems: [BrowserItem] = []
+class WebModeController: NSObject, ModeStateController, ObservableObject  {
+    var browserItems: [BrowserItem] = [] // 仅做内部缓存
     var prefix: String? { "/w" }
-    // 可显示项插槽
-    var displayableItems: [any DisplayableItem] {
-        browserItems.map { $0 as any DisplayableItem }
-    }
+    var displayableItems: [any DisplayableItem] { browserItems.map { $0 as any DisplayableItem } }
+
+    // MARK: - ModeStateController Protocol Requirements
+
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/w")
     }
+
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         BrowserDataManager.shared.loadBrowserData()
-        browserItems = BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
-        viewModel.selectedIndex = 0
+        // var items: [BrowserItem] = []
+        // let cleanSearchText = text.hasPrefix("/w ") ?
+        //     String(text.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) :
+        //     text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // // 构造“当前输入项”
+        // let searchItem = BrowserItem(
+        //     title: cleanSearchText.isEmpty ? "请输入网址或关键词" : cleanSearchText,
+        //     url: cleanSearchText,
+        //     type: .input,
+        //     source: .safari, // 可自定义
+        //     lastVisited: nil,
+        //     visitCount: 0,
+        //     subtitle: cleanSearchText.isEmpty ? nil : "打开网页或搜索：\(cleanSearchText)",
+        //     iconName: "globe",
+        //     actionHint: "按回车打开网页"
+        // )
+        // items.append(searchItem)
+        // items += BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
+        // viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        // viewModel.selectedIndex = 0
     }
+
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
-        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if query.isEmpty {
-            browserItems = BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
+        let cleanSearchText = text.hasPrefix("/w ") ?
+            String(text.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) :
+            text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var items: [BrowserItem] = []
+        // 构造“当前输入项”
+        let searchItem = BrowserItem(
+            title: cleanSearchText.isEmpty ? "请输入网址或关键词" : cleanSearchText,
+            url: cleanSearchText,
+            type: .input,
+            source: .safari, // 可自定义
+            lastVisited: nil,
+            visitCount: 0,
+            subtitle: cleanSearchText.isEmpty ? nil : "打开网页或搜索：\(cleanSearchText)",
+            iconName: "globe",
+            actionHint: "按回车打开网页"
+        )
+        items.append(searchItem)
+        // 其余为推荐/历史项
+        if cleanSearchText.isEmpty {
+            let defaults = BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
+            items += defaults
         } else {
-            browserItems = BrowserDataManager.shared.searchBrowserData(query: query)
+            let results = BrowserDataManager.shared.searchBrowserData(query: cleanSearchText)
+            items += results
         }
+        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
+
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        let cleanWebText = viewModel.extractCleanWebText()
+        let cleanWebText = extractCleanWebText(viewModel.searchText)
         if index == 0 {
             if !cleanWebText.isEmpty {
                 return openWebURL(cleanWebText)
             }
             return false
-        } else if index > 0 && index <= browserItems.count {
+        } else if index > 0 && index < browserItems.count {
             return openBrowserItem(at: index - 1)
         }
         return false
     }
+
     // 5. 退出条件
     func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
         return !text.hasPrefix("/w")
     }
+
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
         browserItems = []
+        viewModel.displayableItems = []
     }
+
     // --- 辅助方法 ---
     func openWebURL(_ url: String) -> Bool {
         let cleanText = url.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -78,6 +117,7 @@ class WebModeController: NSObject, ModeStateController {
         }
         return false
     }
+
     func openBrowserItem(at index: Int) -> Bool {
         guard index >= 0 && index < browserItems.count else { return false }
         let item = browserItems[index]
@@ -87,6 +127,7 @@ class WebModeController: NSObject, ModeStateController {
         }
         return false
     }
+
     func extractCleanWebText(_ searchText: String) -> String {
         let prefix = "/w "
         if searchText.hasPrefix(prefix) {
@@ -94,6 +135,7 @@ class WebModeController: NSObject, ModeStateController {
         }
         return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
     private func getDefaultSearchEngine() -> String {
         let configManager = ConfigManager.shared
         let engine = configManager.config.modes.defaultSearchEngine
@@ -108,6 +150,7 @@ class WebModeController: NSObject, ModeStateController {
             return "https://www.google.com/search?q={query}"
         }
     }
+
     private func isDomainName(_ text: String) -> Bool {
         return text.contains(".") && !text.contains(" ") && !text.hasPrefix(".")
     }
@@ -116,14 +159,14 @@ class WebModeController: NSObject, ModeStateController {
 // MARK: - LauncherViewModel 扩展
 extension LauncherViewModel {
     // 兼容旧接口，转发到 StateController
-    var browserItems: [BrowserItem] {
-        (activeController as? WebModeController)?.browserItems ?? []
-    }
-    func switchToWebMode() {
-        if let controller = activeController as? WebModeController {
-            controller.enterMode(with: "", viewModel: self)
-        }
-    }
+    // var browserItems: [BrowserItem] {
+    //     (activeController as? WebModeController)?.browserItems ?? []
+    // }
+    // func switchToWebMode() {
+    //     if let controller = activeController as? WebModeController {
+    //         controller.enterMode(with: "", viewModel: self)
+    //     }
+    // }
 
     func updateWebResults(query: String) {
         if let controller = activeController as? WebModeController {

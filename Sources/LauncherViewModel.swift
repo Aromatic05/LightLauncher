@@ -11,6 +11,7 @@ class LauncherViewModel: ObservableObject {
             switchController(from: oldValue, to: mode)
         }
     }
+    @Published var displayableItems: [any DisplayableItem] = []
     @Published var commandSuggestions: [LauncherCommand] = []
     @Published var showCommandSuggestions = false
     @Published private(set) var activeController: (any ModeStateController)?
@@ -200,11 +201,6 @@ class LauncherViewModel: ObservableObject {
     // 兼容接口：获取当前模式下所有可显示项
     func getCurrentItems() -> [any DisplayableItem] {
         displayableItems
-    }
-
-    // --- displayableItems 插槽 ---
-    var displayableItems: [any DisplayableItem] {
-        activeController?.displayableItems ?? []
     }
 
     // --- 主输入分发与模式切换 ---

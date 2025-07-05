@@ -37,7 +37,7 @@ struct LaunchCommand: LauncherCommandHandler {
 
 // MARK: - 启动模式控制器
 @MainActor
-class LaunchModeController: NSObject, ModeStateController {
+class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     // 应用列表和使用次数
     private(set) var allApps: [AppInfo] = []
     private var appUsageCount: [String: Int] = [:]

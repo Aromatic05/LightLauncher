@@ -5,7 +5,7 @@ import AppKit
 
 // MARK: - 插件模式控制器
 @MainActor
-class PluginModeController: NSObject, ModeStateController {
+class PluginModeController: NSObject, ModeStateController, ObservableObject {
     @Published var pluginItems: [PluginItem] = []
     private let pluginManager = PluginManager.shared
     private var activePlugin: Plugin?

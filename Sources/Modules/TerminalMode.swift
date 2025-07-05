@@ -3,7 +3,7 @@ import AppKit
 
 // MARK: - 终端模式控制器
 @MainActor
-class TerminalModeController: NSObject, ModeStateController {
+class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     var prefix: String? { "/t" }
     // 可显示项插槽
     var displayableItems: [any DisplayableItem] { [] }

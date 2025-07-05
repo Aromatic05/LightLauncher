@@ -113,7 +113,7 @@ class RunningAppsManager: @unchecked Sendable {
 
 // MARK: - 关闭应用模式控制器
 @MainActor
-class KillModeController: NSObject, ModeStateController {
+class KillModeController: NSObject, ModeStateController, ObservableObject {
     @Published var runningApps: [RunningAppInfo] = []
     var prefix: String? { "/k" }
     

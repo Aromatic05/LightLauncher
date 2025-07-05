@@ -1,8 +1,9 @@
 import Foundation
 import SQLite3
+import AppKit
 
 // MARK: - 浏览器数据项
-struct BrowserItem: Identifiable, Hashable {
+struct BrowserItem: Identifiable, Hashable, DisplayableItem {
     let id = UUID()
     let title: String
     let url: String
@@ -10,20 +11,31 @@ struct BrowserItem: Identifiable, Hashable {
     let source: BrowserType
     let lastVisited: Date?
     let visitCount: Int
+    // 新增：用于自定义显示
+    let subtitle: String?
+    let iconName: String?
+    let actionHint: String?
+    var icon: NSImage? { nil }
+    // 兼容 DisplayableItem 协议
+    var displaySubtitle: String? { subtitle ?? url }
     
-    init(title: String, url: String, type: BrowserItemType, source: BrowserType = .safari, lastVisited: Date? = nil, visitCount: Int = 0) {
+    init(title: String, url: String, type: BrowserItemType, source: BrowserType = .safari, lastVisited: Date? = nil, visitCount: Int = 0, subtitle: String? = nil, iconName: String? = nil, actionHint: String? = nil) {
         self.title = title
         self.url = url
         self.type = type
         self.source = source
         self.lastVisited = lastVisited
         self.visitCount = visitCount
+        self.subtitle = subtitle
+        self.iconName = iconName
+        self.actionHint = actionHint
     }
 }
 
 enum BrowserItemType {
     case bookmark
     case history
+    case input // 新增：当前输入项
 }
 
 enum BrowserType: String, CaseIterable {
