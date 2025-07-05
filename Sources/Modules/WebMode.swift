@@ -15,43 +15,17 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
         return text.hasPrefix("/w")
     }
 
-    // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
-        BrowserDataManager.shared.loadBrowserData()
-        // var items: [BrowserItem] = []
-        // let cleanSearchText = text.hasPrefix("/w ") ?
-        //     String(text.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) :
-        //     text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // // 构造“当前输入项”
-        // let searchItem = BrowserItem(
-        //     title: cleanSearchText.isEmpty ? "请输入网址或关键词" : cleanSearchText,
-        //     url: cleanSearchText,
-        //     type: .input,
-        //     source: .safari, // 可自定义
-        //     lastVisited: nil,
-        //     visitCount: 0,
-        //     subtitle: cleanSearchText.isEmpty ? nil : "打开网页或搜索：\(cleanSearchText)",
-        //     iconName: "globe",
-        //     actionHint: "按回车打开网页"
-        // )
-        // items.append(searchItem)
-        // items += BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
-        // viewModel.displayableItems = items.map { $0 as any DisplayableItem }
-        // viewModel.selectedIndex = 0
-    }
-
-    // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    // 工具方法：生成“当前输入项+历史项”
+    private func makeWebItems(for text: String) -> [BrowserItem] {
         let cleanSearchText = text.hasPrefix("/w ") ?
             String(text.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) :
             text.trimmingCharacters(in: .whitespacesAndNewlines)
         var items: [BrowserItem] = []
-        // 构造“当前输入项”
         let searchItem = BrowserItem(
             title: cleanSearchText.isEmpty ? "请输入网址或关键词" : cleanSearchText,
             url: cleanSearchText,
             type: .input,
-            source: .safari, // 可自定义
+            source: .safari,
             lastVisited: nil,
             visitCount: 0,
             subtitle: cleanSearchText.isEmpty ? nil : "打开网页或搜索：\(cleanSearchText)",
@@ -59,14 +33,25 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
             actionHint: "按回车打开网页"
         )
         items.append(searchItem)
-        // 其余为推荐/历史项
         if cleanSearchText.isEmpty {
-            let defaults = BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
-            items += defaults
+            items += BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
         } else {
-            let results = BrowserDataManager.shared.searchBrowserData(query: cleanSearchText)
-            items += results
+            items += BrowserDataManager.shared.searchBrowserData(query: cleanSearchText)
         }
+        return items
+    }
+
+    // 2. 进入模式
+    func enterMode(with text: String, viewModel: LauncherViewModel) {
+        BrowserDataManager.shared.loadBrowserData()
+        let items = makeWebItems(for: text)
+        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        viewModel.selectedIndex = 0
+    }
+
+    // 3. 处理输入
+    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+        let items = makeWebItems(for: text)
         viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }

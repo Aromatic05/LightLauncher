@@ -28,25 +28,28 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/v")
     }
-    // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
-        currentClipItems = ClipboardManager.shared.getHistory()
-        viewModel.selectedIndex = 0
-    }
-    // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    // 工具方法：生成“当前剪切板项”
+    private func makeClipItems(for text: String) -> [ClipboardItem] {
         let allItems = ClipboardManager.shared.getHistory()
-        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if query.isEmpty {
-            currentClipItems = allItems
+        let prefix = "/v"
+        let trimmedText: String
+        if text.hasPrefix(prefix + " ") {
+            trimmedText = String(text.dropFirst(prefix.count + 1)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if text.hasPrefix(prefix) {
+            trimmedText = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if trimmedText.isEmpty {
+            return allItems
         } else {
             let scored: [(ClipboardItem, Double)] = allItems.compactMap { item in
                 switch item {
                 case .text(let str):
                     let scores: [Double?] = [
-                        StringMatcher.calculateWordStartMatch(text: str, query: query),
-                        StringMatcher.calculateSubsequenceMatch(text: str, query: query),
-                        StringMatcher.calculateFuzzyMatch(text: str, query: query)
+                        StringMatcher.calculateWordStartMatch(text: str, query: trimmedText),
+                        StringMatcher.calculateSubsequenceMatch(text: str, query: trimmedText),
+                        StringMatcher.calculateFuzzyMatch(text: str, query: trimmedText)
                     ]
                     if let best = scores.compactMap({ $0 }).max() {
                         return (item, best)
@@ -55,15 +58,28 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
                     }
                 case .file(let url):
                     let name = url.lastPathComponent
-                    if name.localizedCaseInsensitiveContains(query) {
+                    if name.localizedCaseInsensitiveContains(trimmedText) {
                         return (item, 10.0)
                     } else {
                         return nil
                     }
                 }
             }.sorted { $0.1 > $1.1 }
-            currentClipItems = scored.map { $0.0 }
+            return scored.map { $0.0 }
         }
+    }
+    // 2. 进入模式
+    func enterMode(with text: String, viewModel: LauncherViewModel) {
+        let items = makeClipItems(for: text)
+        currentClipItems = items
+        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        viewModel.selectedIndex = 0
+    }
+    // 3. 处理输入
+    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+        let items = makeClipItems(for: text)
+        currentClipItems = items
+        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 4. 执行动作

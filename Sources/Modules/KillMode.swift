@@ -122,19 +122,41 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
         runningApps.map { $0 as any DisplayableItem }
     }
     
+    // 工具方法：生成“当前可关闭应用项”
+    private func makeKillItems(for text: String) -> [RunningAppInfo] {
+        let all = RunningAppsManager.shared.loadRunningApps()
+        let prefix = "/k"
+        let trimmedText: String
+        if text.hasPrefix(prefix + " ") {
+            trimmedText = String(text.dropFirst(prefix.count + 1)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if text.hasPrefix(prefix) {
+            trimmedText = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if trimmedText.isEmpty {
+            return all
+        } else {
+            return RunningAppsManager.shared.filterRunningApps(all, with: trimmedText)
+        }
+    }
+
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/k")
     }
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
-        runningApps = RunningAppsManager.shared.loadRunningApps()
+        let items = makeKillItems(for: text)
+        runningApps = items
+        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
-        let all = RunningAppsManager.shared.loadRunningApps()
-        runningApps = text.isEmpty ? all : RunningAppsManager.shared.filterRunningApps(all, with: text)
+        let items = makeKillItems(for: text)
+        runningApps = items
+        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 4. 执行动作
