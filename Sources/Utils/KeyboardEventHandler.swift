@@ -1,0 +1,175 @@
+import SwiftUI
+import AppKit
+import Combine
+
+// MARK: - KeyboardEventHandler
+final class KeyboardEventHandler: @unchecked Sendable {
+    static let shared = KeyboardEventHandler()
+    weak var viewModel: LauncherViewModel?
+    private var eventMonitor: Any?
+    private var currentMode: LauncherMode = .launch
+    
+    private init() {}
+    
+    func updateMode(_ mode: LauncherMode) {
+        currentMode = mode
+    }
+    
+    func startMonitoring() {
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let keyCode = event.keyCode
+            let modifierFlags = event.modifierFlags
+            let characters = event.characters
+            let isNumericKey = self.isNumericShortcut(characters: characters, modifierFlags: modifierFlags)
+            let shouldConsume = self.shouldConsumeEvent(keyCode: keyCode, isNumericKey: isNumericKey, for: self.currentMode)
+            if shouldConsume {
+                // 【异步副作用】
+                Task { @MainActor in
+                    self.handleKeyPress(keyCode: keyCode, characters: characters)
+                }
+                return nil
+            } else {
+                return event
+            }
+        }
+    }
+    
+    private func isNumericShortcut(characters: String?, modifierFlags: NSEvent.ModifierFlags) -> Bool {
+        guard modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
+              let chars = characters,
+              let number = Int(chars),
+              (0...9).contains(number) else {
+            return false
+        }
+        return true
+    }
+    
+    func stopMonitoring() {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+            eventMonitor = nil
+        }
+    }
+}
+
+// MARK: - 键盘事件处理逻辑（从 LauncherFacade.swift 移动过来）
+extension KeyboardEventHandler {
+    @MainActor
+    func handleKeyPress(keyCode: UInt16, characters: String?) {
+        guard let viewModel = viewModel else { return }
+        switch keyCode {
+        case 126: // Up Arrow
+            if viewModel.showCommandSuggestions {
+                viewModel.moveCommandSuggestionUp()
+            } else {
+                viewModel.moveSelectionUp()
+            }
+        case 125: // Down Arrow
+            if viewModel.showCommandSuggestions {
+                viewModel.moveCommandSuggestionDown()
+            } else {
+                viewModel.moveSelectionDown()
+            }
+        case 36, 76: // Enter, Numpad Enter
+            handleEnterKey()
+        case 49: // Space
+            handleSpaceKey()
+        case 53: // Escape
+            NotificationCenter.default.post(name: .hideWindowWithoutActivating, object: nil)
+        default:
+            handleNumericShortcut(characters: characters)
+        }
+    }
+
+    @MainActor
+    func handleEnterKey() {
+        guard let viewModel = viewModel else { return }
+        if viewModel.showCommandSuggestions {
+            if !viewModel.commandSuggestions.isEmpty &&
+               viewModel.selectedIndex >= 0 &&
+               viewModel.selectedIndex < viewModel.commandSuggestions.count {
+                let selectedCommand = viewModel.commandSuggestions[viewModel.selectedIndex]
+                viewModel.applySelectedCommand(selectedCommand)
+                return
+            }
+            viewModel.showCommandSuggestions = false
+            viewModel.commandSuggestions = []
+            return
+        }
+        guard viewModel.executeSelectedAction() else { return }
+        switch viewModel.mode {
+        case .kill:
+            break
+        case .file:
+            if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex), !fileItem.isDirectory {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+        case .plugin:
+            break
+        default:
+            NotificationCenter.default.post(name: .hideWindow, object: nil)
+        }
+    }
+
+    @MainActor
+    func handleSpaceKey() {
+        guard let viewModel = viewModel else { return }
+        if viewModel.showCommandSuggestions {
+            if !viewModel.commandSuggestions.isEmpty &&
+               viewModel.selectedIndex >= 0 &&
+               viewModel.selectedIndex < viewModel.commandSuggestions.count {
+                let selectedCommand = viewModel.commandSuggestions[viewModel.selectedIndex]
+                viewModel.applySelectedCommand(selectedCommand)
+                return
+            }
+            viewModel.showCommandSuggestions = false
+            viewModel.commandSuggestions = []
+            return
+        }
+        if viewModel.mode == .file,
+           let fileController = viewModel.controllers[.file] as? FileModeController,
+           !viewModel.showStartPaths,
+           let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex) {
+            fileController.openInFinder(fileItem.url)
+        }
+    }
+
+    @MainActor
+    func handleNumericShortcut(characters: String?) {
+        guard let viewModel = viewModel else { return }
+        guard let chars = characters,
+              let number = Int(chars),
+              (1...6).contains(number) else {
+            return
+        }
+        if viewModel.selectAppByNumber(number) {
+            switch viewModel.mode {
+            case .kill:
+                break
+            case .plugin:
+                break
+            default:
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+        }
+    }
+
+    // 让决策函数变为纯函数，依赖传入的参数而不是外部 Actor 状态
+    private func shouldPassThroughNumericKey(for mode: LauncherMode) -> Bool {
+        return mode == .web || mode == .search || mode == .terminal
+    }
+
+    private func shouldConsumeEvent(keyCode: UInt16, isNumericKey: Bool, for mode: LauncherMode) -> Bool {
+        switch keyCode {
+        case 126, 125, 36, 76, 53: // Up, Down, Enter, Numpad Enter, Esc
+            return true
+        case 49: // Space
+            return mode == .file
+        default:
+            // 消费数字键的条件是：它是一个数字键，并且不应该被“透传”
+            return isNumericKey && !self.shouldPassThroughNumericKey(for: mode)
+        }
+    }
+}
+

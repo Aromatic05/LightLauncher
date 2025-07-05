@@ -2,61 +2,6 @@ import SwiftUI
 import AppKit
 import Combine
 
-final class KeyboardEventHandler: @unchecked Sendable {
-    static let shared = KeyboardEventHandler()
-    weak var viewModel: LauncherViewModel?
-    private var eventMonitor: Any?
-    private var currentMode: LauncherMode = .launch
-    
-    private init() {}
-    
-    func updateMode(_ mode: LauncherMode) {
-        currentMode = mode
-    }
-    
-    func startMonitoring() {
-        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self, let viewModel = self.viewModel else { return event }
-            let keyCode = event.keyCode
-            let modifierFlags = event.modifierFlags
-            let characters = event.characters
-            let isNumericKey = self.isNumericShortcut(characters: characters, modifierFlags: modifierFlags)
-            // 事件消费与透传判断全部放到主线程
-            var shouldPassThrough = false
-            // var shouldConsume = false
-            Task { @MainActor in
-                shouldPassThrough = viewModel.facade.shouldPassThroughNumericKey() && isNumericKey
-                // shouldConsume = viewModel.facade.shouldConsumeEvent(keyCode: keyCode, isNumericKey: isNumericKey)
-                if !shouldPassThrough {
-                    viewModel.facade.handleKeyPress(keyCode: keyCode, characters: characters)
-                }
-            }
-            // 这里不能同步返回 nil 只能保守返回 event，实际消费交由主线程处理
-            if isNumericKey {
-                return shouldPassThrough ? event : nil
-            }
-            return event
-        }
-    }
-    
-    private func isNumericShortcut(characters: String?, modifierFlags: NSEvent.ModifierFlags) -> Bool {
-        guard modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
-              let chars = characters,
-              let number = Int(chars),
-              (1...6).contains(number) else {
-            return false
-        }
-        return true
-    }
-    
-    func stopMonitoring() {
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
-            eventMonitor = nil
-        }
-    }
-}
-
 struct LauncherView: View {
     @ObservedObject var viewModel: LauncherViewModel
     
