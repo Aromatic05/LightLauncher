@@ -159,37 +159,19 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
             "Press Esc to close"
         ]
     }
-}
-
-// MARK: - LauncherViewModel 扩展 - 关闭应用模式
-extension LauncherViewModel {
-    // 兼容旧接口，转发到 StateController
-    // var runningApps: [RunningAppInfo] {
-    //     displayableItems.compactMap { $0 as? RunningAppInfo }
-    // }
-    // func switchToKillMode() {
-    //     if let controller = activeController as? KillModeController {
-    //         controller.enterMode(with: "", viewModel: self)
-    //     }
-    // }
-    func loadRunningApps() {
-        if let controller = activeController as? KillModeController {
-            controller.enterMode(with: "", viewModel: self)
-        }
+    // 其它便捷方法
+    func reloadApps(viewModel: LauncherViewModel) {
+        enterMode(with: "", viewModel: viewModel)
     }
-    func filterRunningApps(searchText: String) {
-        if let controller = activeController as? KillModeController {
-            controller.handleInput(searchText, viewModel: self)
-        }
+    func filterApps(searchText: String, viewModel: LauncherViewModel) {
+        handleInput(searchText, viewModel: viewModel)
     }
-    func killSelectedApp() -> Bool {
-        guard let killController = activeController as? KillModeController else { return false }
-        return killController.executeAction(at: selectedIndex, viewModel: self)
+    func killSelectedApp(selectedIndex: Int, viewModel: LauncherViewModel) -> Bool {
+        return executeAction(at: selectedIndex, viewModel: viewModel)
     }
-    func selectKillAppByNumber(_ number: Int) -> Bool {
+    func selectKillAppByNumber(_ number: Int, viewModel: LauncherViewModel) -> Bool {
         let index = number - 1
         guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
-        selectedIndex = index
-        return killSelectedApp()
+        return executeAction(at: index, viewModel: viewModel)
     }
 }
