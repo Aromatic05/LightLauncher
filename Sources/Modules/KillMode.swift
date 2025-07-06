@@ -125,19 +125,19 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         let items = makeKillItems(for: text)
-        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        self.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
         let items = makeKillItems(for: text)
-        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        self.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        guard index < viewModel.displayableItems.count else { return false }
-        guard let app = viewModel.displayableItems[index] as? RunningAppInfo else { return false }
+        guard index < self.displayableItems.count else { return false }
+        guard let app = self.displayableItems[index] as? RunningAppInfo else { return false }
         return RunningAppsManager.shared.killApp(app)
     }
     // 5. 退出条件
@@ -147,7 +147,7 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
     }
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        viewModel.displayableItems = []
+        self.displayableItems = []
     }
 
     static func getHelpText() -> [String] {

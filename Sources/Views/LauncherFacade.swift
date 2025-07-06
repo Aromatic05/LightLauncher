@@ -24,7 +24,14 @@ extension LauncherFacade {
     func contentView() -> some View {
         if let viewModel = viewModel {
             if viewModel.showCommandSuggestions {
-                Spacer()
+                CommandSuggestionsView(
+                    commands: viewModel.commandSuggestions,
+                    selectedIndex: Binding(
+                        get: { viewModel.selectedIndex },
+                        set: { viewModel.selectedIndex = $0 }
+                    ),
+                    onCommandSelected: { viewModel.applySelectedCommand($0) }
+                )
             } else {
                 switch viewModel.mode {
                 case .launch:

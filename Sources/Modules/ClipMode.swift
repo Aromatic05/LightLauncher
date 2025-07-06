@@ -69,19 +69,19 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         let items = makeClipItems(for: text)
-        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        self.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
         let items = makeClipItems(for: text)
-        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        self.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        guard index >= 0 && index < viewModel.displayableItems.count else { return false }
-        guard let item = viewModel.displayableItems[index] as? ClipboardItem else { return false }
+        guard index >= 0 && index < self.displayableItems.count else { return false }
+        guard let item = self.displayableItems[index] as? ClipboardItem else { return false }
         switch item {
         case .text(let str):
             NSPasteboard.general.clearContents()
@@ -99,7 +99,7 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     }
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        viewModel.displayableItems = []
+        self.displayableItems = []
     }
 
     static func getHelpText() -> [String] {

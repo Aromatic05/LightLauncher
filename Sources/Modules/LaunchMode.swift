@@ -41,7 +41,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         let items = getMostUsedApps(from: allApps, limit: 6)
-        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        self.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     
@@ -52,8 +52,9 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        guard index < viewModel.displayableItems.count else { return false }
-        guard let app = viewModel.displayableItems[index] as? AppInfo else { return false }
+        print("Executing action at index \(index)")
+        guard index < self.displayableItems.count else { return false }
+        guard let app = self.displayableItems[index] as? AppInfo else { return false }
         let success = NSWorkspace.shared.open(app.url)
         if success {
             incrementUsage(for: app.name)
@@ -69,7 +70,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        viewModel.displayableItems = []
+        self.displayableItems = []
     }
     
     // --- 其他辅助方法 ---
@@ -116,7 +117,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     func filterApps(searchText: String, viewModel: LauncherViewModel) {
         if searchText.isEmpty {
             let items = getMostUsedApps(from: allApps, limit: 6)
-            viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+            self.displayableItems = items.map { $0 as any DisplayableItem }
         } else {
             let matches = allApps.compactMap { app in
                 calculateMatch(for: app, query: searchText)
@@ -126,7 +127,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
                 .sorted { $0.score > $1.score }
                 .prefix(6)
                 .map { $0.app }
-            viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+            self.displayableItems = items.map { $0 as any DisplayableItem }
         }
         // 每当列表更新时，重置选择
         viewModel.selectedIndex = 0

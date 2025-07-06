@@ -45,14 +45,14 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         BrowserDataManager.shared.loadBrowserData()
         let items = makeWebItems(for: text)
-        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        self.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
 
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
         let items = makeWebItems(for: text)
-        viewModel.displayableItems = items.map { $0 as any DisplayableItem }
+        self.displayableItems = items.map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
 
@@ -64,7 +64,7 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
                 return openWebURL(cleanWebText)
             }
             return false
-        } else if index > 0 && index < browserItems.count {
+        } else if index > 0 && index < self.displayableItems.count {
             return openBrowserItem(at: index - 1)
         }
         return false
@@ -78,7 +78,7 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
         browserItems = []
-        viewModel.displayableItems = []
+        self.displayableItems = []
     }
 
     // --- 辅助方法 ---

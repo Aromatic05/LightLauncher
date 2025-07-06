@@ -21,8 +21,9 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     }
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        let cleanText = viewModel.extractCleanTerminalText()
-        return executeTerminalCommandWithDetection(command: cleanText, viewModel: viewModel)
+        // let cleanText = viewModel.extractCleanTerminalText()
+        // return executeTerminalCommandWithDetection(command: cleanText, viewModel: viewModel)
+        return true 
     }
     // 5. 退出条件
     func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
@@ -116,7 +117,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         var error: NSDictionary?
         script.executeAndReturnError(&error)
         if error != nil { return false }
-        viewModel.resetToLaunchMode()
+        // viewModel.resetToLaunchMode()
         return true
     }
     private func executeWithITerm2(command: String, viewModel: LauncherViewModel) -> Bool {
@@ -135,7 +136,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         var error: NSDictionary?
         script.executeAndReturnError(&error)
         if error != nil { return executeDirectly(command: command, viewModel: viewModel) }
-        viewModel.resetToLaunchMode()
+        // viewModel.resetToLaunchMode()
         return true
     }
     private func executeWithGhostty(command: String, viewModel: LauncherViewModel) -> Bool {
@@ -145,7 +146,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         process.arguments = ["-a", "Ghostty", "--args", "-e", "zsh", "-c", command]
         do {
             try process.run()
-            viewModel.resetToLaunchMode()
+            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
@@ -156,7 +157,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         process.arguments = ["-a", "kitty", "--args", "--hold", "-e", "zsh", "-c", command]
         do {
             try process.run()
-            viewModel.resetToLaunchMode()
+            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
@@ -167,7 +168,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         process.arguments = ["-a", "Alacritty", "--args", "--hold", "-e", "zsh", "-c", command]
         do {
             try process.run()
-            viewModel.resetToLaunchMode()
+            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
@@ -178,7 +179,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         process.arguments = ["-a", "WezTerm", "--args", "start", "--", "zsh", "-c", command]
         do {
             try process.run()
-            viewModel.resetToLaunchMode()
+            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
@@ -192,7 +193,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         process.arguments = ["-c", command]
         do {
             try process.run()
-            viewModel.resetToLaunchMode()
+            // viewModel.resetToLaunchMode()
             return true
         } catch {
             print("Failed to execute command: \(error)")
@@ -207,22 +208,6 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
             "Delete /t prefix to return to launch mode",
             "Press Esc to close"
         ]
-    }
-}
-
-// MARK: - LauncherViewModel 扩展
-extension LauncherViewModel {
-    func switchToTerminalMode() {
-        mode = .terminal
-        selectedIndex = 0
-    }
-    
-    func extractCleanTerminalText() -> String {
-        let prefix = "/t "
-        if searchText.hasPrefix(prefix) {
-            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

@@ -215,28 +215,28 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
     // 2. 进入模式
     func enterMode(with text: String, viewModel: LauncherViewModel) {
         showStartPaths = true
-        viewModel.displayableItems = getStartPathItems(query: "").map { $0 as any DisplayableItem }
+        self.displayableItems = getStartPathItems(query: "").map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String, viewModel: LauncherViewModel) {
         if showStartPaths {
-            viewModel.displayableItems = getStartPathItems(query: text).map { $0 as any DisplayableItem }
+            self.displayableItems = getStartPathItems(query: text).map { $0 as any DisplayableItem }
         } else {
-            viewModel.displayableItems = getFileItems(path: currentPath, query: text).map { $0 as any DisplayableItem }
+            self.displayableItems = getFileItems(path: currentPath, query: text).map { $0 as any DisplayableItem }
         }
         viewModel.selectedIndex = 0
     }
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
         if showStartPaths {
-            guard index >= 0 && index < viewModel.displayableItems.count else { return false }
-            guard let startPath = viewModel.displayableItems[index] as? FileBrowserStartPath else { return false }
+            guard index >= 0 && index < self.displayableItems.count else { return false }
+            guard let startPath = self.displayableItems[index] as? FileBrowserStartPath else { return false }
             navigateToDirectory(URL(fileURLWithPath: startPath.path), viewModel: viewModel)
             return true
         } else {
-            guard index >= 0 && index < viewModel.displayableItems.count else { return false }
-            guard let fileItem = viewModel.displayableItems[index] as? FileItem else { return false }
+            guard index >= 0 && index < self.displayableItems.count else { return false }
+            guard let fileItem = self.displayableItems[index] as? FileItem else { return false }
             if fileItem.isDirectory {
                 navigateToDirectory(fileItem.url, viewModel: viewModel)
                 return true
@@ -256,7 +256,7 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
     }
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        viewModel.displayableItems = []
+        self.displayableItems = []
     }
     // 获取起始路径项
     private func getStartPathItems(query: String) -> [FileBrowserStartPath] {
@@ -280,7 +280,7 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
     func navigateToDirectory(_ url: URL, viewModel: LauncherViewModel) {
         showStartPaths = false
         currentPath = url.path
-        viewModel.displayableItems = getFileItems(path: url.path, query: "").map { $0 as any DisplayableItem }
+        self.displayableItems = getFileItems(path: url.path, query: "").map { $0 as any DisplayableItem }
         viewModel.selectedIndex = 0
     }
     func openInFinder(_ url: URL) {
