@@ -111,6 +111,18 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
             return AnyView(EmptyStateView(mode: .clip, hasSearchText: !viewModel.searchText.isEmpty))
         }
     }
+    
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        if let clip = item as? ClipboardItem {
+            return AnyView(
+                ClipItemRowView(item: clip, isSelected: isSelected, index: index)
+                    .id(index)
+                    .onTapGesture { handleItemSelection(index) }
+            )
+        } else {
+            return AnyView(EmptyView())
+        }
+    }
 
     static func getHelpText() -> [String] {
         return [
@@ -120,23 +132,3 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
         ]
     }
 }
-
-// // MARK: - LauncherViewModel 扩展
-// extension LauncherViewModel {
-//     // 兼容接口，转发到 StateController
-//     var currentClipItems: [ClipboardItem] {
-//         displayableItems.compactMap { $0 as? ClipboardItem }
-//     }
-//     // func switchToClipMode() {
-//     //     mode = .clip
-//     //     (activeController as? ClipModeController)?.enterMode(with: "", viewModel: self)
-//     //     selectedIndex = 0
-//     // }
-//     func updateClipResults(filter: String?) {
-//         (activeController as? ClipModeController)?.handleInput(filter ?? "", viewModel: self)
-//         selectedIndex = 0
-//     }
-//     func getClipItem(at index: Int) -> ClipboardItem? {
-//         currentClipItems.indices.contains(index) ? currentClipItems[index] : nil
-//     }
-// }

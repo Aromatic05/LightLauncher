@@ -183,4 +183,15 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
             return AnyView(EmptyStateView(mode: .kill, hasSearchText: !viewModel.searchText.isEmpty))
         }
     }
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        if let runningApp = item as? RunningAppInfo {
+            return AnyView(
+                RunningAppRowView(app: runningApp, isSelected: isSelected, index: index)
+                    .id(index)
+                    .onTapGesture { handleItemSelection(index) }
+            )
+        } else {
+            return AnyView(EmptyView())
+        }
+    }
 }

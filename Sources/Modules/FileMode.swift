@@ -326,6 +326,24 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
             return AnyView(FileCommandInputView(currentPath: NSHomeDirectory()))
         }
     }
+    
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        if let file = item as? FileItem {
+            return AnyView(
+                FileRowView(file: file, isSelected: isSelected, index: index)
+                    .id(index)
+                    .onTapGesture { handleItemSelection(index) }
+            )
+        } else if let startPath = item as? FileBrowserStartPath {
+            return AnyView(
+                StartPathRowView(startPath: startPath, isSelected: isSelected, index: index)
+                    .id(index)
+                    .onTapGesture { handleItemSelection(index) }
+            )
+        } else {
+            return AnyView(EmptyView())
+        }
+    }
 
     static func getHelpText() -> [String] {
         return [

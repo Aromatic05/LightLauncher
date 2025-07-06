@@ -19,9 +19,6 @@ class LauncherViewModel: ObservableObject {
     var controllers: [LauncherMode: any ModeStateController] = [:]
     private var cancellables = Set<AnyCancellable>()
 
-    // 新增 Facade 属性
-    lazy var facade: LauncherFacade = LauncherFacade(viewModel: self)
-
     // 插件激活状态
     private var activePlugin: Plugin?
 

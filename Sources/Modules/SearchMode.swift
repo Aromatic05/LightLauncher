@@ -2,6 +2,14 @@ import Foundation
 import AppKit
 import SwiftUI
 
+// MARK: - 当前搜索项结构体（文件级）
+struct CurrentQueryItem: DisplayableItem {
+    let id = UUID()
+    let title: String
+    var subtitle: String? { "当前搜索" }
+    var icon: NSImage? { nil }
+}
+
 // MARK: - 搜索模式控制器
 @MainActor
 class SearchModeController: NSObject, ModeStateController, ObservableObject {
@@ -13,13 +21,6 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
     // 可显示项插槽
     var displayableItems: [any DisplayableItem] {
         var items: [any DisplayableItem] = []
-        // 当前输入项作为第一个可显示项
-        struct CurrentQueryItem: DisplayableItem {
-            let id = UUID()
-            let title: String
-            var subtitle: String? { "当前搜索" }
-            var icon: NSImage? { nil }
-        }
         if !currentQuery.isEmpty {
             items.append(CurrentQueryItem(title: currentQuery))
         }
@@ -147,6 +148,10 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
     // 生成内容视图
     func makeContentView(viewModel: LauncherViewModel) -> AnyView {
         return AnyView(SearchHistoryView(viewModel: viewModel))
+    }
+    
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        return AnyView(EmptyView())
     }
 
     static func getHelpText() -> [String] {

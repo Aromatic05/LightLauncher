@@ -164,6 +164,17 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
             return AnyView(EmptyStateView(mode: .launch, hasSearchText: !viewModel.searchText.isEmpty))
         }
     }
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        if let app = item as? AppInfo {
+            return AnyView(
+                AppRowView(app: app, isSelected: isSelected, index: index, mode: .launch)
+                    .id(index)
+                    .onTapGesture { handleItemSelection(index) }
+            )
+        } else {
+            return AnyView(EmptyView())
+        }
+    }
 
     static func getHelpText() -> [String] {
         return [

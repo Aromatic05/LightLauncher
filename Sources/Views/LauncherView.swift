@@ -74,7 +74,7 @@ struct ResultsListView: View {
             ScrollView {
                 VStack(spacing: 4) {
                     // --- 关键改动 ---
-                    viewModel.facade.resultsListContent { index in
+                    self.resultsListContent { index in
                         handleItemSelection(at: index)
                     }
                 }
@@ -96,6 +96,25 @@ struct ResultsListView: View {
             if viewModel.shouldHideWindowAfterAction {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
+        }
+    }
+
+    @ViewBuilder
+    func resultsListContent(handleItemSelection: @escaping (Int) -> Void) -> some View {
+        if let controller = viewModel.controllers[viewModel.mode] {
+            ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                controller.makeRowView(
+                    for: item,
+                    isSelected: index == viewModel.selectedIndex,
+                    index: index,
+                    viewModel: viewModel,
+                    handleItemSelection: { _ in handleItemSelection(index) }
+                )
+                .id(index)
+                .onTapGesture { handleItemSelection(index) }
+            }
+        } else {
+            EmptyView()
         }
     }
 }

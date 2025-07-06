@@ -95,4 +95,16 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
             "Press Esc to close"
         ]
     }
+    // 渲染 PluginItem 行视图
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        if let pluginItem = item as? PluginItem {
+            return AnyView(
+                PluginItemRowView(item: pluginItem, isSelected: isSelected, index: index)
+                    .id(index)
+                    .onTapGesture { handleItemSelection(index) }
+            )
+        } else {
+            return AnyView(EmptyView())
+        }
+    }
 }

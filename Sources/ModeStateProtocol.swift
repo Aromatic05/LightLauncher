@@ -38,6 +38,9 @@ protocol ModeStateController {
     // 6. 模式退出或切换时的清理操作
     func cleanup(viewModel: LauncherViewModel)
 
+    /// 生成结果列表的行视图（由每个模式控制器实现，统一遍历 displayableItems）
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView
+
     func makeContentView(viewModel: LauncherViewModel) -> AnyView
 
     static func getHelpText() -> [String]

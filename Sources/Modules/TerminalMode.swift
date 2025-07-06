@@ -5,6 +5,13 @@ import SwiftUI
 // MARK: - 终端模式控制器
 @MainActor
 class TerminalModeController: NSObject, ModeStateController, ObservableObject {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+          // 目前无终端结果项，后续可扩展为历史命令、建议等
+            return AnyView(EmptyView())   
+    }
+
+
+
     var prefix: String? { "/t" }
     // 可显示项插槽
     var displayableItems: [any DisplayableItem] { [] }

@@ -163,4 +163,12 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
             return AnyView(WebCommandInputView(searchText: viewModel.searchText))
         }
     }
+
+    // 结果行渲染方法
+   func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        if let browserItem = item as? BrowserItem {
+            return AnyView(BrowserItemRowView(item: browserItem, isSelected: isSelected, index: index))
+        }
+        return AnyView(EmptyView())
+    }
 }
