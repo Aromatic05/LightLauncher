@@ -146,44 +146,11 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
             "Press Esc to close"
         ]
     }
-}
 
-// MARK: - LauncherViewModel 扩展
-extension LauncherViewModel {
-    // 兼容旧接口，转发到 StateController
-    // var browserItems: [BrowserItem] {
-    //     (activeController as? WebModeController)?.browserItems ?? []
-    // }
-    // func switchToWebMode() {
-    //     if let controller = activeController as? WebModeController {
-    //         controller.enterMode(with: "", viewModel: self)
-    //     }
-    // }
-
-    func updateWebResults(query: String) {
-        if let controller = activeController as? WebModeController {
-            controller.handleInput(query, viewModel: self)
-        }
+    func updateWebResults(query: String, viewModel: LauncherViewModel) {
+        self.handleInput(query, viewModel: viewModel)
     }
-    func filterBrowserItems(searchText: String) {
-        if let controller = activeController as? WebModeController {
-            controller.handleInput(searchText, viewModel: self)
-        }
-    }
-    func openWebURL(_ url: String) -> Bool {
-        guard let webController = activeController as? WebModeController else { return false }
-        return webController.openWebURL(url)
-    }
-    func openBrowserItem(at index: Int) -> Bool {
-        guard let webController = activeController as? WebModeController else { return false }
-        return webController.openBrowserItem(at: index)
-    }
-    func extractCleanWebText() -> String {
-        (activeController as? WebModeController)?.extractCleanWebText(searchText) ?? ""
-    }
-    func resetToLaunchMode() {
-        mode = .launch
-        selectedIndex = 0
-        // 可根据需要清理其它模式状态
+    func filterBrowserItems(searchText: String, viewModel: LauncherViewModel) {
+        self.handleInput(searchText, viewModel: viewModel)
     }
 }
