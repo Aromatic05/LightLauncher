@@ -4,19 +4,19 @@
 
 set -e
 
-echo "🚀 开始构建 LightLauncher..."
+echo "Building LightLauncher..."
 
 # 清理之前的构建
-echo "🧹 清理之前的构建..."
+echo "Cleaning previous build..."
 # rm -rf .build
 rm -rf LightLauncher.app
 
 # 构建 release 版本
-echo "🔨 构建 release 版本..."
+echo "构建 release 版本..."
 swift build -c release
 
 # 创建应用包结构
-echo "📦 创建应用包..."
+echo "创建应用包..."
 mkdir -p LightLauncher.app/Contents/MacOS
 mkdir -p LightLauncher.app/Contents/Resources
 
@@ -25,10 +25,10 @@ cp .build/release/LightLauncher LightLauncher.app/Contents/MacOS/
 
 # 复制应用图标（如果存在）
 if [ -f "Sources/Resources/AppIcon.icns" ]; then
-    echo "📱 复制应用图标..."
+    echo "复制应用图标..."
     cp Sources/Resources/AppIcon.icns LightLauncher.app/Contents/Resources/
 else
-    echo "⚠️  未找到应用图标，请运行 ./set_icon.sh 来设置图标"
+    echo "未找到应用图标，请运行 ./set_icon.sh 来设置图标"
 fi
 
 # 创建 Info.plist
@@ -78,16 +78,16 @@ EOF
 # 设置可执行权限
 chmod +x LightLauncher.app/Contents/MacOS/LightLauncher
 
-echo "✅ 构建完成！"
-echo "📱 应用包位置: $(pwd)/LightLauncher.app"
+echo "构建完成！"
+echo "应用包位置: $(pwd)/LightLauncher.app"
 echo ""
-echo "🎯 使用方法:"
+echo "使用方法:"
 echo "   1. 双击 LightLauncher.app 启动应用"
 echo "   2. 使用 Option+Space 快捷键呼出启动器"
 echo "   3. 右键点击菜单栏图标可以打开设置"
 echo ""
-echo "🔧 开发模式:"
+echo "开发模式:"
 echo "   swift run LightLauncher"
 echo ""
-echo "📦 安装到应用程序文件夹:"
+echo "安装到应用程序文件夹:"
 echo "   cp -r LightLauncher.app /Applications/"
