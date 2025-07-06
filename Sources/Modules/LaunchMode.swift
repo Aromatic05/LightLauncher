@@ -143,6 +143,18 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
         )
     }
 
+    func launchSelectedApp(index: Int, viewModel: LauncherViewModel) -> Bool {
+        return self.executeAction(at: index, viewModel: viewModel)
+    }
+    func getMostUsedDisplayApps(limit: Int) -> [AppInfo] {
+        displayableItems.compactMap { $0 as? AppInfo }.prefix(limit).map { $0 }
+    }
+    func selectAppByNumber(_ number: Int, viewModel: LauncherViewModel) -> Bool {
+        let idx = number - 1
+        guard idx >= 0 && idx < self.displayableItems.count && idx < 6 else { return false }
+        return self.executeAction(at: idx, viewModel: viewModel)
+    }
+
     static func getHelpText() -> [String] {
         return [
             "Type to search applications",
@@ -204,32 +216,5 @@ struct AppMatch {
         case subsequence     // 子序列匹配
         case fuzzy          // 模糊匹配
         case contains       // 包含匹配
-    }
-}
-
-// MARK: - LauncherViewModel 扩展 - 启动模式
-extension LauncherViewModel {
-    // 兼容旧接口，转发到 State Controller
-    // func switchToLaunchMode() {
-    //     if let controller = activeController as? LaunchModeController {
-    //         controller.enterMode(with: "", viewModel: self)
-    //     }
-    // }
-
-    func launchSelectedApp() -> Bool {
-        guard let controller = activeController as? LaunchModeController else { return false }
-        return controller.executeAction(at: selectedIndex, viewModel: self)
-    }
-    func incrementUsage(for appName: String) {
-        // 仅用于兼容旧接口，实际应由 State Controller 内部管理
-    }
-    func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
-        displayableItems.compactMap { $0 as? AppInfo }.prefix(limit).map { $0 }
-    }
-    func selectAppByNumber(_ number: Int) -> Bool {
-        let index = number - 1
-        guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
-        selectedIndex = index
-        return launchSelectedApp()
     }
 }

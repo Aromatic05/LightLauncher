@@ -131,12 +131,10 @@ extension KeyboardEventHandler {
             return
         }
         if viewModel.mode == .file,
-           let fileController = viewModel.controllers[.file] as? FileModeController,
-           !fileController.showStartPaths,
            viewModel.selectedIndex >= 0,
            viewModel.selectedIndex < viewModel.displayableItems.count,
            let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem {
-            fileController.openInFinder(fileItem.url)
+            FileManager_LightLauncher.shared.openInFinder(fileItem.url)
         }
     }
 
@@ -148,15 +146,19 @@ extension KeyboardEventHandler {
               (1...6).contains(number) else {
             return
         }
-        if viewModel.selectAppByNumber(number) {
-            switch viewModel.mode {
-            case .kill:
-                break
-            case .plugin:
-                break
-            default:
+        switch viewModel.mode {
+        case .launch:
+            if let controller = viewModel.controllers[.launch] as? LaunchModeController,
+               controller.selectAppByNumber(number, viewModel: viewModel) {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
+        case .kill:
+            // 可按需实现 kill 模式数字快捷键
+            break
+        case .plugin:
+            break
+        default:
+            NotificationCenter.default.post(name: .hideWindow, object: nil)
         }
     }
 
