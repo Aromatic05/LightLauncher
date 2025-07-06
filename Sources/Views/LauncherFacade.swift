@@ -20,55 +20,55 @@ final class LauncherFacade {
 @MainActor
 extension LauncherFacade {
     // 视图主内容区逻辑
-    @ViewBuilder
-    func contentView() -> some View {
-        if let viewModel = viewModel {
-            if viewModel.showCommandSuggestions {
-                Spacer()
-            } else {
-                switch viewModel.mode {
-                case .launch:
-                    if viewModel.hasResults {
-                        ResultsListView(viewModel: viewModel)
-                    } else {
-                        EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
-                    }
-                case .kill:
-                    if viewModel.hasResults {
-                        ResultsListView(viewModel: viewModel)
-                    } else {
-                        EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
-                    }
-                case .web:
-                    if viewModel.hasResults {
-                        ResultsListView(viewModel: viewModel)
-                    } else {
-                        WebCommandInputView(searchText: viewModel.searchText)
-                    }
-                case .search:
-                    SearchHistoryView(viewModel: viewModel)
-                case .terminal:
-                    TerminalCommandInputView(searchText: viewModel.searchText)
-                case .file:
-                    if !viewModel.displayableItems.isEmpty {
-                        ResultsListView(viewModel: viewModel)
-                    } else {
-                        FileCommandInputView(currentPath: NSHomeDirectory()) // 或其它默认路径
-                    }
-                case .clip:
-                    if !viewModel.displayableItems.isEmpty {
-                        ClipModeResultsView(viewModel: viewModel)
-                    } else {
-                        EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
-                    }
-                case .plugin:
-                    PluginModeView(viewModel: viewModel)
-                }
-            }
-        } else {
-            EmptyView()
-        }
-    }
+    // @ViewBuilder
+    // func contentView() -> some View {
+    //     if let viewModel = viewModel {
+    //         if viewModel.showCommandSuggestions {
+    //             Spacer()
+    //         } else {
+    //             switch viewModel.mode {
+    //             case .launch:
+    //                 if viewModel.hasResults {
+    //                     ResultsListView(viewModel: viewModel)
+    //                 } else {
+    //                     EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
+    //                 }
+    //             case .kill:
+    //                 if viewModel.hasResults {
+    //                     ResultsListView(viewModel: viewModel)
+    //                 } else {
+    //                     EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
+    //                 }
+    //             case .web:
+    //                 if viewModel.hasResults {
+    //                     ResultsListView(viewModel: viewModel)
+    //                 } else {
+    //                     WebCommandInputView(searchText: viewModel.searchText)
+    //                 }
+    //             case .search:
+    //                 SearchHistoryView(viewModel: viewModel)
+    //             case .terminal:
+    //                 TerminalCommandInputView(searchText: viewModel.searchText)
+    //             case .file:
+    //                 if !viewModel.displayableItems.isEmpty {
+    //                     ResultsListView(viewModel: viewModel)
+    //                 } else {
+    //                     FileCommandInputView(currentPath: NSHomeDirectory()) // 或其它默认路径
+    //                 }
+    //             case .clip:
+    //                 if !viewModel.displayableItems.isEmpty {
+    //                     ClipModeResultsView(viewModel: viewModel)
+    //                 } else {
+    //                     EmptyStateView(mode: viewModel.mode, hasSearchText: !viewModel.searchText.isEmpty)
+    //                 }
+    //             case .plugin:
+    //                 PluginModeView(viewModel: viewModel)
+    //             }
+    //         }
+    //     } else {
+    //         EmptyView()
+    //     }
+    // }
 
     // 结果列表内容逻辑
     @ViewBuilder

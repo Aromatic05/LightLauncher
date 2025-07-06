@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 搜索模式控制器
 @MainActor
@@ -141,6 +142,11 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
         NSWorkspace.shared.open(url)
         // 注意：不在此处 resetToLaunchMode，由外部控制
         return true
+    }
+
+    // 生成内容视图
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        return AnyView(SearchHistoryView(viewModel: viewModel))
     }
 
     static func getHelpText() -> [String] {

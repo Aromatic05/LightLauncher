@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 网页模式控制器
 @MainActor
@@ -152,5 +153,14 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
     }
     func filterBrowserItems(searchText: String, viewModel: LauncherViewModel) {
         self.handleInput(searchText, viewModel: viewModel)
+    }
+
+    // 生成内容视图
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        if !self.displayableItems.isEmpty {
+            return AnyView(ResultsListView(viewModel: viewModel))
+        } else {
+            return AnyView(WebCommandInputView(searchText: viewModel.searchText))
+        }
     }
 }

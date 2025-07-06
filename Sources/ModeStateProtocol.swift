@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Combine
+import SwiftUI
 
 // MARK: - DisplayableItem 协议
 protocol DisplayableItem: Hashable, Identifiable {
@@ -36,6 +37,8 @@ protocol ModeStateController {
 
     // 6. 模式退出或切换时的清理操作
     func cleanup(viewModel: LauncherViewModel)
+
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView
 
     static func getHelpText() -> [String]
 }

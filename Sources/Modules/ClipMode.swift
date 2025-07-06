@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 剪切板模式数据
 struct ClipModeData: ModeData {
@@ -101,6 +102,14 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
         self.displayableItems = []
+    }
+
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        if !self.displayableItems.isEmpty {
+            return AnyView(ClipModeResultsView(viewModel: viewModel))
+        } else {
+            return AnyView(EmptyStateView(mode: .clip, hasSearchText: !viewModel.searchText.isEmpty))
+        }
     }
 
     static func getHelpText() -> [String] {

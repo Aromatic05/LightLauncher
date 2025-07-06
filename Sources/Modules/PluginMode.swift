@@ -71,6 +71,10 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
         activePlugin = nil
         pluginItems = []
     }
+    // 生成内容视图
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        return AnyView(PluginModeView(viewModel: viewModel))
+    }
     // --- 辅助方法 ---
     func updatePluginResults(_ items: [PluginItem]) {
         self.pluginItems = items

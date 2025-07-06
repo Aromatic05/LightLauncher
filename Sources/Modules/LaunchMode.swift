@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Combine
+import SwiftUI
 
 // MARK: - 启动模式控制器
 @MainActor
@@ -153,6 +154,15 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
         let idx = number - 1
         guard idx >= 0 && idx < self.displayableItems.count && idx < 6 else { return false }
         return self.executeAction(at: idx, viewModel: viewModel)
+    }
+
+    // 生成内容视图
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        if !self.displayableItems.isEmpty {
+            return AnyView(ResultsListView(viewModel: viewModel))
+        } else {
+            return AnyView(EmptyStateView(mode: .launch, hasSearchText: !viewModel.searchText.isEmpty))
+        }
     }
 
     static func getHelpText() -> [String] {

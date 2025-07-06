@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 运行中应用信息结构
 struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
@@ -173,5 +174,13 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
         let index = number - 1
         guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
         return executeAction(at: index, viewModel: viewModel)
+    }
+    // 生成内容视图
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        if !self.displayableItems.isEmpty {
+            return AnyView(ResultsListView(viewModel: viewModel))
+        } else {
+            return AnyView(EmptyStateView(mode: .kill, hasSearchText: !viewModel.searchText.isEmpty))
+        }
     }
 }

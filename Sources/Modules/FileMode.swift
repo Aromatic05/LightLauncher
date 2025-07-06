@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 文件信息结构
 struct FileItem: Identifiable, Hashable, DisplayableItem {
@@ -316,6 +317,14 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
     }
     func updateFileResults(path: String) {
         jumpToDirectory(URL(fileURLWithPath: path))
+    }
+
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        if !self.displayableItems.isEmpty {
+            return AnyView(ResultsListView(viewModel: viewModel))
+        } else {
+            return AnyView(FileCommandInputView(currentPath: NSHomeDirectory()))
+        }
     }
 
     static func getHelpText() -> [String] {

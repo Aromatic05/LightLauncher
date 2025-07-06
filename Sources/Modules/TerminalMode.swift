@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 终端模式控制器
 @MainActor
@@ -198,6 +199,11 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
             print("Failed to execute command: \(error)")
             return false
         }
+    }
+
+    // 生成内容视图
+    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+        return AnyView(TerminalCommandInputView(searchText: viewModel.searchText))
     }
 
     static func getHelpText() -> [String] {

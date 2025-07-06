@@ -8,7 +8,7 @@ struct CommandSuggestionsView: View {
     let onCommandSelected: (LauncherCommand) -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "command")
                     .foregroundColor(.blue)
@@ -23,7 +23,7 @@ struct CommandSuggestionsView: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.top, 16)
+            .padding(.top, 8)
             
             if commands.isEmpty {
                 Text("没有匹配的命令")
@@ -61,7 +61,7 @@ struct CommandSuggestionsView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 

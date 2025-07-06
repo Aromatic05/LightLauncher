@@ -32,10 +32,11 @@ struct LauncherView: View {
                         viewModel.applySelectedCommand(command)
                     }
                 )
+            } else if let controller = viewModel.activeController {
+                controller.makeContentView(viewModel: viewModel)
+            } else {
+                EmptyView()
             }
-            // --- 关键改动 ---
-            // 用一行代码替换掉原来整个 if/switch 逻辑块
-            viewModel.facade.contentView()
         }
         .frame(width: 700, height: 500)
         .background(
