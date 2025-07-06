@@ -66,6 +66,7 @@ struct LauncherView: View {
     }
 }
 
+@MainActor
 struct ResultsListView: View {
     @ObservedObject var viewModel: LauncherViewModel
     
