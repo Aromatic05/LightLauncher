@@ -169,6 +169,13 @@ class ClipboardManager {
         dirty = true
     }
     
+    /// 删除指定下标的历史项
+    func removeItem(at index: Int) {
+        guard history.indices.contains(index) else { return }
+        history.remove(at: index)
+        dirty = true
+    }
+    
     /// 加载历史记录
     private func loadHistory() {
         do {

@@ -5,14 +5,27 @@ import AppKit
 struct FileModeResultsView: View {
     @ObservedObject var viewModel: LauncherViewModel
     
+    var isStartPaths: Bool {
+        viewModel.displayableItems.first is FileBrowserStartPath
+    }
+    
+    var currentPath: String {
+        if let file = viewModel.displayableItems.first as? FileItem {
+            return file.url.deletingLastPathComponent().path
+        } else if let startPath = viewModel.displayableItems.first as? FileBrowserStartPath {
+            return startPath.path
+        }
+        return NSHomeDirectory()
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
-            if viewModel.showStartPaths {
+            if isStartPaths {
                 // 起始路径选择界面
                 StartPathSelectionView(viewModel: viewModel)
             } else {
                 // 文件浏览界面
-                FileBrowserView(viewModel: viewModel)
+                FileBrowserView(viewModel: viewModel, currentPath: currentPath)
             }
         }
     }
@@ -80,11 +93,12 @@ struct StartPathSelectionView: View {
 // MARK: - 文件浏览视图
 struct FileBrowserView: View {
     @ObservedObject var viewModel: LauncherViewModel
+    var currentPath: String
     
     var body: some View {
         VStack(spacing: 0) {
             // 当前路径显示
-            CurrentPathView(currentPath: viewModel.currentPath)
+            CurrentPathView(currentPath: currentPath)
             
             // 文件列表
             ScrollViewReader { proxy in

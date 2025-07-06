@@ -291,6 +291,33 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
         }
     }
 
+    // 其它便捷属性和方法
+    var currentFiles: [FileItem] {
+        displayableItems.compactMap { $0 as? FileItem }
+    }
+    var fileBrowserStartPaths: [FileBrowserStartPath] {
+        displayableItems.compactMap { $0 as? FileBrowserStartPath }
+    }
+    func getFileItem(at index: Int) -> FileItem? {
+        currentFiles.indices.contains(index) ? currentFiles[index] : nil
+    }
+    func getStartPath(at index: Int) -> FileBrowserStartPath? {
+        fileBrowserStartPaths.indices.contains(index) ? fileBrowserStartPaths[index] : nil
+    }
+    // 直接跳转目录
+    func jumpToDirectory(_ url: URL) {
+        showStartPaths = false
+        currentPath = url.path
+        self.displayableItems = getFileItems(path: url.path, query: "").map { $0 as any DisplayableItem }
+    }
+    func showStartPathsList() {
+        showStartPaths = true
+        self.displayableItems = getStartPathItems(query: "").map { $0 as any DisplayableItem }
+    }
+    func updateFileResults(path: String) {
+        jumpToDirectory(URL(fileURLWithPath: path))
+    }
+
     static func getHelpText() -> [String] {
         return [
             "Browse files and folders starting from home directory",
@@ -299,52 +326,5 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
             "Delete /o prefix to return to launch mode",
             "Press Esc to close"
         ]
-    }
-}
-
-// MARK: - LauncherViewModel 扩展
-extension LauncherViewModel {
-    // 兼容旧接口，转发到 StateController
-    var showStartPaths: Bool {
-        (activeController as? FileModeController)?.showStartPaths ?? false
-    }
-    var currentFiles: [FileItem] {
-        displayableItems.compactMap { $0 as? FileItem }
-    }
-    var fileBrowserStartPaths: [FileBrowserStartPath] {
-        displayableItems.compactMap { $0 as? FileBrowserStartPath }
-    }
-    var currentPath: String {
-        (activeController as? FileModeController)?.currentPath ?? NSHomeDirectory()
-    }
-    func getFileItem(at index: Int) -> FileItem? {
-        currentFiles.indices.contains(index) ? currentFiles[index] : nil
-    }
-    func getStartPath(at index: Int) -> FileBrowserStartPath? {
-        fileBrowserStartPaths.indices.contains(index) ? fileBrowserStartPaths[index] : nil
-    }
-    // func switchToFileMode() {
-    //     if let controller = activeController as? FileModeController {
-    //         controller.enterMode(with: "", viewModel: self)
-    //     }
-    // }
-    func filterFiles(query: String) {
-        if let controller = activeController as? FileModeController {
-            controller.handleInput(query, viewModel: self)
-        }
-    }
-    func navigateToDirectory(_ url: URL) {
-        (activeController as? FileModeController)?.navigateToDirectory(url, viewModel: self)
-    }
-    func showFileBrowserStartPaths() {
-        if let controller = activeController as? FileModeController {
-            controller.enterMode(with: "", viewModel: self)
-        }
-    }
-    func loadFileBrowserStartPaths() {
-        // 兼容性保留，无需实现
-    }
-    func updateFileResults(path: String) {
-        (activeController as? FileModeController)?.navigateToDirectory(URL(fileURLWithPath: path), viewModel: self)
     }
 }

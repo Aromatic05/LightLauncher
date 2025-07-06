@@ -50,18 +50,10 @@ extension LauncherFacade {
                 case .terminal:
                     TerminalCommandInputView(searchText: viewModel.searchText)
                 case .file:
-                    if viewModel.showStartPaths {
-                        if !viewModel.displayableItems.isEmpty {
-                            ResultsListView(viewModel: viewModel)
-                        } else {
-                            FileCommandInputView(currentPath: viewModel.currentPath)
-                        }
+                    if !viewModel.displayableItems.isEmpty {
+                        ResultsListView(viewModel: viewModel)
                     } else {
-                        if !viewModel.displayableItems.isEmpty {
-                            ResultsListView(viewModel: viewModel)
-                        } else {
-                            FileCommandInputView(currentPath: viewModel.currentPath)
-                        }
+                        FileCommandInputView(currentPath: NSHomeDirectory()) // 或其它默认路径
                     }
                 case .clip:
                     if !viewModel.displayableItems.isEmpty {
@@ -128,7 +120,9 @@ extension LauncherFacade {
             case .web:
                 return true
             case .file:
-                if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex) {
+                if viewModel.selectedIndex >= 0,
+                   viewModel.selectedIndex < viewModel.displayableItems.count,
+                   let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem {
                     return !fileItem.isDirectory
                 }
                 return true

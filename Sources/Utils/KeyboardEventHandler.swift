@@ -102,7 +102,10 @@ extension KeyboardEventHandler {
         case .kill:
             break
         case .file:
-            if let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex), !fileItem.isDirectory {
+            if viewModel.selectedIndex >= 0,
+               viewModel.selectedIndex < viewModel.displayableItems.count,
+               let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem,
+               !fileItem.isDirectory {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
         case .plugin:
@@ -129,8 +132,10 @@ extension KeyboardEventHandler {
         }
         if viewModel.mode == .file,
            let fileController = viewModel.controllers[.file] as? FileModeController,
-           !viewModel.showStartPaths,
-           let fileItem = viewModel.getFileItem(at: viewModel.selectedIndex) {
+           !fileController.showStartPaths,
+           viewModel.selectedIndex >= 0,
+           viewModel.selectedIndex < viewModel.displayableItems.count,
+           let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem {
             fileController.openInFinder(fileItem.url)
         }
     }

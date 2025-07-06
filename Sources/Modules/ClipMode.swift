@@ -18,10 +18,7 @@ struct ClipModeData: ModeData {
 class ClipModeController: NSObject, ModeStateController, ObservableObject {
     var displayableItems: [any DisplayableItem] = []
     var prefix: String? { "/v" }
-    // 可显示项插槽
-    // var displayableItems: [any DisplayableItem] {
-    //     currentClipItems
-    // }
+
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/v")
@@ -82,6 +79,10 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
         guard index >= 0 && index < self.displayableItems.count else { return false }
         guard let item = self.displayableItems[index] as? ClipboardItem else { return false }
+        // 先删除原有项，避免重复（按历史顺序查找）
+        if let historyIndex = ClipboardManager.shared.getHistory().firstIndex(of: item) {
+            ClipboardManager.shared.removeItem(at: historyIndex)
+        }
         switch item {
         case .text(let str):
             NSPasteboard.general.clearContents()
@@ -111,22 +112,22 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
     }
 }
 
-// MARK: - LauncherViewModel 扩展
-extension LauncherViewModel {
-    // 兼容接口，转发到 StateController
-    var currentClipItems: [ClipboardItem] {
-        displayableItems.compactMap { $0 as? ClipboardItem }
-    }
-    // func switchToClipMode() {
-    //     mode = .clip
-    //     (activeController as? ClipModeController)?.enterMode(with: "", viewModel: self)
-    //     selectedIndex = 0
-    // }
-    func updateClipResults(filter: String?) {
-        (activeController as? ClipModeController)?.handleInput(filter ?? "", viewModel: self)
-        selectedIndex = 0
-    }
-    func getClipItem(at index: Int) -> ClipboardItem? {
-        currentClipItems.indices.contains(index) ? currentClipItems[index] : nil
-    }
-}
+// // MARK: - LauncherViewModel 扩展
+// extension LauncherViewModel {
+//     // 兼容接口，转发到 StateController
+//     var currentClipItems: [ClipboardItem] {
+//         displayableItems.compactMap { $0 as? ClipboardItem }
+//     }
+//     // func switchToClipMode() {
+//     //     mode = .clip
+//     //     (activeController as? ClipModeController)?.enterMode(with: "", viewModel: self)
+//     //     selectedIndex = 0
+//     // }
+//     func updateClipResults(filter: String?) {
+//         (activeController as? ClipModeController)?.handleInput(filter ?? "", viewModel: self)
+//         selectedIndex = 0
+//     }
+//     func getClipItem(at index: Int) -> ClipboardItem? {
+//         currentClipItems.indices.contains(index) ? currentClipItems[index] : nil
+//     }
+// }
