@@ -9,23 +9,25 @@ struct KillModeResultsView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    ForEach(Array(viewModel.runningApps.enumerated()), id: \.element) { index, app in
-                        RunningAppRowView(
-                            app: app,
-                            isSelected: index == viewModel.selectedIndex,
-                            index: index
-                        )
-                        .id(index)
-                        .onTapGesture {
-                            viewModel.selectedIndex = index
-                            if viewModel.executeSelectedAction() {
-                                // 在kill模式下不隐藏窗口
-                                if viewModel.mode != .kill {
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                    ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                        if let app = item as? RunningAppInfo {
+                            RunningAppRowView(
+                                app: app,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture {
+                                viewModel.selectedIndex = index
+                                if viewModel.executeSelectedAction() {
+                                    // 在kill模式下不隐藏窗口
+                                    if viewModel.mode != .kill {
+                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    }
                                 }
                             }
+                            .focusable(false)
                         }
-                        .focusable(false)
                     }
                 }
                 .padding(.horizontal, 16)

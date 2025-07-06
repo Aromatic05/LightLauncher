@@ -44,20 +44,22 @@ struct StartPathSelectionView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 4) {
-                        ForEach(Array(viewModel.fileBrowserStartPaths.enumerated()), id: \.element) { index, startPath in
-                            StartPathRowView(
-                                startPath: startPath,
-                                isSelected: index == viewModel.selectedIndex,
-                                index: index
-                            )
-                            .id(index)
-                            .onTapGesture {
-                                viewModel.selectedIndex = index
-                                if viewModel.executeSelectedAction() {
-                                    // 选择起始路径不关闭窗口
+                        ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                            if let startPath = item as? FileBrowserStartPath {
+                                StartPathRowView(
+                                    startPath: startPath,
+                                    isSelected: index == viewModel.selectedIndex,
+                                    index: index
+                                )
+                                .id(index)
+                                .onTapGesture {
+                                    viewModel.selectedIndex = index
+                                    if viewModel.executeSelectedAction() {
+                                        // 选择起始路径不关闭窗口
+                                    }
                                 }
+                                .focusable(false)
                             }
-                            .focusable(false)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -88,23 +90,25 @@ struct FileBrowserView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 4) {
-                        ForEach(Array(viewModel.currentFiles.enumerated()), id: \.element) { index, file in
-                            FileRowView(
-                                file: file,
-                                isSelected: index == viewModel.selectedIndex,
-                                index: index
-                            )
-                            .id(index)
-                            .onTapGesture {
-                                viewModel.selectedIndex = index
-                                if viewModel.executeSelectedAction() {
-                                    // 文件模式下打开文件后关闭窗口，但进入目录不关闭
-                                    if !file.isDirectory {
-                                        NotificationCenter.default.post(name: .hideWindow, object: nil)
+                        ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                            if let file = item as? FileItem {
+                                FileRowView(
+                                    file: file,
+                                    isSelected: index == viewModel.selectedIndex,
+                                    index: index
+                                )
+                                .id(index)
+                                .onTapGesture {
+                                    viewModel.selectedIndex = index
+                                    if viewModel.executeSelectedAction() {
+                                        // 文件模式下打开文件后关闭窗口，但进入目录不关闭
+                                        if !file.isDirectory {
+                                            NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                        }
                                     }
                                 }
+                                .focusable(false)
                             }
-                            .focusable(false)
                         }
                     }
                     .padding(.horizontal, 16)

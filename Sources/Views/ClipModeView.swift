@@ -9,18 +9,20 @@ struct ClipModeResultsView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    ForEach(Array(clipboardHistory.enumerated()), id: \ .offset) { index, item in
-                        ClipItemRowView(
-                            item: item,
-                            isSelected: index == viewModel.selectedIndex,
-                            index: index
-                        )
-                        .id(index)
-                        .onTapGesture {
-                            viewModel.selectedIndex = index
-                            handleClipAction(item)
+                    ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                        if let clipItem = item as? ClipboardItem {
+                            ClipItemRowView(
+                                item: clipItem,
+                                isSelected: index == viewModel.selectedIndex,
+                                index: index
+                            )
+                            .id(index)
+                            .onTapGesture {
+                                viewModel.selectedIndex = index
+                                handleClipAction(clipItem)
+                            }
+                            .focusable(false)
                         }
-                        .focusable(false)
                     }
                 }
                 .padding(.horizontal, 16)

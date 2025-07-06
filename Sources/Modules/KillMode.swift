@@ -164,14 +164,14 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
 // MARK: - LauncherViewModel 扩展 - 关闭应用模式
 extension LauncherViewModel {
     // 兼容旧接口，转发到 StateController
-    var runningApps: [RunningAppInfo] {
-        displayableItems.compactMap { $0 as? RunningAppInfo }
-    }
-    func switchToKillMode() {
-        if let controller = activeController as? KillModeController {
-            controller.enterMode(with: "", viewModel: self)
-        }
-    }
+    // var runningApps: [RunningAppInfo] {
+    //     displayableItems.compactMap { $0 as? RunningAppInfo }
+    // }
+    // func switchToKillMode() {
+    //     if let controller = activeController as? KillModeController {
+    //         controller.enterMode(with: "", viewModel: self)
+    //     }
+    // }
     func loadRunningApps() {
         if let controller = activeController as? KillModeController {
             controller.enterMode(with: "", viewModel: self)

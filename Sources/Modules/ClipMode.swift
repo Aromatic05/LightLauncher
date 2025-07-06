@@ -117,11 +117,11 @@ extension LauncherViewModel {
     var currentClipItems: [ClipboardItem] {
         displayableItems.compactMap { $0 as? ClipboardItem }
     }
-    func switchToClipMode() {
-        mode = .clip
-        (activeController as? ClipModeController)?.enterMode(with: "", viewModel: self)
-        selectedIndex = 0
-    }
+    // func switchToClipMode() {
+    //     mode = .clip
+    //     (activeController as? ClipModeController)?.enterMode(with: "", viewModel: self)
+    //     selectedIndex = 0
+    // }
     func updateClipResults(filter: String?) {
         (activeController as? ClipModeController)?.handleInput(filter ?? "", viewModel: self)
         selectedIndex = 0

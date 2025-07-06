@@ -323,11 +323,11 @@ extension LauncherViewModel {
     func getStartPath(at index: Int) -> FileBrowserStartPath? {
         fileBrowserStartPaths.indices.contains(index) ? fileBrowserStartPaths[index] : nil
     }
-    func switchToFileMode() {
-        if let controller = activeController as? FileModeController {
-            controller.enterMode(with: "", viewModel: self)
-        }
-    }
+    // func switchToFileMode() {
+    //     if let controller = activeController as? FileModeController {
+    //         controller.enterMode(with: "", viewModel: self)
+    //     }
+    // }
     func filterFiles(query: String) {
         if let controller = activeController as? FileModeController {
             controller.handleInput(query, viewModel: self)

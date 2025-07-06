@@ -210,11 +210,11 @@ struct AppMatch {
 // MARK: - LauncherViewModel 扩展 - 启动模式
 extension LauncherViewModel {
     // 兼容旧接口，转发到 State Controller
-    func switchToLaunchMode() {
-        if let controller = activeController as? LaunchModeController {
-            controller.enterMode(with: "", viewModel: self)
-        }
-    }
+    // func switchToLaunchMode() {
+    //     if let controller = activeController as? LaunchModeController {
+    //         controller.enterMode(with: "", viewModel: self)
+    //     }
+    // }
 
     func launchSelectedApp() -> Bool {
         guard let controller = activeController as? LaunchModeController else { return false }

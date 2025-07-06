@@ -117,7 +117,7 @@ class LauncherViewModel: ObservableObject {
 
     // 命令建议本地实现
     private func getCommandSuggestions(for text: String) -> [LauncherCommand] {
-        LauncherCommand.getCommandSuggestions(for: text)
+        return LauncherCommand.getCommandSuggestions(for: text)
     }
     private func shouldShowCommandSuggestions() -> Bool {
         return SettingsManager.shared.showCommandSuggestions
