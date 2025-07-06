@@ -92,7 +92,7 @@ struct ResultsListView: View {
         viewModel.selectedIndex = index
         if viewModel.executeSelectedAction() {
             // --- 关键改动 ---
-            if viewModel.facade.shouldHideWindowAfterAction() {
+            if viewModel.shouldHideWindowAfterAction {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
         }

@@ -14,6 +14,7 @@ class LauncherViewModel: ObservableObject {
     @Published var commandSuggestions: [LauncherCommand] = []
     @Published var showCommandSuggestions = false
     @Published private(set) var activeController: (any ModeStateController)?
+    @Published var shouldHideWindowAfterAction = true
 
     var controllers: [LauncherMode: any ModeStateController] = [:]
     private var cancellables = Set<AnyCancellable>()

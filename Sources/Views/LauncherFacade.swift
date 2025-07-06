@@ -110,30 +110,30 @@ extension LauncherFacade {
     }
 
     // 是否应隐藏窗口
-    func shouldHideWindowAfterAction() -> Bool {
-        withViewModel({ viewModel in
-            switch viewModel.mode {
-            case .launch:
-                return true
-            case .kill:
-                return false
-            case .web:
-                return true
-            case .file:
-                if viewModel.selectedIndex >= 0,
-                   viewModel.selectedIndex < viewModel.displayableItems.count,
-                   let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem {
-                    return !fileItem.isDirectory
-                }
-                return true
-            case .search, .terminal, .clip:
-                return true
-            case .plugin:
-                // if let pluginController = viewModel.controllers[.plugin] as? PluginModeController {
-                //     return pluginController.getPluginShouldHideWindowAfterAction()
-                // }
-                return false
-            }
-        }, default: false)
-    }    
+    // func shouldHideWindowAfterAction() -> Bool {
+    //     withViewModel({ viewModel in
+    //         switch viewModel.mode {
+    //         case .launch:
+    //             return true
+    //         case .kill:
+    //             return false
+    //         case .web:
+    //             return true
+    //         case .file:
+    //             if viewModel.selectedIndex >= 0,
+    //                viewModel.selectedIndex < viewModel.displayableItems.count,
+    //                let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem {
+    //                 return !fileItem.isDirectory
+    //             }
+    //             return true
+    //         case .search, .terminal, .clip:
+    //             return true
+    //         case .plugin:
+    //             // if let pluginController = viewModel.controllers[.plugin] as? PluginModeController {
+    //             //     return pluginController.getPluginShouldHideWindowAfterAction()
+    //             // }
+    //             return false
+    //         }
+    //     }, default: false)
+    // }    
 }
