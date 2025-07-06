@@ -92,66 +92,36 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
         return true
     }
 
-    static func getHelpText() -> [String] {
-        return [
-            "Type after /s to search the web",
-            "Press Enter to execute search",
-            "Delete /s prefix to return to launch mode",
-            "Press Esc to close"
-        ]
-    }
-}
-
-// MARK: - LauncherViewModel 扩展
-extension LauncherViewModel {
-    // func switchToSearchMode() {
-    //     mode = .search
-    //     selectedIndex = 0
-        
-    //     // 立即加载搜索历史
-    //     let historyManager = SearchHistoryManager.shared
-    //     let searchText = self.searchText.hasPrefix("/s ") ? 
-    //         String(self.searchText.dropFirst(3)) : ""
-    //     let historyItems = historyManager.getMatchingHistory(for: searchText, limit: 10)
-    //     updateSearchHistory(historyItems)
-    // }
-    
+    // MARK: - 便捷方法迁移自 LauncherViewModel extension
     func updateSearchHistory(_ items: [SearchHistoryItem]) {
-        (activeController as? SearchModeController)?.searchHistory = items
-        // 校验 selectedIndex 可选
-    }
-    
-    var searchHistory: [SearchHistoryItem] {
-        (activeController as? SearchModeController)?.searchHistory ?? []
+        self.searchHistory = items
     }
 
     func executeSearchHistoryItem(at index: Int) -> Bool {
         guard index >= 0 && index < searchHistory.count else { return false }
         let item = searchHistory[index]
-        
         return executeWebSearch(item.query)
     }
-    
+
     func clearSearchHistory() {
-        (activeController as? SearchModeController)?.searchHistory = []
+        self.searchHistory = []
     }
-    
+
     func removeSearchHistoryItem(_ item: SearchHistoryItem) {
-        (activeController as? SearchModeController)?.searchHistory.removeAll { $0.id == item.id }
+        self.searchHistory.removeAll { $0.id == item.id }
     }
-    
-    func extractCleanSearchText() -> String {
+
+    func extractCleanSearchText(from text: String) -> String {
         let prefix = "/s "
-        if searchText.hasPrefix(prefix) {
-            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix(prefix) {
+            return String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-    
+
     func executeWebSearch(_ query: String) -> Bool {
         let configManager = ConfigManager.shared
         let engine = configManager.config.modes.defaultSearchEngine
-        
         var searchEngine: String
         switch engine {
         case "baidu":
@@ -163,17 +133,22 @@ extension LauncherViewModel {
         default:
             searchEngine = "https://www.google.com/search?q={query}"
         }
-        
         let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
         let searchURL = searchEngine.replacingOccurrences(of: "{query}", with: encodedQuery)
-        
         guard let url = URL(string: searchURL) else { return false }
-        
         // 保存到搜索历史
         SearchHistoryManager.shared.addSearch(query: query, searchEngine: engine)
-        
         NSWorkspace.shared.open(url)
-        resetToLaunchMode()
+        // 注意：不在此处 resetToLaunchMode，由外部控制
         return true
+    }
+
+    static func getHelpText() -> [String] {
+        return [
+            "Type after /s to search the web",
+            "Press Enter to execute search",
+            "Delete /s prefix to return to launch mode",
+            "Press Esc to close"
+        ]
     }
 }

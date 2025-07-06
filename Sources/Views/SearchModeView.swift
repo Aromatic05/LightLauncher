@@ -177,9 +177,9 @@ struct SearchHistoryView: View {
                             .font(.headline)
                             .foregroundColor(.secondary)
                         Spacer()
-                        if !viewModel.searchHistory.isEmpty {
+                        if !((viewModel.controllers[.search] as? SearchModeController)?.searchHistory.isEmpty ?? true) {
                             Button("清空") {
-                                viewModel.clearSearchHistory()
+                                (viewModel.controllers[.search] as? SearchModeController)?.clearSearchHistory()
                             }
                             .buttonStyle(PlainButtonStyle())
                             .foregroundColor(.blue)
@@ -190,7 +190,7 @@ struct SearchHistoryView: View {
                     .padding(.top, 8)
                     
                     // 在搜索模式下首先显示当前输入项
-                    let cleanSearchText = extractCleanSearchText()
+                    let cleanSearchText = (viewModel.controllers[.search] as? SearchModeController)?.extractCleanSearchText(from: viewModel.searchText) ?? ""
                     SearchCurrentQueryView(
                         query: cleanSearchText.isEmpty ? "..." : cleanSearchText,
                         isSelected: 0 == viewModel.selectedIndex
@@ -204,14 +204,14 @@ struct SearchHistoryView: View {
                     }
                     
                     // 然后显示历史记录列表
-                    ForEach(Array(viewModel.searchHistory.prefix(10).enumerated()), id: \.element) { index, item in
+                    ForEach(Array(((viewModel.controllers[.search] as? SearchModeController)?.searchHistory.prefix(10) ?? []).enumerated()), id: \.element) { index, item in
                         let displayIndex = index + 1 // 因为当前输入项占用了索引0
                         SearchHistoryRowView(
                             item: item,
                             isSelected: displayIndex == viewModel.selectedIndex,
                             index: index + 1, // 显示序号从1开始
                             onDelete: {
-                                viewModel.removeSearchHistoryItem(item)
+                                (viewModel.controllers[.search] as? SearchModeController)?.removeSearchHistoryItem(item)
                             }
                         )
                         .id(displayIndex)
@@ -231,21 +231,6 @@ struct SearchHistoryView: View {
                     proxy.scrollTo(newIndex, anchor: .center)
                 }
             }
-        }
-    }
-    
-    private func extractCleanSearchText() -> String {
-        let prefix = "/s "
-        if viewModel.searchText.hasPrefix(prefix) {
-            return String(viewModel.searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-    
-    private func hasMatchingHistory(_ query: String) -> Bool {
-        guard !query.isEmpty else { return false }
-        return viewModel.searchHistory.contains { 
-            $0.query.lowercased().contains(query.lowercased())
         }
     }
 }
