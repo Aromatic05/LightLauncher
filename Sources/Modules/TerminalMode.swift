@@ -21,9 +21,8 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     }
     // 4. 执行动作
     func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        // let cleanText = viewModel.extractCleanTerminalText()
-        // return executeTerminalCommandWithDetection(command: cleanText, viewModel: viewModel)
-        return true 
+        let cleanText = self.extractCleanTerminalText(from: viewModel.searchText)
+        return executeTerminalCommandWithDetection(command: cleanText, viewModel: viewModel)
     }
     // 5. 退出条件
     func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
@@ -209,5 +208,13 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
             "Press Esc to close"
         ]
     }
-}
 
+    // --- 从 LauncherViewModel extension 移动过来的方法 ---
+    func extractCleanTerminalText(from searchText: String) -> String {
+        let prefix = "/t "
+        if searchText.hasPrefix(prefix) {
+            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
