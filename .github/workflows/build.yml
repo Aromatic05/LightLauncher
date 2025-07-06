@@ -17,7 +17,7 @@ jobs:
     - name: Set up Swift
       uses: swift-actions/setup-swift@v2
       with:
-        swift-version: '5.9' # 可根据你的项目需要调整
+        swift-version: '6.1' # 可根据你的项目需要调整
 
     - name: Build with Swift
       run: swift build -c release
