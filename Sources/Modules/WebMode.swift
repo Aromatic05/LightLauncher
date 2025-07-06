@@ -4,7 +4,6 @@ import AppKit
 // MARK: - 网页模式控制器
 @MainActor
 class WebModeController: NSObject, ModeStateController, ObservableObject  {
-    var browserItems: [BrowserItem] = [] // 仅做内部缓存
     var prefix: String? { "/w" }
     var displayableItems: [any DisplayableItem] = []
 
@@ -77,7 +76,6 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
 
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {
-        browserItems = []
         self.displayableItems = []
     }
 
@@ -104,8 +102,8 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
     }
 
     func openBrowserItem(at index: Int) -> Bool {
-        guard index >= 0 && index < browserItems.count else { return false }
-        let item = browserItems[index]
+        guard index >= 0 && index < self.displayableItems.count else { return false }
+        guard let item = self.displayableItems[index] as? BrowserItem else { return false }
         if let url = URL(string: item.url) {
             NSWorkspace.shared.open(url)
             return true
