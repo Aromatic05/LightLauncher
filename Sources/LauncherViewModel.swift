@@ -11,6 +11,11 @@ class LauncherViewModel: ObservableObject {
             switchController(from: oldValue, to: mode)
         }
     }
+
+    var displayableItems: [any DisplayableItem] {
+        activeController?.displayableItems ?? []
+    }
+
     @Published var commandSuggestions: [LauncherCommand] = []
     @Published var showCommandSuggestions = false
     @Published private(set) var activeController: (any ModeStateController)?
@@ -28,6 +33,19 @@ class LauncherViewModel: ObservableObject {
         bindSearchText()
     }
 
+    /// 初始化所有模式控制器
+    private func setupControllers() {
+        controllers[.launch] = LaunchModeController()
+        controllers[.kill] = KillModeController()
+        controllers[.file] = FileModeController()
+        controllers[.plugin] = PluginModeController()
+        controllers[.search] = SearchModeController()
+        controllers[.web] = WebModeController()
+        controllers[.clip] = ClipModeController()
+        controllers[.terminal] = TerminalModeController()
+    }
+
+    // MARK: - 绑定与处理搜索文本变化
     private func bindSearchText() {
         $searchText
             // 处理搜索文本变化，使用防抖机制
@@ -38,15 +56,10 @@ class LauncherViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    private func setupControllers() {
-        controllers[.launch] = LaunchModeController()
-        controllers[.kill] = KillModeController()
-        controllers[.file] = FileModeController()
-        controllers[.plugin] = PluginModeController()
-        controllers[.search] = SearchModeController()
-        controllers[.web] = WebModeController()
-        controllers[.clip] = ClipModeController()
-        controllers[.terminal] = TerminalModeController() // 补全 terminal 模式 controller
+    private func handleSearchTextChange(text: String) {
+        updateCommandSuggestions(for: text)
+        activeController?.handleInput(text, viewModel: self)
+        _ = processInput(text)
     }
 
     private func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
@@ -68,12 +81,36 @@ class LauncherViewModel: ObservableObject {
         selectedIndex = 0
     }
 
-    private func handleSearchTextChange(text: String) {
-        updateCommandSuggestions(for: text)
-        activeController?.handleInput(text, viewModel: self)
-        _ = processInput(text)
+    func executeSelectedAction() -> Bool {
+        guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count else { return false }
+        return activeController?.executeAction(at: selectedIndex, viewModel: self) ?? false
     }
 
+    func moveSelectionUp() {
+        guard !displayableItems.isEmpty else { return }
+        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : displayableItems.count - 1
+    }
+
+    func moveSelectionDown() {
+        guard !displayableItems.isEmpty else { return }
+        selectedIndex = selectedIndex < displayableItems.count - 1 ? selectedIndex + 1 : 0
+    }
+
+    var hasResults: Bool {
+        return !displayableItems.isEmpty
+    }
+
+    func hideLauncher() {
+        NotificationCenter.default.post(name: .hideWindow, object: nil)
+    }
+
+    // --- 交互与命令建议相关方法 ---
+    func clearSearch() {
+        searchText = ""
+        selectedIndex = 0
+    }
+
+    // MARK: - 命令建议相关内容
     private func updateCommandSuggestions(for text: String) {
         if shouldShowCommandSuggestions() && text.hasPrefix("/") {
             let allCommands = getCommandSuggestions(for: text)
@@ -121,45 +158,6 @@ class LauncherViewModel: ObservableObject {
         return SettingsManager.shared.showCommandSuggestions
     }
 
-    func executeSelectedAction() -> Bool {
-        guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count else { return false }
-        return activeController?.executeAction(at: selectedIndex, viewModel: self) ?? false
-    }
-
-    func moveSelectionUp() {
-        guard !displayableItems.isEmpty else { return }
-        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : displayableItems.count - 1
-    }
-
-    func moveSelectionDown() {
-        guard !displayableItems.isEmpty else { return }
-        selectedIndex = selectedIndex < displayableItems.count - 1 ? selectedIndex + 1 : 0
-    }
-
-    var hasResults: Bool {
-        return !displayableItems.isEmpty
-    }
-
-    func hideLauncher() {
-        NotificationCenter.default.post(name: .hideWindow, object: nil)
-    }
-
-    // --- 交互与命令建议相关方法 ---
-    func clearSearch() {
-        searchText = ""
-        selectedIndex = 0
-    }
-
-    func switchToLaunchModeAndClear() {
-        mode = .launch // 关键：同步切换模式
-        if let controller = controllers[.launch] {
-            activeController = controller
-            controller.enterMode(with: "", viewModel: self)
-        }
-        searchText = ""
-        selectedIndex = 0
-    }
-
     func applySelectedCommand(_ command: LauncherCommand) {
         searchText = command.trigger + " "
         showCommandSuggestions = false
@@ -178,34 +176,7 @@ class LauncherViewModel: ObservableObject {
         selectedIndex = selectedIndex < commandSuggestions.count - 1 ? selectedIndex + 1 : 0
     }
 
-    // 插件相关接口全部转发到 PluginModeController
-    func switchToPluginMode(with plugin: Plugin) {
-        mode = .plugin
-        activePlugin = plugin
-        selectedIndex = 0
-    }
-
-    // 命令建议相关
-    func selectCurrentCommandSuggestion() -> Bool {
-        guard showCommandSuggestions,
-              selectedIndex >= 0,
-              selectedIndex < commandSuggestions.count else { return false }
-        let selectedCommand = commandSuggestions[selectedIndex]
-        applySelectedCommand(selectedCommand)
-        return true
-    }
-
-    // 兼容接口：获取当前模式下所有可显示项
-    func getCurrentItems() -> [any DisplayableItem] {
-        displayableItems
-    }
-
-    // 新增：displayableItems 只读属性，转发到 activeController
-    var displayableItems: [any DisplayableItem] {
-        activeController?.displayableItems ?? []
-    }
-
-    // --- 主输入分发与模式切换 ---
+    // MARK: - 主输入分发与模式切换
     /// 处理用户输入，根据输入内容切换模式或分发到当前模式控制器
     @discardableResult
     private func processInput(_ text: String) -> Bool {
@@ -232,7 +203,8 @@ class LauncherViewModel: ObservableObject {
         }
         // 2. 检查当前模式是否应切回 launch
         if let controller = activeController, controller.shouldSwitchToLaunchMode(for: text) {
-            switchToLaunchModeAndClear()
+            modeSwitchIfNeeded(to: .launch, text: text)
+            clearSearch()
             if !text.hasPrefix("/") && !text.isEmpty {
                 if let launchController = controllers[.launch] as? LaunchModeController {
                     launchController.filterApps(searchText: text, viewModel: self)
@@ -286,21 +258,5 @@ extension ModeStateController {
             return String(text.dropFirst(prefix.count))
         }
         return text
-    }
-}
-
-extension LauncherMode {
-    /// 根据前缀字符串返回对应模式
-    static func fromPrefix(_ prefix: String) -> LauncherMode? {
-        switch prefix {
-        case "/k": return .kill
-        case "/s": return .search
-        case "/w": return .web
-        case "/t": return .terminal
-        case "/o": return .file
-        case "/v": return .clip
-        case "": return .launch
-        default: return nil
-        }
     }
 }

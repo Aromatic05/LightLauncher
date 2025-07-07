@@ -136,6 +136,19 @@ enum LauncherMode: String, CaseIterable {
             return true // 插件模式始终启用（由插件管理器控制具体插件）
         }
     }
+
+    static func fromPrefix(_ prefix: String) -> LauncherMode? {
+        switch prefix {
+        case "/k": return .kill
+        case "/s": return .search
+        case "/w": return .web
+        case "/t": return .terminal
+        case "/o": return .file
+        case "/v": return .clip
+        case "": return .launch
+        default: return nil
+        }
+    }
 }
 
 // MARK: - 命令定义
