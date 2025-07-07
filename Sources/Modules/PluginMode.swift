@@ -14,6 +14,11 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
     var displayableItems: [any DisplayableItem] {
         pluginItems.map { $0 as any DisplayableItem }
     }
+    // 元信息属性
+    var displayName: String { "Plugin" }
+    var iconName: String { "puzzlepiece" }
+    var placeholder: String { "Plugin mode..." }
+    var modeDescription: String? { "Plugin-powered functionality" }
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         // 只要是插件命令前缀就激活
@@ -107,9 +112,4 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
             return AnyView(EmptyView())
         }
     }
-    // 元信息属性
-    var displayName: String { "Plugin" }
-    var iconName: String { "puzzlepiece" }
-    var placeholder: String { "Plugin mode..." }
-    var modeDescription: String? { "Plugin-powered functionality" }
 }

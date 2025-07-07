@@ -27,6 +27,11 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
         items.append(contentsOf: searchHistory)
         return items
     }
+    // 元信息属性
+    var displayName: String { "Web Search" }
+    var iconName: String { "globe" }
+    var placeholder: String { "Enter search query..." }
+    var modeDescription: String? { "Search the web using your default search engine" }
     
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
@@ -162,10 +167,4 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
             "Press Esc to close"
         ]
     }
-    
-    // 元信息属性
-    var displayName: String { "Web Search" }
-    var iconName: String { "globe" }
-    var placeholder: String { "Enter search query..." }
-    var modeDescription: String? { "Search the web using your default search engine" }
 }
