@@ -2,18 +2,6 @@ import Foundation
 import AppKit
 import SwiftUI
 
-// MARK: - 剪切板模式数据
-struct ClipModeData: ModeData {
-    let items: [ClipboardItem]
-    
-    var count: Int { items.count }
-    
-    func item(at index: Int) -> Any? {
-        guard index >= 0 && index < items.count else { return nil }
-        return items[index]
-    }
-}
-
 // MARK: - 剪切板模式控制器
 @MainActor
 class ClipModeController: NSObject, ModeStateController, ObservableObject {

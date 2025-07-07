@@ -94,19 +94,6 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
     }
 }
 
-// MARK: - 文件模式数据
-struct FileModeData: ModeData {
-    let files: [FileItem]
-    let currentPath: String
-    
-    var count: Int { files.count }
-    
-    func item(at index: Int) -> Any? {
-        guard index >= 0 && index < files.count else { return nil }
-        return files[index]
-    }
-}
-
 // MARK: - 文件管理器管理类
 @MainActor
 class FileManager_LightLauncher {

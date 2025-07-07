@@ -207,9 +207,3 @@ struct LauncherCommand {
         }
     }
 }
-
-// MARK: - 模式数据协议
-protocol ModeData {
-    var count: Int { get }
-    func item(at index: Int) -> Any?
-}

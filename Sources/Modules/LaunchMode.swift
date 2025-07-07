@@ -213,18 +213,6 @@ struct AppInfo: Identifiable, Hashable, DisplayableItem {
     }
 }
 
-// MARK: - 启动模式数据
-struct LaunchModeData: ModeData {
-    let apps: [AppInfo]
-    
-    var count: Int { apps.count }
-    
-    func item(at index: Int) -> Any? {
-        guard index >= 0 && index < apps.count else { return nil }
-        return apps[index]
-    }
-}
-
 // MARK: - 应用匹配结果结构
 struct AppMatch {
     let app: AppInfo

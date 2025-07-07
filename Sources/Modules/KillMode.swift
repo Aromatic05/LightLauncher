@@ -31,18 +31,6 @@ struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
     }
 }
 
-// MARK: - 关闭模式数据
-struct KillModeData: ModeData {
-    let runningApps: [RunningAppInfo]
-    
-    var count: Int { runningApps.count }
-    
-    func item(at index: Int) -> Any? {
-        guard index >= 0 && index < runningApps.count else { return nil }
-        return runningApps[index]
-    }
-}
-
 // MARK: - 运行应用管理器
 @MainActor
 class RunningAppsManager: @unchecked Sendable {
