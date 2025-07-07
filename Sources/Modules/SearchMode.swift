@@ -12,7 +12,10 @@ struct CurrentQueryItem: DisplayableItem {
 
 // MARK: - 搜索模式控制器
 @MainActor
-class SearchModeController: NSObject, ModeStateController, ObservableObject {
+final class SearchModeController: NSObject, ModeStateController, ObservableObject {
+    static let shared = SearchModeController()
+    private override init() {}
+    
     @Published var searchHistory: [SearchHistoryItem] = []
     @Published var currentQuery: String = ""
     
@@ -38,19 +41,19 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
         return text.hasPrefix("/s")
     }
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
+    func enterMode(with text: String) {
         currentQuery = extractQuery(from: text)
         searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: currentQuery, limit: 10)
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    func handleInput(_ text: String) {
         currentQuery = extractQuery(from: text)
         searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: currentQuery, limit: 10)
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+    func executeAction(at index: Int) -> Bool {
         if index == 0 {
             // 当前搜索项
             let cleanText = currentQuery
@@ -62,12 +65,12 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
         return false
     }
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         // 删除 /s 前缀或切换到其他模式时退出
         return !text.hasPrefix("/s")
     }
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {
+    func cleanup() {
         searchHistory = []
         currentQuery = ""
     }
@@ -151,11 +154,11 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
     }
 
     // 生成内容视图
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
-        return AnyView(SearchHistoryView(viewModel: viewModel))
+    func makeContentView() -> AnyView {
+        return AnyView(SearchHistoryView(viewModel: LauncherViewModel.shared))
     }
     
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         return AnyView(EmptyView())
     }
 

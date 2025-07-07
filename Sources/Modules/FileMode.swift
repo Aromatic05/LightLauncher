@@ -183,7 +183,9 @@ class FileManager_LightLauncher {
 
 // MARK: - 文件模式控制器
 @MainActor
-class FileModeController: NSObject, ModeStateController, ObservableObject {
+final class FileModeController: NSObject, ModeStateController, ObservableObject {
+    static let shared = FileModeController()
+    private override init() {}
     var displayableItems: [any DisplayableItem] = []
     @Published var showStartPaths: Bool = true
     @Published var currentPath: String = NSHomeDirectory()
@@ -193,62 +195,54 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
     var iconName: String { "folder" }
     var placeholder: String { "Browse files and folders..." }
     var modeDescription: String? { "Browse files and folders starting from home directory" }
-    // 可显示项插槽
-    // var displayableItems: [any DisplayableItem] {
-    //     if showStartPaths {
-    //         return fileBrowserStartPaths.map { $0 as any DisplayableItem }
-    //     } else {
-    //         return currentFiles.map { $0 as any DisplayableItem }
-    //     }
-    // }
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/o")
     }
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
+    func enterMode(with text: String) {
         showStartPaths = true
         self.displayableItems = getStartPathItems(query: "").map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    func handleInput(_ text: String) {
         if showStartPaths {
             self.displayableItems = getStartPathItems(query: text).map { $0 as any DisplayableItem }
         } else {
             self.displayableItems = getFileItems(path: currentPath, query: text).map { $0 as any DisplayableItem }
         }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+    func executeAction(at index: Int) -> Bool {
         if showStartPaths {
             guard index >= 0 && index < self.displayableItems.count else { return false }
             guard let startPath = self.displayableItems[index] as? FileBrowserStartPath else { return false }
-            navigateToDirectory(URL(fileURLWithPath: startPath.path), viewModel: viewModel)
+            navigateToDirectory(URL(fileURLWithPath: startPath.path))
             return true
         } else {
             guard index >= 0 && index < self.displayableItems.count else { return false }
             guard let fileItem = self.displayableItems[index] as? FileItem else { return false }
             if fileItem.isDirectory {
-                navigateToDirectory(fileItem.url, viewModel: viewModel)
+                navigateToDirectory(fileItem.url)
                 return true
             } else {
                 let success = NSWorkspace.shared.open(fileItem.url)
                 if success {
-                    enterMode(with: "", viewModel: viewModel) // 返回起始界面
+                    enterMode(with: "") // 返回起始界面
                 }
                 return success
             }
         }
     }
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         // 删除 /o 前缀或切换到其他模式时退出
         return !text.hasPrefix("/o")
     }
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {
+    func cleanup() {
         self.displayableItems = []
     }
     // 获取起始路径项
@@ -270,11 +264,11 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
         return FileManager_LightLauncher.shared.filterFiles(allFiles, query: query)
     }
     // 跳转目录
-    func navigateToDirectory(_ url: URL, viewModel: LauncherViewModel) {
+    func navigateToDirectory(_ url: URL) {
         showStartPaths = false
         currentPath = url.path
         self.displayableItems = getFileItems(path: url.path, query: "").map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     func openInFinder(_ url: URL) {
         if url.hasDirectoryPath {
@@ -283,7 +277,6 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
             NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
         }
     }
-
     // 其它便捷属性和方法
     var currentFiles: [FileItem] {
         displayableItems.compactMap { $0 as? FileItem }
@@ -310,16 +303,14 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
     func updateFileResults(path: String) {
         jumpToDirectory(URL(fileURLWithPath: path))
     }
-
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+    func makeContentView() -> AnyView {
         if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: viewModel))
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
             return AnyView(FileCommandInputView(currentPath: NSHomeDirectory()))
         }
     }
-    
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         if let file = item as? FileItem {
             return AnyView(
                 FileRowView(file: file, isSelected: isSelected, index: index)
@@ -336,7 +327,6 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
             return AnyView(EmptyView())
         }
     }
-
     static func getHelpText() -> [String] {
         return [
             "Browse files and folders starting from home directory",

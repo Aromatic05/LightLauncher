@@ -4,7 +4,9 @@ import SwiftUI
 
 // MARK: - 剪切板模式控制器
 @MainActor
-class ClipModeController: NSObject, ModeStateController, ObservableObject {
+final class ClipModeController: NSObject, ModeStateController, ObservableObject {
+    static let shared = ClipModeController()
+    private override init() {}
     var displayableItems: [any DisplayableItem] = []
     var prefix: String? { "/v" }
     // 元信息属性
@@ -58,19 +60,19 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
         }
     }
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
+    func enterMode(with text: String) {
         let items = makeClipItems(for: text)
         self.displayableItems = items.map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    func handleInput(_ text: String) {
         let items = makeClipItems(for: text)
         self.displayableItems = items.map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+    func executeAction(at index: Int) -> Bool {
         guard index >= 0 && index < self.displayableItems.count else { return false }
         guard let item = self.displayableItems[index] as? ClipboardItem else { return false }
         // 先删除原有项，避免重复（按历史顺序查找）
@@ -88,24 +90,24 @@ class ClipModeController: NSObject, ModeStateController, ObservableObject {
         return true
     }
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         // 删除 /v 前缀或切换到其他模式时退出
         return !text.hasPrefix("/v")
     }
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {
+    func cleanup() {
         self.displayableItems = []
     }
 
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+    func makeContentView() -> AnyView {
         if !self.displayableItems.isEmpty {
-            return AnyView(ClipModeResultsView(viewModel: viewModel))
+            return AnyView(ClipModeResultsView(viewModel: LauncherViewModel.shared))
         } else {
-            return AnyView(EmptyStateView(mode: .clip, hasSearchText: !viewModel.searchText.isEmpty))
+            return AnyView(EmptyStateView(mode: .clip, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
     
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         if let clip = item as? ClipboardItem {
             return AnyView(
                 ClipItemRowView(item: clip, isSelected: isSelected, index: index)

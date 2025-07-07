@@ -12,7 +12,8 @@ protocol DisplayableItem: Hashable, Identifiable {
 
 // MARK: - 模式状态控制器协议（清晰版）
 @MainActor
-protocol ModeStateController {
+protocol ModeStateController: AnyObject {
+    static var shared: Self { get }
     /// 当前模式下所有可显示项（用于 UI 统一绑定）
     var displayableItems: [any DisplayableItem] { get }
 
@@ -29,24 +30,24 @@ protocol ModeStateController {
     func shouldActivate(for text: String) -> Bool
 
     // 2. 进入模式：初始化 ViewModel 状态
-    func enterMode(with text: String, viewModel: LauncherViewModel)
+    func enterMode(with text: String)
 
     // 3. 处理输入：模式激活后每次输入的处理（如搜索、过滤等）
-    func handleInput(_ text: String, viewModel: LauncherViewModel)
+    func handleInput(_ text: String)
 
     // 4. 执行动作：用户确认选择时的操作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool
+    func executeAction(at index: Int) -> Bool
 
     // 5. 退出条件：是否应退出本模式，返回 true 表示应回到默认模式
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool
+    func shouldExit(for text: String) -> Bool
 
     // 6. 模式退出或切换时的清理操作
-    func cleanup(viewModel: LauncherViewModel)
+    func cleanup()
 
     /// 生成结果列表的行视图（由每个模式控制器实现，统一遍历 displayableItems）
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView
 
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView
+    func makeContentView() -> AnyView
 
     static func getHelpText() -> [String]
 }

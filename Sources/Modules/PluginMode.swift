@@ -5,7 +5,9 @@ import AppKit
 
 // MARK: - 插件模式控制器
 @MainActor
-class PluginModeController: NSObject, ModeStateController, ObservableObject {
+final class PluginModeController: NSObject, ModeStateController, ObservableObject {
+    static let shared = PluginModeController()
+    private override init() {}
     @Published var pluginItems: [PluginItem] = []
     private let pluginManager = PluginManager.shared
     private var activePlugin: Plugin?
@@ -28,7 +30,7 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
         return false
     }
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
+    func enterMode(with text: String) {
         guard let command = text.components(separatedBy: " ").first,
               let plugin = pluginManager.activatePlugin(command: command),
               plugin.isEnabled else {
@@ -37,18 +39,18 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
             return
         }
         activePlugin = plugin
-        pluginManager.injectViewModel(viewModel, for: command)
+        pluginManager.injectViewModel(LauncherViewModel.shared, for: command)
         pluginManager.executePluginSearch(command: plugin.command, query: "")
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    func handleInput(_ text: String) {
         guard let plugin = activePlugin else { return }
         pluginManager.executePluginSearch(command: plugin.command, query: text)
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+    func executeAction(at index: Int) -> Bool {
         guard let plugin = activePlugin else { return false }
         guard index >= 0 && index < pluginItems.count else { return false }
         let item = pluginItems[index]
@@ -58,7 +60,7 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
         return true
     }
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         // 输入不再匹配当前插件命令时退出
         guard let plugin = activePlugin else { return true }
         if text.hasPrefix("/") {
@@ -69,7 +71,7 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
         }
     }
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {
+    func cleanup() {
         if let plugin = activePlugin {
             pluginManager.cleanupPlugin(command: plugin.command)
         }
@@ -77,8 +79,8 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
         pluginItems = []
     }
     // 生成内容视图
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
-        return AnyView(PluginModeView(viewModel: viewModel))
+    func makeContentView() -> AnyView {
+        return AnyView(PluginModeView(viewModel: LauncherViewModel.shared))
     }
     // --- 辅助方法 ---
     func updatePluginResults(_ items: [PluginItem]) {
@@ -101,7 +103,7 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
         ]
     }
     // 渲染 PluginItem 行视图
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         if let pluginItem = item as? PluginItem {
             return AnyView(
                 PluginItemRowView(item: pluginItem, isSelected: isSelected, index: index)

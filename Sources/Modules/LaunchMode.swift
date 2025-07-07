@@ -5,7 +5,14 @@ import SwiftUI
 
 // MARK: - 启动模式控制器
 @MainActor
-class LaunchModeController: NSObject, ModeStateController, ObservableObject {
+final class LaunchModeController: NSObject, ModeStateController, ObservableObject {
+    static let shared = LaunchModeController()
+    private override init() {
+        super.init()
+        loadUsageData()
+        setupObservers()
+        // appScanner.scanForApplications()
+    }
     var displayableItems: [any DisplayableItem] = []
     // 元信息属性
     var displayName: String { "Light Launcher" }
@@ -31,13 +38,6 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     // --- ModeStateController 协议实现 ---
     var prefix: String? { "" } // 启动模式无前缀
     
-    override init() {
-        super.init()
-        loadUsageData()
-        setupObservers()
-        // appScanner.scanForApplications()
-    }
-    
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         // 只要不是以/开头的命令，都可激活启动模式
@@ -45,19 +45,19 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     }
     
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
+    func enterMode(with text: String) {
         let items = getMostUsedApps(from: allApps, limit: 6)
         self.displayableItems = items.map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
-        filterApps(searchText: text, viewModel: viewModel)
+    func handleInput(_ text: String) {
+        filterApps(searchText: text)
     }
     
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+    func executeAction(at index: Int) -> Bool {
         print("Executing action at index \(index)")
         guard index < self.displayableItems.count else { return false }
         guard let app = self.displayableItems[index] as? AppInfo else { return false }
@@ -69,13 +69,13 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     }
     
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         // 以/开头的命令或切换到其他模式时退出
         return text.hasPrefix("/")
     }
     
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {
+    func cleanup() {
         self.displayableItems = []
     }
     
@@ -120,7 +120,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
         .map { $0 }
     }
 
-    func filterApps(searchText: String, viewModel: LauncherViewModel) {
+    func filterApps(searchText: String) {
         if searchText.isEmpty {
             let items = getMostUsedApps(from: allApps, limit: 6)
             self.displayableItems = items.map { $0 as any DisplayableItem }
@@ -136,7 +136,7 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
             self.displayableItems = items.map { $0 as any DisplayableItem }
         }
         // 每当列表更新时，重置选择
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
 
     private func calculateMatch(for app: AppInfo, query: String) -> AppMatch? {
@@ -149,27 +149,27 @@ class LaunchModeController: NSObject, ModeStateController, ObservableObject {
         )
     }
 
-    func launchSelectedApp(index: Int, viewModel: LauncherViewModel) -> Bool {
-        return self.executeAction(at: index, viewModel: viewModel)
+    func launchSelectedApp(index: Int) -> Bool {
+        return self.executeAction(at: index)
     }
     func getMostUsedDisplayApps(limit: Int) -> [AppInfo] {
         displayableItems.compactMap { $0 as? AppInfo }.prefix(limit).map { $0 }
     }
-    func selectAppByNumber(_ number: Int, viewModel: LauncherViewModel) -> Bool {
+    func selectAppByNumber(_ number: Int) -> Bool {
         let idx = number - 1
         guard idx >= 0 && idx < self.displayableItems.count && idx < 6 else { return false }
-        return self.executeAction(at: idx, viewModel: viewModel)
+        return self.executeAction(at: idx)
     }
 
     // 生成内容视图
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+    func makeContentView() -> AnyView {
         if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: viewModel))
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
-            return AnyView(EmptyStateView(mode: .launch, hasSearchText: !viewModel.searchText.isEmpty))
+            return AnyView(EmptyStateView(mode: .launch, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         if let app = item as? AppInfo {
             return AnyView(
                 AppRowView(app: app, isSelected: isSelected, index: index, mode: .launch)

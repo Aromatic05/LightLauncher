@@ -57,7 +57,7 @@ final class KeyboardEventHandler: @unchecked Sendable {
 extension KeyboardEventHandler {
     @MainActor
     func handleKeyPress(keyCode: UInt16, characters: String?) {
-        guard let viewModel = viewModel else { return }
+        let viewModel = LauncherViewModel.shared
         switch keyCode {
         case 126: // Up Arrow
             if viewModel.showCommandSuggestions {
@@ -84,7 +84,7 @@ extension KeyboardEventHandler {
 
     @MainActor
     func handleEnterKey() {
-        guard let viewModel = viewModel else { return }
+        let viewModel = LauncherViewModel.shared
         if viewModel.showCommandSuggestions {
             if !viewModel.commandSuggestions.isEmpty &&
                viewModel.selectedIndex >= 0 &&
@@ -117,7 +117,7 @@ extension KeyboardEventHandler {
 
     @MainActor
     func handleSpaceKey() {
-        guard let viewModel = viewModel else { return }
+        let viewModel = LauncherViewModel.shared
         if viewModel.showCommandSuggestions {
             if !viewModel.commandSuggestions.isEmpty &&
                viewModel.selectedIndex >= 0 &&
@@ -140,7 +140,7 @@ extension KeyboardEventHandler {
 
     @MainActor
     func handleNumericShortcut(characters: String?) {
-        guard let viewModel = viewModel else { return }
+        let viewModel = LauncherViewModel.shared
         guard let chars = characters,
               let number = Int(chars),
               (1...6).contains(number) else {
@@ -149,7 +149,7 @@ extension KeyboardEventHandler {
         switch viewModel.mode {
         case .launch:
             if let controller = viewModel.controllers[.launch] as? LaunchModeController,
-               controller.selectAppByNumber(number, viewModel: viewModel) {
+               controller.selectAppByNumber(number) {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
         case .kill:

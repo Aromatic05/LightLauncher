@@ -33,7 +33,7 @@ struct LauncherView: View {
                     }
                 )
             } else if let controller = viewModel.activeController {
-                controller.makeContentView(viewModel: viewModel)
+                controller.makeContentView()
             } else {
                 EmptyView()
             }
@@ -108,7 +108,6 @@ struct ResultsListView: View {
                     for: item,
                     isSelected: index == viewModel.selectedIndex,
                     index: index,
-                    viewModel: viewModel,
                     handleItemSelection: { _ in handleItemSelection(index) }
                 )
                 .id(index)

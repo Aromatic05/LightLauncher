@@ -14,7 +14,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         AppScanner.shared.scanForApplications()
         NSApp.setActivationPolicy(.accessory) // No dock icon
         _ = ClipboardManager.shared
-        setupViewModel()
+
+        /// Initialize the shared view model
+        viewModel = LauncherViewModel.shared
+        LauncherViewModel.shared.switchController(from: nil, to: .launch)
         if let viewModel = viewModel {
             windowManager = WindowManager(viewModel: viewModel)
         }
@@ -22,10 +25,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupHotkeyManager()
         setupPluginSystem()
 
-    }
-    
-    private func setupViewModel() {
-        viewModel = LauncherViewModel.shared
     }
     
     private func setupHotkeyManager() {

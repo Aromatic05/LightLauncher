@@ -30,20 +30,20 @@ class LauncherViewModel: ObservableObject {
 
     private init() {
         setupControllers()
-        switchController(from: nil, to: .launch)
+        // switchController(from: nil, to: .launch)
         bindSearchText()
     }
 
     /// 初始化所有模式控制器
     private func setupControllers() {
-        controllers[.launch] = LaunchModeController()
-        controllers[.kill] = KillModeController()
-        controllers[.file] = FileModeController()
-        controllers[.plugin] = PluginModeController()
-        controllers[.search] = SearchModeController()
-        controllers[.web] = WebModeController()
-        controllers[.clip] = ClipModeController()
-        controllers[.terminal] = TerminalModeController()
+        controllers[.launch] = LaunchModeController.shared
+        controllers[.kill] = KillModeController.shared
+        controllers[.file] = FileModeController.shared
+        controllers[.plugin] = PluginModeController.shared
+        controllers[.search] = SearchModeController.shared
+        controllers[.web] = WebModeController.shared
+        controllers[.clip] = ClipModeController.shared
+        controllers[.terminal] = TerminalModeController.shared
     }
 
     // MARK: - 绑定与处理搜索文本变化
@@ -59,23 +59,23 @@ class LauncherViewModel: ObservableObject {
 
     private func handleSearchTextChange(text: String) {
         updateCommandSuggestions(for: text)
-        activeController?.handleInput(text, viewModel: self)
+        activeController?.handleInput(text)
         _ = processInput(text)
     }
 
-    private func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
+    func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
         if let oldMode = oldMode, let oldController = controllers[oldMode] {
-            oldController.cleanup(viewModel: self)
+            oldController.cleanup()
         }
         // 保证 .launch 模式下 controller 永远有效
         if let newController = controllers[newMode] {
             activeController = newController
-            newController.enterMode(with: searchText, viewModel: self)
+            newController.enterMode(with: searchText)
         } else if newMode == .launch {
-            let launchController = LaunchModeController()
+            let launchController = LaunchModeController.shared
             controllers[.launch] = launchController
             activeController = launchController
-            launchController.enterMode(with: searchText, viewModel: self)
+            launchController.enterMode(with: searchText)
         } else {
             activeController = nil
         }
@@ -84,7 +84,7 @@ class LauncherViewModel: ObservableObject {
 
     func executeSelectedAction() -> Bool {
         guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count else { return false }
-        return activeController?.executeAction(at: selectedIndex, viewModel: self) ?? false
+        return activeController?.executeAction(at: selectedIndex) ?? false
     }
 
     func moveSelectionUp() {
@@ -208,13 +208,13 @@ class LauncherViewModel: ObservableObject {
             clearSearch()
             if !text.hasPrefix("/") && !text.isEmpty {
                 if let launchController = controllers[.launch] as? LaunchModeController {
-                    launchController.filterApps(searchText: text, viewModel: self)
+                    launchController.filterApps(searchText: text)
                 }
             }
             return true
         }
         // 3. 分发到当前模式控制器
-        activeController?.handleInput(text, viewModel: self)
+        activeController?.handleInput(text)
         return false
     }
 
@@ -223,7 +223,7 @@ class LauncherViewModel: ObservableObject {
         if self.mode != mode {
             self.mode = mode
         }
-        activeController?.enterMode(with: text, viewModel: self)
+        activeController?.enterMode(with: text)
     }
 }
 

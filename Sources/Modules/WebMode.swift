@@ -4,7 +4,9 @@ import SwiftUI
 
 // MARK: - 网页模式控制器
 @MainActor
-class WebModeController: NSObject, ModeStateController, ObservableObject  {
+final class WebModeController: NSObject, ModeStateController, ObservableObject  {
+    static let shared = WebModeController()
+    private override init() {}
     var prefix: String? { "/w" }
     var displayableItems: [any DisplayableItem] = []
        // 元信息属性
@@ -44,23 +46,23 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
     }
 
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
+    func enterMode(with text: String) {
         BrowserDataManager.shared.loadBrowserData()
         let items = makeWebItems(for: text)
         self.displayableItems = items.map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
 
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    func handleInput(_ text: String) {
         let items = makeWebItems(for: text)
         self.displayableItems = items.map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
 
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        let cleanWebText = extractCleanWebText(viewModel.searchText)
+    func executeAction(at index: Int) -> Bool {
+        let cleanWebText = extractCleanWebText(LauncherViewModel.shared.searchText)
         if index == 0 {
             if !cleanWebText.isEmpty {
                 return openWebURL(cleanWebText)
@@ -73,12 +75,12 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
     }
 
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         return !text.hasPrefix("/w")
     }
 
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {
+    func cleanup() {
         self.displayableItems = []
     }
 
@@ -150,24 +152,20 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
         ]
     }
 
-    func updateWebResults(query: String, viewModel: LauncherViewModel) {
-        self.handleInput(query, viewModel: viewModel)
+    func updateWebResults(query: String) {
+        self.handleInput(query)
     }
-    func filterBrowserItems(searchText: String, viewModel: LauncherViewModel) {
-        self.handleInput(searchText, viewModel: viewModel)
+    func filterBrowserItems(searchText: String) {
+        self.handleInput(searchText)
     }
-
-    // 生成内容视图
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+    func makeContentView() -> AnyView {
         if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: viewModel))
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
-            return AnyView(WebCommandInputView(searchText: viewModel.searchText))
+            return AnyView(WebCommandInputView(searchText: LauncherViewModel.shared.searchText))
         }
     }
-
-    // 结果行渲染方法
-   func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         if let browserItem = item as? BrowserItem {
             return AnyView(BrowserItemRowView(item: browserItem, isSelected: isSelected, index: index))
         }

@@ -4,7 +4,9 @@ import SwiftUI
 
 // MARK: - 终端模式控制器
 @MainActor
-class TerminalModeController: NSObject, ModeStateController, ObservableObject {
+final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
+    static let shared = TerminalModeController()
+    private override init() {}
     var prefix: String? { "/t" }
     // 可显示项插槽
     var displayableItems: [any DisplayableItem] { [] }
@@ -13,24 +15,24 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         return text.hasPrefix("/t")
     }
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
-        viewModel.selectedIndex = 0
+    func enterMode(with text: String) {
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
-        viewModel.selectedIndex = 0
+    func handleInput(_ text: String) {
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
-        let cleanText = self.extractCleanTerminalText(from: viewModel.searchText)
-        return executeTerminalCommandWithDetection(command: cleanText, viewModel: viewModel)
+    func executeAction(at index: Int) -> Bool {
+        let cleanText = self.extractCleanTerminalText(from: LauncherViewModel.shared.searchText)
+        return executeTerminalCommandWithDetection(command: cleanText)
     }
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         return !text.hasPrefix("/t")
     }
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {}
+    func cleanup() {}
 
     // 元信息属性
     var displayName: String { "Terminal" }
@@ -39,48 +41,48 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     var modeDescription: String? { "Execute commands in Terminal" }
 
     // --- 终端检测与执行相关辅助方法 ---
-    private func executeTerminalCommandWithDetection(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeTerminalCommandWithDetection(command: String) -> Bool {
         let configManager = ConfigManager.shared
         let preferredTerminal = configManager.config.modes.preferredTerminal
         let cleanCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
         switch preferredTerminal {
         case "auto":
-            return executeWithAutoDetection(command: cleanCommand, viewModel: viewModel)
+            return executeWithAutoDetection(command: cleanCommand)
         case "terminal":
-            return executeWithTerminal(command: cleanCommand, viewModel: viewModel)
+            return executeWithTerminal(command: cleanCommand)
         case "iterm2":
-            return executeWithITerm2(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
+            return executeWithITerm2(command: cleanCommand) || executeWithFallback(command: cleanCommand)
         case "ghostty":
-            return executeWithGhostty(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
+            return executeWithGhostty(command: cleanCommand) || executeWithFallback(command: cleanCommand)
         case "kitty":
-            return executeWithKitty(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
+            return executeWithKitty(command: cleanCommand) || executeWithFallback(command: cleanCommand)
         case "alacritty":
-            return executeWithAlacritty(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
+            return executeWithAlacritty(command: cleanCommand) || executeWithFallback(command: cleanCommand)
         case "wezterm":
-            return executeWithWezTerm(command: cleanCommand, viewModel: viewModel) || executeWithFallback(command: cleanCommand, viewModel: viewModel)
+            return executeWithWezTerm(command: cleanCommand) || executeWithFallback(command: cleanCommand)
         default:
-            return executeWithAutoDetection(command: cleanCommand, viewModel: viewModel)
+            return executeWithAutoDetection(command: cleanCommand)
         }
     }
-    private func executeWithAutoDetection(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeWithAutoDetection(command: String) -> Bool {
         if let defaultTerminal = getSystemDefaultTerminal() {
             switch defaultTerminal {
             case "com.apple.Terminal":
-                if executeWithTerminal(command: command, viewModel: viewModel) { return true }
+                if executeWithTerminal(command: command) { return true }
             case "com.googlecode.iterm2":
-                if executeWithITerm2(command: command, viewModel: viewModel) { return true }
+                if executeWithITerm2(command: command) { return true }
             case "com.mitchellh.ghostty":
-                if executeWithGhostty(command: command, viewModel: viewModel) { return true }
+                if executeWithGhostty(command: command) { return true }
             case "net.kovidgoyal.kitty":
-                if executeWithKitty(command: command, viewModel: viewModel) { return true }
+                if executeWithKitty(command: command) { return true }
             case "io.alacritty":
-                if executeWithAlacritty(command: command, viewModel: viewModel) { return true }
+                if executeWithAlacritty(command: command) { return true }
             case "com.github.wez.wezterm":
-                if executeWithWezTerm(command: command, viewModel: viewModel) { return true }
+                if executeWithWezTerm(command: command) { return true }
             default: break
             }
         }
-        let terminalPriority: [(String, (String, LauncherViewModel) -> Bool)] = [
+        let terminalPriority: [(String, (String) -> Bool)] = [
             ("iTerm2", executeWithITerm2),
             ("Ghostty", executeWithGhostty),
             ("Kitty", executeWithKitty),
@@ -89,9 +91,9 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
             ("Terminal", executeWithTerminal)
         ]
         for (_, executor) in terminalPriority {
-            if executor(command, viewModel) { return true }
+            if executor(command) { return true }
         }
-        return executeDirectly(command: command, viewModel: viewModel)
+        return executeDirectly(command: command)
     }
     private func getSystemDefaultTerminal() -> String? {
         let workspace = NSWorkspace.shared
@@ -109,10 +111,10 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         }
         return nil
     }
-    private func executeWithFallback(command: String, viewModel: LauncherViewModel) -> Bool {
-        return executeWithAutoDetection(command: command, viewModel: viewModel)
+    private func executeWithFallback(command: String) -> Bool {
+        return executeWithAutoDetection(command: command)
     }
-    private func executeWithTerminal(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeWithTerminal(command: String) -> Bool {
         let appleScript = """
         tell application \"Terminal\"
             activate
@@ -123,10 +125,9 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         var error: NSDictionary?
         script.executeAndReturnError(&error)
         if error != nil { return false }
-        // viewModel.resetToLaunchMode()
         return true
     }
-    private func executeWithITerm2(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeWithITerm2(command: String) -> Bool {
         let appleScript = """
         tell application \"iTerm\"
             activate
@@ -138,54 +139,49 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
             end tell
         end tell
         """
-        guard let script = NSAppleScript(source: appleScript) else { return executeDirectly(command: command, viewModel: viewModel) }
+        guard let script = NSAppleScript(source: appleScript) else { return executeDirectly(command: command) }
         var error: NSDictionary?
         script.executeAndReturnError(&error)
-        if error != nil { return executeDirectly(command: command, viewModel: viewModel) }
-        // viewModel.resetToLaunchMode()
+        if error != nil { return executeDirectly(command: command) }
         return true
     }
-    private func executeWithGhostty(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeWithGhostty(command: String) -> Bool {
         guard isApplicationInstalled("com.mitchellh.ghostty") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "Ghostty", "--args", "-e", "zsh", "-c", command]
         do {
             try process.run()
-            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
-    private func executeWithKitty(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeWithKitty(command: String) -> Bool {
         guard isApplicationInstalled("net.kovidgoyal.kitty") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "kitty", "--args", "--hold", "-e", "zsh", "-c", command]
         do {
             try process.run()
-            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
-    private func executeWithAlacritty(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeWithAlacritty(command: String) -> Bool {
         guard isApplicationInstalled("io.alacritty") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "Alacritty", "--args", "--hold", "-e", "zsh", "-c", command]
         do {
             try process.run()
-            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
-    private func executeWithWezTerm(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeWithWezTerm(command: String) -> Bool {
         guard isApplicationInstalled("com.github.wez.wezterm") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
         process.arguments = ["-a", "WezTerm", "--args", "start", "--", "zsh", "-c", command]
         do {
             try process.run()
-            // viewModel.resetToLaunchMode()
             return true
         } catch { return false }
     }
@@ -193,13 +189,12 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         let workspace = NSWorkspace.shared
         return workspace.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
     }
-    private func executeDirectly(command: String, viewModel: LauncherViewModel) -> Bool {
+    private func executeDirectly(command: String) -> Bool {
         let process = Process()
         process.launchPath = "/bin/zsh"
         process.arguments = ["-c", command]
         do {
             try process.run()
-            // viewModel.resetToLaunchMode()
             return true
         } catch {
             print("Failed to execute command: \(error)")
@@ -208,8 +203,8 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     }
 
     // 生成内容视图
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
-        return AnyView(TerminalCommandInputView(searchText: viewModel.searchText))
+    func makeContentView() -> AnyView {
+        return AnyView(TerminalCommandInputView(searchText: LauncherViewModel.shared.searchText))
     }
 
     static func getHelpText() -> [String] {
@@ -230,7 +225,7 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
         return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         // 目前无终端结果项，后续可扩展为历史命令、建议等
         return AnyView(EmptyView())   
     }

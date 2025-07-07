@@ -81,7 +81,9 @@ class RunningAppsManager: @unchecked Sendable {
 
 // MARK: - 关闭应用模式控制器
 @MainActor
-class KillModeController: NSObject, ModeStateController, ObservableObject {
+final class KillModeController: NSObject, ModeStateController, ObservableObject {
+    static let shared = KillModeController()
+    private override init() {}
     var displayableItems: [any DisplayableItem] = []
     var prefix: String? { "/k" }
     // 元信息属性
@@ -116,30 +118,30 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
         return text.hasPrefix("/k")
     }
     // 2. 进入模式
-    func enterMode(with text: String, viewModel: LauncherViewModel) {
+    func enterMode(with text: String) {
         let items = makeKillItems(for: text)
         self.displayableItems = items.map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
-    func handleInput(_ text: String, viewModel: LauncherViewModel) {
+    func handleInput(_ text: String) {
         let items = makeKillItems(for: text)
         self.displayableItems = items.map { $0 as any DisplayableItem }
-        viewModel.selectedIndex = 0
+        LauncherViewModel.shared.selectedIndex = 0
     }
     // 4. 执行动作
-    func executeAction(at index: Int, viewModel: LauncherViewModel) -> Bool {
+    func executeAction(at index: Int) -> Bool {
         guard index < self.displayableItems.count else { return false }
         guard let app = self.displayableItems[index] as? RunningAppInfo else { return false }
         return RunningAppsManager.shared.killApp(app)
     }
     // 5. 退出条件
-    func shouldExit(for text: String, viewModel: LauncherViewModel) -> Bool {
+    func shouldExit(for text: String) -> Bool {
         // 删除 /k 前缀或切换到其他模式时退出
         return !text.hasPrefix("/k")
     }
     // 6. 清理操作
-    func cleanup(viewModel: LauncherViewModel) {
+    func cleanup() {
         self.displayableItems = []
     }
 
@@ -153,29 +155,28 @@ class KillModeController: NSObject, ModeStateController, ObservableObject {
         ]
     }
     // 其它便捷方法
-    func reloadApps(viewModel: LauncherViewModel) {
-        enterMode(with: "", viewModel: viewModel)
+    func reloadApps() {
+        enterMode(with: "")
     }
-    func filterApps(searchText: String, viewModel: LauncherViewModel) {
-        handleInput(searchText, viewModel: viewModel)
+    func filterApps(searchText: String) {
+        handleInput(searchText)
     }
-    func killSelectedApp(selectedIndex: Int, viewModel: LauncherViewModel) -> Bool {
-        return executeAction(at: selectedIndex, viewModel: viewModel)
+    func killSelectedApp(selectedIndex: Int) -> Bool {
+        return executeAction(at: selectedIndex)
     }
-    func selectKillAppByNumber(_ number: Int, viewModel: LauncherViewModel) -> Bool {
+    func selectKillAppByNumber(_ number: Int) -> Bool {
         let index = number - 1
         guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
-        return executeAction(at: index, viewModel: viewModel)
+        return executeAction(at: index)
     }
-    // 生成内容视图
-    func makeContentView(viewModel: LauncherViewModel) -> AnyView {
+    func makeContentView() -> AnyView {
         if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: viewModel))
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
-            return AnyView(EmptyStateView(mode: .kill, hasSearchText: !viewModel.searchText.isEmpty))
+            return AnyView(EmptyStateView(mode: .kill, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, viewModel: LauncherViewModel, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
         if let runningApp = item as? RunningAppInfo {
             return AnyView(
                 RunningAppRowView(app: runningApp, isSelected: isSelected, index: index)
