@@ -25,7 +25,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func setupViewModel() {
-        viewModel = LauncherViewModel()
+        viewModel = LauncherViewModel.shared
     }
     
     private func setupHotkeyManager() {

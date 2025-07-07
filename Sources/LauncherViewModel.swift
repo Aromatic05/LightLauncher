@@ -4,7 +4,7 @@ import AppKit
 
 @MainActor
 class LauncherViewModel: ObservableObject {
-    static var shared: LauncherViewModel? = nil
+    static let shared = LauncherViewModel()
     @Published var searchText = ""
     @Published var selectedIndex = 0
     @Published var mode: LauncherMode = .launch {
@@ -28,8 +28,7 @@ class LauncherViewModel: ObservableObject {
     // 插件激活状态
     private var activePlugin: Plugin?
 
-    init() {
-        LauncherViewModel.shared = self
+    private init() {
         setupControllers()
         switchController(from: nil, to: .launch)
         bindSearchText()

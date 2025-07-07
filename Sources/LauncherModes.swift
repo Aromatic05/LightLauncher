@@ -16,19 +16,19 @@ enum LauncherMode: String, CaseIterable {
     // 通过ModeStateController获取元信息，需在@MainActor上下文下访问
     @MainActor
     var displayName: String {
-        LauncherViewModel.shared?.controllers[self]?.displayName ?? self.rawValue
+        LauncherViewModel.shared.controllers[self]?.displayName ?? self.rawValue
     }
     @MainActor
     var iconName: String {
-        LauncherViewModel.shared?.controllers[self]?.iconName ?? "questionmark"
+        LauncherViewModel.shared.controllers[self]?.iconName ?? "questionmark"
     }
     @MainActor
     var placeholder: String {
-        LauncherViewModel.shared?.controllers[self]?.placeholder ?? ""
+        LauncherViewModel.shared.controllers[self]?.placeholder ?? ""
     }
     @MainActor
     var description: String? {
-        LauncherViewModel.shared?.controllers[self]?.modeDescription
+        LauncherViewModel.shared.controllers[self]?.modeDescription
     }
     
     var trigger: String? {
@@ -75,7 +75,7 @@ struct LauncherCommand {
     // 基于ModeStateController获取元信息
     @MainActor
     static var allCommands: [LauncherCommand] {
-        guard let viewModel = LauncherViewModel.shared else { return [] }
+        let viewModel = LauncherViewModel.shared
         return LauncherMode.allCases.compactMap { mode in
             guard let controller = viewModel.controllers[mode],
                   let trigger = controller.prefix else {
