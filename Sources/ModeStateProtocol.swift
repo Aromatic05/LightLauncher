@@ -13,15 +13,20 @@ protocol DisplayableItem: Hashable, Identifiable {
 // MARK: - 模式状态控制器协议（清晰版）
 @MainActor
 protocol ModeStateController {
-    // 1. 触发条件：什么输入会激活该模式
-    /// 返回 true 表示该输入应激活本模式
-    func shouldActivate(for text: String) -> Bool
+    /// 当前模式下所有可显示项（用于 UI 统一绑定）
+    var displayableItems: [any DisplayableItem] { get }
 
+    // 新增：模式元信息属性
+    var displayName: String { get }
+    var iconName: String { get }
+    var placeholder: String { get }
+    var modeDescription: String? { get }
     /// 模式的触发前缀（如 /k），可选
     var prefix: String? { get }
 
-    /// 当前模式下所有可显示项（用于 UI 统一绑定）
-    var displayableItems: [any DisplayableItem] { get }
+    // 1. 触发条件：什么输入会激活该模式
+    // 返回 true 表示该输入应激活本模式
+    func shouldActivate(for text: String) -> Bool
 
     // 2. 进入模式：初始化 ViewModel 状态
     func enterMode(with text: String, viewModel: LauncherViewModel)

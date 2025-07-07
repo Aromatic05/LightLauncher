@@ -83,8 +83,12 @@ class RunningAppsManager: @unchecked Sendable {
 @MainActor
 class KillModeController: NSObject, ModeStateController, ObservableObject {
     var displayableItems: [any DisplayableItem] = []
-
     var prefix: String? { "/k" }
+    // 元信息属性
+    var displayName: String { "Kill Mode" }
+    var iconName: String { "xmark.circle" }
+    var placeholder: String { "Search running apps to close..." }
+    var modeDescription: String? { "Enter kill mode to close running applications" }
     // 可显示项插槽
     // var displayableItems: [any DisplayableItem] {
     //     runningApps.map { $0 as any DisplayableItem }

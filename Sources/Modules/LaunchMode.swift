@@ -7,6 +7,11 @@ import SwiftUI
 @MainActor
 class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     var displayableItems: [any DisplayableItem] = []
+    // 元信息属性
+    var displayName: String { "Light Launcher" }
+    var iconName: String { "magnifyingglass" }
+    var placeholder: String { "Search applications..." }
+    var modeDescription: String? { nil }
 
     // 应用列表和使用次数
     private(set) var allApps: [AppInfo] = []

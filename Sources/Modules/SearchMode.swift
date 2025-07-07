@@ -162,4 +162,10 @@ class SearchModeController: NSObject, ModeStateController, ObservableObject {
             "Press Esc to close"
         ]
     }
+    
+    // 元信息属性
+    var displayName: String { "Web Search" }
+    var iconName: String { "globe" }
+    var placeholder: String { "Enter search query..." }
+    var modeDescription: String? { "Search the web using your default search engine" }
 }

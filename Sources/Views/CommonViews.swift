@@ -35,7 +35,7 @@ struct CommandSuggestionsView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 4) {
-                            ForEach(Array(commands.enumerated()), id: \.element.trigger) { index, command in
+                            ForEach(Array(commands.enumerated()).filter { !$0.element.trigger.isEmpty }, id: \.element.trigger) { index, command in
                                 SelectableCommandSuggestionRow(
                                     command: command,
                                     isSelected: index == selectedIndex,
@@ -90,7 +90,7 @@ struct SelectableCommandSuggestionRow: View {
                         .foregroundColor(isSelected ? .white.opacity(0.9) : .primary)
                 }
                 
-                Text(command.description)
+                Text(command.description ?? "")
                     .font(.caption)
                     .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
             }

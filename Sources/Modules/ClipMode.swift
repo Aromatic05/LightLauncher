@@ -7,6 +7,11 @@ import SwiftUI
 class ClipModeController: NSObject, ModeStateController, ObservableObject {
     var displayableItems: [any DisplayableItem] = []
     var prefix: String? { "/v" }
+    // 元信息属性
+    var displayName: String { "Clipboard History" }
+    var iconName: String { "doc.on.clipboard" }
+    var placeholder: String { "Search clipboard history..." }
+    var modeDescription: String? { "Browse and paste clipboard history (text/files)" }
 
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {

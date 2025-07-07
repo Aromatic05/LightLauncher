@@ -188,6 +188,11 @@ class FileModeController: NSObject, ModeStateController, ObservableObject {
     @Published var showStartPaths: Bool = true
     @Published var currentPath: String = NSHomeDirectory()
     var prefix: String? { "/o" }
+    // 元信息属性
+    var displayName: String { "File Browser" }
+    var iconName: String { "folder" }
+    var placeholder: String { "Browse files and folders..." }
+    var modeDescription: String? { "Browse files and folders starting from home directory" }
     // 可显示项插槽
     // var displayableItems: [any DisplayableItem] {
     //     if showStartPaths {

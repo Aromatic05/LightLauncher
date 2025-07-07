@@ -107,4 +107,9 @@ class PluginModeController: NSObject, ModeStateController, ObservableObject {
             return AnyView(EmptyView())
         }
     }
+    // 元信息属性
+    var displayName: String { "Plugin" }
+    var iconName: String { "puzzlepiece" }
+    var placeholder: String { "Plugin mode..." }
+    var modeDescription: String? { "Plugin-powered functionality" }
 }

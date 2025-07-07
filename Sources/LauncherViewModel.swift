@@ -4,6 +4,7 @@ import AppKit
 
 @MainActor
 class LauncherViewModel: ObservableObject {
+    static var shared: LauncherViewModel? = nil
     @Published var searchText = ""
     @Published var selectedIndex = 0
     @Published var mode: LauncherMode = .launch {
@@ -28,6 +29,7 @@ class LauncherViewModel: ObservableObject {
     private var activePlugin: Plugin?
 
     init() {
+        LauncherViewModel.shared = self
         setupControllers()
         switchController(from: nil, to: .launch)
         bindSearchText()
@@ -119,7 +121,7 @@ class LauncherViewModel: ObservableObject {
                 let searchPrefix = text.lowercased()
                 newSuggestions = allCommands.filter { command in
                     command.trigger.lowercased().hasPrefix(searchPrefix) ||
-                    command.description.lowercased().contains(searchPrefix.dropFirst())
+                    (command.description?.lowercased().contains(searchPrefix.dropFirst()) ?? false)
                 }
             } else {
                 newSuggestions = allCommands

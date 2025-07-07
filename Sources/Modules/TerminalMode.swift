@@ -39,6 +39,12 @@ class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     // 6. 清理操作
     func cleanup(viewModel: LauncherViewModel) {}
 
+    // 元信息属性
+    var displayName: String { "Terminal" }
+    var iconName: String { "terminal" }
+    var placeholder: String { "Enter terminal command..." }
+    var modeDescription: String? { "Execute commands in Terminal" }
+
     // --- 终端检测与执行相关辅助方法 ---
     private func executeTerminalCommandWithDetection(command: String, viewModel: LauncherViewModel) -> Bool {
         let configManager = ConfigManager.shared

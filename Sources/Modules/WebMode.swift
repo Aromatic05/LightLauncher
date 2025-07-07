@@ -171,4 +171,10 @@ class WebModeController: NSObject, ModeStateController, ObservableObject  {
         }
         return AnyView(EmptyView())
     }
+
+    // 元信息属性
+    var displayName: String { "Web Open" }
+    var iconName: String { "safari" }
+    var placeholder: String { "Enter URL or website name..." }
+    var modeDescription: String? { "Open a website or URL in your default browser" }
 }
