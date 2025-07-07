@@ -40,7 +40,7 @@ enum LauncherMode: String, CaseIterable {
         case .file: return "/o"
         case .clip: return "/v"
         case .launch: return ""
-        case .plugin: return nil // 插件模式由具体插件的命令触发
+        case .plugin: return "" // 插件模式由具体插件的命令触发
         }
     }
     
@@ -48,24 +48,7 @@ enum LauncherMode: String, CaseIterable {
     @MainActor
     func isEnabled() -> Bool {
         let settings = SettingsManager.shared
-        switch self {
-        case .launch:
-            return true // 启动模式始终启用
-        case .kill:
-            return settings.isKillModeEnabled
-        case .search:
-            return settings.isSearchModeEnabled
-        case .web:
-            return settings.isWebModeEnabled
-        case .terminal:
-            return settings.isTerminalModeEnabled
-        case .file:
-            return settings.isFileModeEnabled
-        case .clip:
-            return true // 剪切板模式始终启用
-        case .plugin:
-            return true // 插件模式始终启用（由插件管理器控制具体插件）
-        }
+        return settings.isModeEnabled(self.rawValue)
     }
 
     static func fromPrefix(_ prefix: String) -> LauncherMode? {

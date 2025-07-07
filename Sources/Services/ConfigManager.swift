@@ -45,35 +45,83 @@ struct AppConfig: Codable {
     }
     
     struct ModesConfig: Codable {
-        var killModeEnabled: Bool
-        var searchModeEnabled: Bool
-        var webModeEnabled: Bool
-        var terminalModeEnabled: Bool
-        var fileModeEnabled: Bool
-        var showCommandSuggestions: Bool
-        var defaultSearchEngine: String
-        var preferredTerminal: String
-        var enabledBrowsers: [String]
-        var fileBrowserStartPaths: [String]
-        
-        init() {
-            self.killModeEnabled = true
-            self.searchModeEnabled = true
-            self.webModeEnabled = true
-            self.terminalModeEnabled = true
-            self.fileModeEnabled = true
-            self.showCommandSuggestions = true
-            self.defaultSearchEngine = "google"
-            self.preferredTerminal = "auto"
-            self.enabledBrowsers = ["safari"] // 默认只启用 Safari
-            self.fileBrowserStartPaths = [
-                NSHomeDirectory(),
-                NSHomeDirectory() + "/Desktop",
-                NSHomeDirectory() + "/Downloads",
-                NSHomeDirectory() + "/Documents"
+            // 用于存储所有模式的启用状态，key 为模式名（如 kill、search、web、terminal、file、clip、plugin、launch 等）
+            var enabled: [String: Bool]
+            var showCommandSuggestions: Bool
+            var defaultSearchEngine: String
+            var preferredTerminal: String
+            var enabledBrowsers: [String]
+            var fileBrowserStartPaths: [String]
+
+            // 支持的所有模式（如需扩展，直接在这里加即可）
+            static let allModes: [String] = [
+                "kill", "search", "web", "terminal", "file", "clip", "plugin", "launch"
             ]
+
+            init() {
+                // 默认所有模式启用
+                self.enabled = Dictionary(uniqueKeysWithValues: Self.allModes.map { ($0, true) })
+                self.showCommandSuggestions = true
+                self.defaultSearchEngine = "google"
+                self.preferredTerminal = "auto"
+                self.enabledBrowsers = ["safari"]
+                self.fileBrowserStartPaths = [
+                    NSHomeDirectory(),
+                    NSHomeDirectory() + "/Desktop",
+                    NSHomeDirectory() + "/Downloads",
+                    NSHomeDirectory() + "/Documents"
+                ]
+            }
+
+            // 兼容旧配置的解码
+            init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                // 先尝试解码 enabled 字典
+                if let enabled = try? container.decode([String: Bool].self, forKey: .enabled) {
+                    self.enabled = enabled
+                } else {
+                    // 兼容旧字段
+                    var dict: [String: Bool] = [:]
+                    dict["kill"] = (try? container.decode(Bool.self, forKey: .killModeEnabled)) ?? true
+                    dict["search"] = (try? container.decode(Bool.self, forKey: .searchModeEnabled)) ?? true
+                    dict["web"] = (try? container.decode(Bool.self, forKey: .webModeEnabled)) ?? true
+                    dict["terminal"] = (try? container.decode(Bool.self, forKey: .terminalModeEnabled)) ?? true
+                    dict["file"] = (try? container.decode(Bool.self, forKey: .fileModeEnabled)) ?? true
+                    // clip/plugin/launch 默认启用
+                    dict["clip"] = true
+                    dict["plugin"] = true
+                    dict["launch"] = true
+                    self.enabled = dict
+                }
+                self.showCommandSuggestions = (try? container.decode(Bool.self, forKey: .showCommandSuggestions)) ?? true
+                self.defaultSearchEngine = (try? container.decode(String.self, forKey: .defaultSearchEngine)) ?? "google"
+                self.preferredTerminal = (try? container.decode(String.self, forKey: .preferredTerminal)) ?? "auto"
+                self.enabledBrowsers = (try? container.decode([String].self, forKey: .enabledBrowsers)) ?? ["safari"]
+                self.fileBrowserStartPaths = (try? container.decode([String].self, forKey: .fileBrowserStartPaths)) ?? [
+                    NSHomeDirectory(),
+                    NSHomeDirectory() + "/Desktop",
+                    NSHomeDirectory() + "/Downloads",
+                    NSHomeDirectory() + "/Documents"
+                ]
+            }
+
+            // 自定义编码，序列化为新格式
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(enabled, forKey: .enabled)
+                try container.encode(showCommandSuggestions, forKey: .showCommandSuggestions)
+                try container.encode(defaultSearchEngine, forKey: .defaultSearchEngine)
+                try container.encode(preferredTerminal, forKey: .preferredTerminal)
+                try container.encode(enabledBrowsers, forKey: .enabledBrowsers)
+                try container.encode(fileBrowserStartPaths, forKey: .fileBrowserStartPaths)
+            }
+
+            private enum CodingKeys: String, CodingKey {
+                case enabled
+                case killModeEnabled, searchModeEnabled, webModeEnabled, terminalModeEnabled, fileModeEnabled // 兼容旧字段
+                case showCommandSuggestions, defaultSearchEngine, preferredTerminal, enabledBrowsers, fileBrowserStartPaths
+            }
         }
-    }
 }
 
 // 插件元数据结构
@@ -449,11 +497,20 @@ class ConfigManager: ObservableObject {
     func updateModeSettings() {
         // 从 SettingsManager 同步设置到配置文件
         let settingsManager = SettingsManager.shared
-        config.modes.killModeEnabled = settingsManager.isKillModeEnabled
-        config.modes.searchModeEnabled = settingsManager.isSearchModeEnabled
-        config.modes.webModeEnabled = settingsManager.isWebModeEnabled
-        config.modes.terminalModeEnabled = settingsManager.isTerminalModeEnabled
-        config.modes.fileModeEnabled = settingsManager.isFileModeEnabled
+        // 统一遍历所有模式
+        for (key, value) in settingsManager.modeEnabled {
+            switch key {
+            case "kill": config.modes.enabled["kill"] = value
+            case "search": config.modes.enabled["search"] = value
+            case "web": config.modes.enabled["web"] = value
+            case "terminal": config.modes.enabled["terminal"] = value
+            case "file": config.modes.enabled["file"] = value
+            case "clip": config.modes.enabled["clip"] = true // 确保 clip 模式被设置
+            case "plugin": config.modes.enabled["plugin"] = true // 确保 plugin 模式被设置
+            case "launch": config.modes.enabled["launch"] = true // 确保 launch 模式被设置
+            default: break
+            }
+        }
         config.modes.showCommandSuggestions = settingsManager.showCommandSuggestions
         saveConfig()
     }
@@ -461,11 +518,15 @@ class ConfigManager: ObservableObject {
     func loadModeSettings() {
         // 从配置文件同步设置到 SettingsManager
         let settingsManager = SettingsManager.shared
-        settingsManager.isKillModeEnabled = config.modes.killModeEnabled
-        settingsManager.isSearchModeEnabled = config.modes.searchModeEnabled
-        settingsManager.isWebModeEnabled = config.modes.webModeEnabled
-        settingsManager.isTerminalModeEnabled = config.modes.terminalModeEnabled
-        settingsManager.isFileModeEnabled = config.modes.fileModeEnabled
+        // 统一设置所有模式
+        settingsManager.modeEnabled["kill"] = config.modes.enabled["kill"] ?? true
+        settingsManager.modeEnabled["search"] = config.modes.enabled["search"] ?? true
+        settingsManager.modeEnabled["web"] = config.modes.enabled["web"] ?? true
+        settingsManager.modeEnabled["terminal"] = config.modes.enabled["terminal"] ?? true
+        settingsManager.modeEnabled["file"] = config.modes.enabled["file"] ?? true
+        settingsManager.modeEnabled["clip"] = config.modes.enabled["clip"] ?? true
+        settingsManager.modeEnabled["plugin"] = config.modes.enabled["plugin"] ?? true
+        settingsManager.modeEnabled["launch"] = config.modes.enabled["launch"] ?? true
         settingsManager.showCommandSuggestions = config.modes.showCommandSuggestions
     }
     

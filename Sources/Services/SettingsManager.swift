@@ -11,12 +11,17 @@ class SettingsManager: ObservableObject {
     @Published var hotKeyModifiers: UInt32 = UInt32(optionKey)
     @Published var hotKeyCode: UInt32 = UInt32(kVK_Space)
     
-    // 模式开关
-    @Published var isKillModeEnabled: Bool = true
-    @Published var isSearchModeEnabled: Bool = true
-    @Published var isWebModeEnabled: Bool = true
-    @Published var isTerminalModeEnabled: Bool = true
-    @Published var isFileModeEnabled: Bool = true
+    // 模式开关（用字典统一管理）
+    @Published var modeEnabled: [String: Bool] = [
+        "kill": true,
+        "search": true,
+        "web": true,
+        "terminal": true,
+        "file": true,
+        "clip": true,
+        "plugin": true,
+        "launch": true
+    ]
     @Published var showCommandSuggestions: Bool = true
     
     private let userDefaults = UserDefaults.standard
@@ -26,11 +31,7 @@ class SettingsManager: ObservableObject {
         static let autoStart = "autoStart"
         static let hotKeyModifiers = "hotKeyModifiers"
         static let hotKeyCode = "hotKeyCode"
-        static let killModeEnabled = "killModeEnabled"
-        static let searchModeEnabled = "searchModeEnabled"
-        static let webModeEnabled = "webModeEnabled"
-        static let terminalModeEnabled = "terminalModeEnabled"
-        static let fileModeEnabled = "fileModeEnabled"
+        static let modeEnabled = "modeEnabled"
         static let showCommandSuggestions = "showCommandSuggestions"
     }
     
@@ -44,16 +45,11 @@ class SettingsManager: ObservableObject {
         isAutoStartEnabled = userDefaults.bool(forKey: Keys.autoStart)
         hotKeyModifiers = UInt32(userDefaults.integer(forKey: Keys.hotKeyModifiers))
         hotKeyCode = UInt32(userDefaults.integer(forKey: Keys.hotKeyCode))
-        
         // 加载模式设置，默认启用
-        isKillModeEnabled = userDefaults.object(forKey: Keys.killModeEnabled) as? Bool ?? true
-        isSearchModeEnabled = userDefaults.object(forKey: Keys.searchModeEnabled) as? Bool ?? true
-        isWebModeEnabled = userDefaults.object(forKey: Keys.webModeEnabled) as? Bool ?? true
-        isTerminalModeEnabled = userDefaults.object(forKey: Keys.terminalModeEnabled) as? Bool ?? true
-        isFileModeEnabled = userDefaults.object(forKey: Keys.fileModeEnabled) as? Bool ?? true
+        if let dict = userDefaults.dictionary(forKey: Keys.modeEnabled) as? [String: Bool] {
+            modeEnabled.merge(dict) { _, new in new }
+        }
         showCommandSuggestions = userDefaults.object(forKey: Keys.showCommandSuggestions) as? Bool ?? true
-        
-        // 如果是首次运行，设置默认值
         if hotKeyModifiers == 0 {
             hotKeyModifiers = UInt32(optionKey)
             hotKeyCode = UInt32(kVK_Space)
@@ -64,11 +60,7 @@ class SettingsManager: ObservableObject {
         userDefaults.set(isAutoStartEnabled, forKey: Keys.autoStart)
         userDefaults.set(Int(hotKeyModifiers), forKey: Keys.hotKeyModifiers)
         userDefaults.set(Int(hotKeyCode), forKey: Keys.hotKeyCode)
-        userDefaults.set(isKillModeEnabled, forKey: Keys.killModeEnabled)
-        userDefaults.set(isSearchModeEnabled, forKey: Keys.searchModeEnabled)
-        userDefaults.set(isWebModeEnabled, forKey: Keys.webModeEnabled)
-        userDefaults.set(isTerminalModeEnabled, forKey: Keys.terminalModeEnabled)
-        userDefaults.set(isFileModeEnabled, forKey: Keys.fileModeEnabled)
+        userDefaults.set(modeEnabled, forKey: Keys.modeEnabled)
         userDefaults.set(showCommandSuggestions, forKey: Keys.showCommandSuggestions)
     }
     
@@ -113,59 +105,15 @@ class SettingsManager: ObservableObject {
     // MARK: - 热键设置
     
     // MARK: - 模式设置
-    
-    func toggleKillMode() {
-        isKillModeEnabled.toggle()
+    func toggleMode(_ key: String) {
+        modeEnabled[key]?.toggle()
         saveSettings()
-        // 同步到配置文件
         Task { @MainActor in
             ConfigManager.shared.updateModeSettings()
         }
     }
-    
-    func toggleSearchMode() {
-        isSearchModeEnabled.toggle()
-        saveSettings()
-        // 同步到配置文件
-        Task { @MainActor in
-            ConfigManager.shared.updateModeSettings()
-        }
-    }
-    
-    func toggleWebMode() {
-        isWebModeEnabled.toggle()
-        saveSettings()
-        // 同步到配置文件
-        Task { @MainActor in
-            ConfigManager.shared.updateModeSettings()
-        }
-    }
-    
-    func toggleTerminalMode() {
-        isTerminalModeEnabled.toggle()
-        saveSettings()
-        // 同步到配置文件
-        Task { @MainActor in
-            ConfigManager.shared.updateModeSettings()
-        }
-    }
-    
-    func toggleFileMode() {
-        isFileModeEnabled.toggle()
-        saveSettings()
-        // 同步到配置文件
-        Task { @MainActor in
-            ConfigManager.shared.updateModeSettings()
-        }
-    }
-    
-    func toggleCommandSuggestions() {
-        showCommandSuggestions.toggle()
-        saveSettings()
-        // 同步到配置文件
-        Task { @MainActor in
-            ConfigManager.shared.updateModeSettings()
-        }
+    func isModeEnabled(_ key: String) -> Bool {
+        modeEnabled[key] ?? true
     }
     
     // MARK: - 热键设置

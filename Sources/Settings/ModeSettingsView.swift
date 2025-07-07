@@ -53,9 +53,12 @@ struct ModeSettingsView: View {
                         icon: "xmark.circle",
                         iconColor: .red,
                         description: "快速关闭运行中的应用程序",
-                        isEnabled: $settingsManager.isKillModeEnabled,
+                        isEnabled: Binding(
+                            get: { settingsManager.modeEnabled["kill"] ?? true },
+                            set: { settingsManager.modeEnabled["kill"] = $0; settingsManager.toggleMode("kill") }
+                        ),
                         onToggle: {
-                            settingsManager.toggleKillMode()
+                            settingsManager.toggleMode("kill")
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
@@ -74,15 +77,85 @@ struct ModeSettingsView: View {
                     
                     Divider()
                     
+                    // 剪贴板模式
+                    SettingsModeSection(
+                        title: "剪贴板模式 (/c)",
+                        icon: "doc.on.clipboard",
+                        iconColor: .purple,
+                        description: "快速管理和粘贴剪贴板历史",
+                        isEnabled: Binding(
+                            get: { settingsManager.modeEnabled["clip"] ?? true },
+                            set: { settingsManager.modeEnabled["clip"] = $0; settingsManager.toggleMode("clip") }
+                        ),
+                        onToggle: {
+                            settingsManager.toggleMode("clip")
+                        }
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("管理最近的剪贴板内容，快速粘贴")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Divider()
+
+                    // // 启动模式（不可禁用，仅展示说明）
+                    // HStack(alignment: .top, spacing: 16) {
+                    //     Image(systemName: "rocket")
+                    //         .foregroundColor(.indigo)
+                    //         .font(.system(size: 28))
+                    //         .frame(width: 36, height: 36)
+                    //     VStack(alignment: .leading, spacing: 4) {
+                    //         Text("启动模式 (默认)")
+                    //             .font(.headline)
+                    //         Text("快速启动应用和文件")
+                    //             .font(.subheadline)
+                    //             .foregroundColor(.secondary)
+                    //         Text("输入应用名或文件名即可启动")
+                    //             .font(.subheadline)
+                    //             .foregroundColor(.secondary)
+                    //     }
+                    // }
+                    // .padding(.vertical, 8)
+
+                    // Divider()
+
+                    // 插件模式
+                    SettingsModeSection(
+                        title: "插件模式 (/p)",
+                        icon: "puzzlepiece.extension",
+                        iconColor: .teal,
+                        description: "通过插件扩展更多功能",
+                        isEnabled: Binding(
+                            get: { settingsManager.modeEnabled["plugin"] ?? true },
+                            set: { settingsManager.modeEnabled["plugin"] = $0; settingsManager.toggleMode("plugin") }
+                        ),
+                        onToggle: {
+                            settingsManager.toggleMode("plugin")
+                        }
+                    ) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("管理和调用自定义插件")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Divider()
+
                     // 网页搜索模式
                     SettingsModeSection(
                         title: "网页搜索 (/s)",
                         icon: "globe",
                         iconColor: .blue,
                         description: "使用默认搜索引擎搜索网络内容",
-                        isEnabled: $settingsManager.isSearchModeEnabled,
+                        isEnabled: Binding(
+                            get: { settingsManager.modeEnabled["search"] ?? true },
+                            set: { settingsManager.modeEnabled["search"] = $0; settingsManager.toggleMode("search") }
+                        ),
                         onToggle: {
-                            settingsManager.toggleSearchMode()
+                            settingsManager.toggleMode("search")
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
@@ -118,9 +191,12 @@ struct ModeSettingsView: View {
                         icon: "safari",
                         iconColor: .green,
                         description: "快速打开网站或 URL，支持书签和历史记录",
-                        isEnabled: $settingsManager.isWebModeEnabled,
+                        isEnabled: Binding(
+                            get: { settingsManager.modeEnabled["web"] ?? true },
+                            set: { settingsManager.modeEnabled["web"] = $0; settingsManager.toggleMode("web") }
+                        ),
                         onToggle: {
-                            settingsManager.toggleWebMode()
+                            settingsManager.toggleMode("web")
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
@@ -143,7 +219,7 @@ struct ModeSettingsView: View {
                                 .padding(.top, 8)
                             
                             VStack(alignment: .leading, spacing: 8) {
-                                ForEach(BrowserType.allCases, id: \.self) { browser in
+                                ForEach(BrowserType.allCases, id: \ .self) { browser in
                                     if browser.isInstalled {
                                         HStack {
                                             Toggle(browser.displayName, isOn: Binding(
@@ -221,9 +297,12 @@ struct ModeSettingsView: View {
                         icon: "terminal",
                         iconColor: .orange,
                         description: "在终端中执行命令",
-                        isEnabled: $settingsManager.isTerminalModeEnabled,
+                        isEnabled: Binding(
+                            get: { settingsManager.modeEnabled["terminal"] ?? true },
+                            set: { settingsManager.modeEnabled["terminal"] = $0; settingsManager.toggleMode("terminal") }
+                        ),
                         onToggle: {
-                            settingsManager.toggleTerminalMode()
+                            settingsManager.toggleMode("terminal")
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
@@ -292,9 +371,12 @@ struct ModeSettingsView: View {
                         icon: "folder",
                         iconColor: .blue,
                         description: "浏览文件和文件夹，支持自定义起始路径",
-                        isEnabled: $settingsManager.isFileModeEnabled,
+                        isEnabled: Binding(
+                            get: { settingsManager.modeEnabled["file"] ?? true },
+                            set: { settingsManager.modeEnabled["file"] = $0; settingsManager.toggleMode("file") }
+                        ),
                         onToggle: {
-                            settingsManager.toggleFileMode()
+                            settingsManager.toggleMode("file")
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
@@ -342,7 +424,7 @@ struct ModeSettingsView: View {
                         isToggle: true,
                         toggleValue: $settingsManager.showCommandSuggestions
                     ) {
-                        settingsManager.toggleCommandSuggestions()
+                        settingsManager.showCommandSuggestions.toggle()
                     }
                 }
                 
