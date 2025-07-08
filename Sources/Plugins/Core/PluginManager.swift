@@ -522,6 +522,7 @@ class PluginManager: ObservableObject {
         }
         
         // 调用搜索回调
+        // print("Executing search for plugin: \(plugin.name) with query: \(query)")
         apiManager.invokeSearchCallback(with: query)
     }
     

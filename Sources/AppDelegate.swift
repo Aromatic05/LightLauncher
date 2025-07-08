@@ -64,10 +64,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
-        
-        // 创建并注册插件命令处理器
-        // let pluginProcessor = PluginModeController()
-        // ProcessorRegistry.shared.registerProcessor(pluginProcessor)
     }
 
     deinit {
