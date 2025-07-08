@@ -79,6 +79,7 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
     
     func display(_ results: [[String: Any]]) {
         logger.debug("Displaying \(results.count) results from plugin")
+        print("Plugin results: \(results)") // 调试输出
         
         // 转换字典数组为 PluginItem 数组
         let pluginItems = results.compactMap { resultDict -> PluginItem? in
@@ -93,16 +94,15 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
             
             return PluginItem(
                 title: title,
-                subtitle: subtitle,
+                subtitle: subtitle, iconName: String?(resultDict["icon"] as? String ?? "questionmark.circle"),
                 action: action
             )
         }
         
         // 在主线程更新 ViewModel
-        DispatchQueue.main.async { [weak self] in
-            if let pluginController = self?.viewModel?.controllers[.plugin] as? PluginModeController {
-                pluginController.updatePluginResults(pluginItems)
-            }
+        DispatchQueue.main.async {
+            PluginModeController.shared.updatePluginResults(pluginItems)
+            print("PluginModeController: Updated plugin results with \(pluginItems.count) items")
         }
     }
     

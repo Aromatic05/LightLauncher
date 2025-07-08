@@ -2,7 +2,7 @@ import Foundation
 import JavaScriptCore
 
 // MARK: - 插件实体
-struct Plugin: Identifiable {
+class Plugin: Identifiable {
     let id = UUID()
     let name: String
     let version: String

@@ -158,57 +158,39 @@ class PluginManager: ObservableObject {
     
     /// 激活指定命令的插件
     func activatePlugin(command: String) -> Plugin? {
-        guard var plugin = plugins[command] else {
+        guard let plugin = plugins[command] else {
             return nil
         }
-        
-        // 如果插件已被清理（没有 context 或 apiManager），重新初始化
+        // 只在 context/apiManager 为 nil 时初始化，保证单例
         if plugin.context == nil || plugin.apiManager == nil {
             logger.info("Reinitializing plugin: \(plugin.name, privacy: .public)")
-            
-            // 重新创建 JavaScript 上下文
-            logger.info("Creating JavaScript context for plugin: \(plugin.name, privacy: .public)")
             let context = JSContext()!
             context.exceptionHandler = { context, exception in
-                self.logger.error("JavaScript error in plugin \(plugin.name): \(exception?.toString() ?? "unknown error", privacy: .public)")
+                let msg = exception?.toString() ?? "unknown error"
+                self.logger.error("JavaScript error in plugin \(plugin.name): \(msg, privacy: .public)")
             }
-            
-            // 重新创建 API 管理器（传入 nil viewModel，稍后通过 injectViewModel 设置）
-            logger.info("Creating APIManager for plugin: \(plugin.name, privacy: .public)")
             let apiManager = APIManager(viewModel: nil, context: context, pluginName: plugin.name, pluginCommand: plugin.command)
-            
-            // 暴露 lightlauncher 对象到 JavaScript 上下文
-            logger.info("Exposing lightlauncher object to JavaScript context for plugin: \(plugin.name, privacy: .public)")
             context.setObject(apiManager, forKeyedSubscript: "lightlauncher" as NSString)
-            
-            // 重新执行插件的主脚本
-            logger.info("Loading main script for plugin: \(plugin.name, privacy: .public)")
+            logger.info("Exposing lightlauncher object to JavaScript context for plugin: \(plugin.name, privacy: .public)")
             do {
                 let mainJSContent = try String(contentsOf: plugin.scriptPath)
                 logger.info("Script content length: \(mainJSContent.count, privacy: .public) characters")
-                
                 logger.info("Evaluating JavaScript for plugin: \(plugin.name, privacy: .public)")
                 context.evaluateScript(mainJSContent)
-                
-                // 检查是否有JavaScript错误
                 if let exception = context.exception {
                     logger.error("JavaScript execution exception: \(exception.toString(), privacy: .public)")
                 } else {
                     logger.info("JavaScript executed successfully for plugin: \(plugin.name, privacy: .public)")
                 }
-                
-                // 更新插件
                 plugin.context = context
                 plugin.apiManager = apiManager
-                plugins[command] = plugin
-                
+                // 不需要重新赋值，plugin 已为 class 实例
                 logger.info("Successfully reinitialized plugin: \(plugin.name, privacy: .public)")
             } catch {
                 logger.error("Failed to reinitialize plugin \(plugin.name): \(error, privacy: .public)")
                 return nil
             }
         }
-        
         return plugin
     }
     
@@ -351,14 +333,11 @@ class PluginManager: ObservableObject {
     
     private func loadPlugin(from directoryURL: URL) async throws -> Plugin {
         let fileManager = FileManager.default
-        
         // 优先检查 manifest.yaml 文件，如果不存在则使用 manifest.json
         let yamlManifestURL = directoryURL.appendingPathComponent("manifest.yaml")
         let jsonManifestURL = directoryURL.appendingPathComponent("manifest.json")
-        
         let manifestURL: URL
         var useYAML = false
-        
         if fileManager.fileExists(atPath: yamlManifestURL.path) {
             manifestURL = yamlManifestURL
             useYAML = true
@@ -368,19 +347,16 @@ class PluginManager: ObservableObject {
         } else {
             throw PluginError.manifestNotFound("Neither manifest.yaml nor manifest.json found")
         }
-        
         // 读取并解析 manifest
         let manifestData = try Data(contentsOf: manifestURL)
         let manifest = try parseManifest(manifestData, isYAML: useYAML)
-        
         // 检查 main.js 文件
         let scriptURL = directoryURL.appendingPathComponent("main.js")
         guard fileManager.fileExists(atPath: scriptURL.path) else {
             throw PluginError.scriptLoadFailed("main.js not found")
         }
-        
-        // 创建插件实例
-        var plugin = Plugin(
+        // 创建插件实例（class）
+        let plugin = Plugin(
             name: manifest.name,
             version: manifest.version,
             description: manifest.description,
@@ -390,12 +366,9 @@ class PluginManager: ObservableObject {
             scriptPath: scriptURL,
             shouldHideWindowAfterAction: manifest.shouldHideWindowAfterAction ?? true
         )
-        
         logger.info("Loaded plugin \(manifest.name) with shouldHideWindowAfterAction: \(plugin.shouldHideWindowAfterAction)")
-        
         // 创建并配置 JavaScript 上下文
-        try await setupJavaScriptContext(for: &plugin, scriptURL: scriptURL)
-        
+        try await setupJavaScriptContext(for: plugin, scriptURL: scriptURL)
         return plugin
     }
     
@@ -438,7 +411,7 @@ class PluginManager: ObservableObject {
     // MARK: - JavaScript 上下文设置
     
     /// 为插件设置 JavaScript 上下文
-    private func setupJavaScriptContext(for plugin: inout Plugin, scriptURL: URL) async throws {
+    private func setupJavaScriptContext(for plugin: Plugin, scriptURL: URL) async throws {
         // 创建 JavaScript 上下文
         let context = JSContext()
         
@@ -456,17 +429,14 @@ class PluginManager: ObservableObject {
         let testResult = context.evaluateScript("typeof lightlauncher")
         logger.info("Initial setup - lightlauncher object type in JS context: \(testResult?.toString() ?? "undefined", privacy: .public)")
         
-        // 测试具体方法的可用性
         let writeFileTest = context.evaluateScript("typeof lightlauncher.writeFile")
         logger.info("Initial setup - lightlauncher.writeFile type in JS context: \(writeFileTest?.toString() ?? "undefined", privacy: .public)")
         
         let logTest = context.evaluateScript("typeof lightlauncher.log")
         logger.info("Initial setup - lightlauncher.log type in JS context: \(logTest?.toString() ?? "undefined", privacy: .public)")
         
-        // 捕获插件名称用于错误处理
         let pluginName = plugin.name
         
-        // 设置异常处理器
         context.exceptionHandler = { [weak self] context, exception in
             let errorMessage = exception?.toString() ?? "Unknown JavaScript error"
             self?.logger.error("JavaScript execution error in plugin \(pluginName): \(errorMessage)")
@@ -475,7 +445,6 @@ class PluginManager: ObservableObject {
             context?.exception = nil
         }
         
-        // 读取并执行 main.js 文件
         do {
             let scriptContent = try String(contentsOf: scriptURL, encoding: .utf8)
             let result = context.evaluateScript(scriptContent)
@@ -492,81 +461,20 @@ class PluginManager: ObservableObject {
             throw PluginError.scriptLoadFailed("Failed to load script file: \(error.localizedDescription)")
         }
         
-        // 将配置好的上下文和 API 管理器保存到插件实例
+        // 直接赋值到 class 实例属性
         plugin.context = context
         plugin.apiManager = apiManager
         
         logger.info("JavaScript context setup completed for plugin: \(pluginName)")
     }
     
-    // MARK: - 插件执行方法
-    
-    /// 为指定插件注入 LauncherViewModel 引用
-    func injectViewModel(_ viewModel: LauncherViewModel, for command: String) {
-        guard let plugin = plugins[command] else {
-            logger.warning("Plugin not found for command: \(command)")
-            return
-        }
-        
-        plugin.apiManager?.viewModel = viewModel
-        
-        logger.debug("ViewModel injected for plugin: \(plugin.name)")
-    }
-    
-    /// 执行插件搜索
-    func executePluginSearch(command: String, query: String) {
-        guard let plugin = plugins[command],
-              let apiManager = plugin.apiManager else {
-            logger.warning("Plugin or API manager not found for command: \(command)")
-            return
-        }
-        
-        // 调用搜索回调
-        // print("Executing search for plugin: \(plugin.name) with query: \(query)")
-        apiManager.invokeSearchCallback(with: query)
-    }
-    
-    /// 执行插件动作
-    func executePluginAction(command: String, action: String) -> Bool {
-        guard let plugin = plugins[command],
-              let apiManager = plugin.apiManager else {
-            logger.warning("Plugin or API manager not found for command: \(command)")
-            return false
-        }
-        
-        // 调用动作处理器
-        return apiManager.invokeActionHandler(with: action)
-    }
-    
-    /// 获取插件的窗口隐藏设置
-    func getPluginShouldHideWindowAfterAction(command: String) -> Bool {
-        guard let plugin = plugins[command] else {
-            // 如果找不到插件，默认返回true（隐藏窗口）
-            return true
-        }
-        
-        return plugin.shouldHideWindowAfterAction
-    }
-    
-    /// 清理插件资源
-    func cleanupPlugin(command: String) {
-        guard var plugin = plugins[command] else { return }
-        
+    /// 重置插件的 JSContext 和 APIManager，仅供 PluginExecutor 调用
+    func resetPlugin(for command: String) async {
+        guard let plugin = plugins[command] else { return }
         plugin.apiManager?.cleanup()
         plugin.apiManager = nil
         plugin.context = nil
-        
-        plugins[command] = plugin
-        
-        logger.debug("Cleaned up plugin: \(plugin.name)")
-    }
-    
-    /// 清理所有插件资源
-    func cleanupAllPlugins() {
-        for command in plugins.keys {
-            cleanupPlugin(command: command)
-        }
-        logger.info("Cleaned up all plugins")
+        logger.debug("Reset plugin: \(plugin.name)")
     }
 }
 

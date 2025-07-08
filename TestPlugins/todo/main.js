@@ -1,6 +1,4 @@
 // LightLauncher Todo 插件全新实现
-let currentInput = "";
-
 class TodoPlugin {
     constructor() {
         this.config = {
@@ -8,6 +6,8 @@ class TodoPlugin {
         };
         this.todos = [];
         this.permissions = {};
+        this.currentInput = "";
+        this.lastNonEmptyInput = "";
         this.loadTodos();
         lightlauncher.registerCallback(this.handleSearch.bind(this));
         lightlauncher.registerActionHandler(this.handleAction.bind(this));
@@ -16,16 +16,29 @@ class TodoPlugin {
         lightlauncher.log("Todo plugin initialized todos");
     }
 
+    // 新增：插件被重建时自动恢复 currentInput 状态
+    restoreState(state) {
+        if (state && typeof state.currentInput === "string") {
+            this.currentInput = state.currentInput;
+        }
+    }
+    // 新增：插件被销毁前保存 currentInput 状态
+    getState() {
+        return { currentInput: this.currentInput };
+    }
+
     checkPermissions() {
         this.permissions.fileWrite = lightlauncher.hasFileWritePermission();
         this.permissions.network = lightlauncher.hasNetworkPermission();
     }
 
     loadTodos() {
+        lightlauncher.log("Loading todos from file");
         try {
             const path = lightlauncher.getDataPath() + "/" + this.config.dataFile;
             const data = lightlauncher.readFile(path);
             if (data) this.todos = JSON.parse(data);
+            lightlauncher.log(`Loaded ${this.todos.length} todos`);
         } catch {}
     }
 
@@ -37,20 +50,29 @@ class TodoPlugin {
     }
 
     handleSearch(query) {
-        if (query && query.trim()) currentInput = query.trim();
-        if (!query || !query.trim()) {
-            this.displayAllTodos();
-        } else {
-            this.searchTodos(query);
+        let cleanQuery = query ? query.trim() : "";
+        if (cleanQuery.startsWith("/todo")) {
+            cleanQuery = cleanQuery.replace(/^\/todo\s*/, "");
         }
+        if (cleanQuery) {
+            this.currentInput = cleanQuery;
+            this.lastNonEmptyInput = cleanQuery;
+            this.searchTodos(cleanQuery);
+        } else {
+            // 不清空 lastNonEmptyInput，保持上次输入
+            this.currentInput = "";
+            this.displayAllTodos();
+        }
+        lightlauncher.log(`currentInput: ${this.currentInput}, lastNonEmptyInput: ${this.lastNonEmptyInput}`);
     }
 
     handleAction(action) {
         if (action.startsWith("add_new")) {
+            lightlauncher.log("Adding new todo from action");
             let text = "";
             const idx = action.indexOf(":");
             if (idx !== -1) text = action.substring(idx + 1).trim();
-            else text = currentInput;
+            else text = this.currentInput;
             if (text) this.addTodo(text);
             return true;
         } else if (action.startsWith("toggle_")) {
@@ -70,6 +92,8 @@ class TodoPlugin {
 
     displayAllTodos() {
         lightlauncher.log("Displaying all todos");
+        lightlauncher.log(`Current input: ${this.currentInput}`);
+        lightlauncher.log(`Todos : ${JSON.stringify(this.todos)}`);
         const results = this.todos.map(todo => ({
             title: (todo.completed ? "✅ " : "⭕ ") + todo.text,
             subtitle: todo.completed ? "Completed" : "Todo",
@@ -78,14 +102,15 @@ class TodoPlugin {
         }));
         results.unshift({
             title: "Add new todo...",
-            subtitle: currentInput ? `添加：${currentInput}` : "Type and click to add new todo",
+            subtitle: this.lastNonEmptyInput ? `添加：${this.lastNonEmptyInput}` : "Type and click to add new todo",
             icon: "plus.circle",
-            action: `add_new:${currentInput}`
+            action: `add_new:${this.lastNonEmptyInput}`
         });
-        lightlauncher.display(results);
+        lightlauncher.display(JSON.parse(JSON.stringify(results)));
     }
 
     addTodo(text) {
+        lightlauncher.log(`Adding new todo: ${text}`);
         const newId = this.todos.length > 0 ? Math.max(...this.todos.map(t => t.id)) + 1 : 1;
         this.todos.push({ id: newId, text, completed: false });
         this.saveTodos();
@@ -112,23 +137,36 @@ class TodoPlugin {
 
     searchTodos(query) {
         const filtered = this.todos.filter(todo => todo.text.toLowerCase().includes(query.toLowerCase()));
-        if (filtered.length === 0) {
-            lightlauncher.display([{
-                title: "No todos found",
-                subtitle: "Try a different search term",
-                icon: "magnifyingglass",
-                action: "show_all"
-            }]);
-            return;
-        }
         const results = filtered.map(todo => ({
             title: (todo.completed ? "✅ " : "⭕ ") + todo.text,
             subtitle: todo.completed ? "Completed" : "Todo",
             icon: todo.completed ? "checkmark.circle.fill" : "circle",
             action: "toggle_" + todo.id
         }));
-        lightlauncher.display(results);
+        // 无论有无结果，都插入 add_new 行
+        results.unshift({
+            title: "Add new todo...",
+            subtitle: query ? `添加：${query}` : "Type and click to add new todo",
+            icon: "plus.circle",
+            action: `add_new:${query}`
+        });
+        if (filtered.length === 0) {
+            results.push({
+                title: "No todos found",
+                subtitle: "Try a different search term",
+                icon: "magnifyingglass",
+                action: "show_all"
+            });
+        }
+        lightlauncher.display(JSON.parse(JSON.stringify(results)));
     }
 }
 
 const todoPlugin = new TodoPlugin();
+// 新增：插件主程序可通过 lightlauncher.getPluginState()/setPluginState() 调用 getState/restoreState
+if (typeof lightlauncher.setPluginStateHandler === "function") {
+    lightlauncher.setPluginStateHandler(
+        () => todoPlugin.getState(),
+        (state) => todoPlugin.restoreState(state)
+    );
+}

@@ -31,23 +31,32 @@ final class PluginModeController: NSObject, ModeStateController, ObservableObjec
     }
     // 2. 进入模式
     func enterMode(with text: String) {
-        guard let command = text.components(separatedBy: " ").first,
-              let plugin = pluginManager.activatePlugin(command: command),
-              plugin.isEnabled else {
+        guard let command = text.components(separatedBy: " ").first else {
+            pluginItems = []
+            activePlugin = nil
+            return
+        }
+        // 如果当前 activePlugin 已经是目标 command，直接 return，避免重复激活
+        if let current = activePlugin, current.command == command {
+            return
+        }
+        guard let plugin = pluginManager.activatePlugin(command: command), plugin.isEnabled else {
             pluginItems = []
             activePlugin = nil
             return
         }
         activePlugin = plugin
-        pluginManager.injectViewModel(LauncherViewModel.shared, for: command)
-        pluginManager.executePluginSearch(command: plugin.command, query: "")
+        PluginExecutor.shared.injectViewModel(LauncherViewModel.shared, for: command)
+        PluginExecutor.shared.executePluginSearch(command: plugin.command, query: "")
         LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String) {
-        guard let plugin = activePlugin else { return }
-        pluginManager.executePluginSearch(command: plugin.command, query: text)
+        guard let plugin = activePlugin, plugin.context != nil else { return }
+        PluginExecutor.shared.executePluginSearch(plugin: plugin, query: text)
         LauncherViewModel.shared.selectedIndex = 0
+        print("PluginModeController: handleInput called with text: \(text)")
+        print(pluginItems.map { $0.title }.joined(separator: ", "))
     }
     // 4. 执行动作
     func executeAction(at index: Int) -> Bool {
@@ -55,7 +64,7 @@ final class PluginModeController: NSObject, ModeStateController, ObservableObjec
         guard index >= 0 && index < pluginItems.count else { return false }
         let item = pluginItems[index]
         if let action = item.action, !action.isEmpty {
-            return pluginManager.executePluginAction(command: plugin.command, action: action)
+            return PluginExecutor.shared.executePluginAction(command: plugin.command, action: action)
         }
         return true
     }
@@ -73,7 +82,7 @@ final class PluginModeController: NSObject, ModeStateController, ObservableObjec
     // 6. 清理操作
     func cleanup() {
         if let plugin = activePlugin {
-            pluginManager.cleanupPlugin(command: plugin.command)
+            Task { await PluginExecutor.shared.cleanupPlugin(command: plugin.command) }
         }
         activePlugin = nil
         pluginItems = []
@@ -85,6 +94,7 @@ final class PluginModeController: NSObject, ModeStateController, ObservableObjec
     // --- 辅助方法 ---
     func updatePluginResults(_ items: [PluginItem]) {
         self.pluginItems = items
+        print("updatePluginResults: \(items.map { $0.title }.joined(separator: ", "))")
     }
     func getActivePlugin() -> Plugin? {
         return activePlugin
