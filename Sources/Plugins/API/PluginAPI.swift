@@ -1,6 +1,7 @@
 import Foundation
 import JavaScriptCore
 import AppKit
+import UserNotifications
 
 /// 定义插件API的协议，用于JavaScriptCore绑定
 @objc protocol PluginAPIExports: JSExport {
@@ -36,16 +37,20 @@ import AppKit
     func log(_ message: String) {
         print("[Plugin \(plugin.name)] \(message)")
     }
-    
     func showNotification(_ title: String, _ message: String) {
-        // 调度到主线程执行
-        DispatchQueue.main.async {
-            let notification = NSUserNotification()
-            notification.title = title
-            notification.informativeText = message
-            NSUserNotificationCenter.default.deliver(notification)
+        // 使用 UserNotifications 框架替代 NSUserNotification
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = message
+
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { [weak self] error in
+            if let error = error {
+                self?.log("发送通知失败: \(error)")
+            }
         }
     }
+
     
     // MARK: - 文件操作
     func readFile(_ path: String) -> String? {
