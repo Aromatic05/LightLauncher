@@ -16,6 +16,10 @@ let package = Package(
         .executableTarget(
             name: "LightLauncher",
             dependencies: ["Yams"],
-            path: "Sources")
+            path: "Sources",
+            resources: [
+                .process("Resources/AppIcon.icns")
+            ]
+        )
     ]
 )

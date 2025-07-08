@@ -88,7 +88,7 @@ class APIManager: NSObject, PluginAPIExports, @unchecked Sendable {
             }
             
             let subtitle = resultDict["subtitle"] as? String ?? ""
-            let icon = resultDict["icon"] as? String ?? "questionmark.circle"
+            _ = resultDict["icon"] as? String ?? "questionmark.circle"
             let action = resultDict["action"] as? String
             
             return PluginItem(
