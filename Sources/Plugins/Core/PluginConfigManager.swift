@@ -2,214 +2,286 @@ import Foundation
 import Yams
 
 // MARK: - 插件配置管理器
+/// 负责所有插件配置文件的读写操作，包括全局注册表和个别插件配置
 @MainActor
-class PluginConfigManager: @unchecked Sendable {
+class PluginConfigManager {
     static let shared = PluginConfigManager()
     
-    private let configsDirectory: URL
-    private let dataDirectory: URL
+    // MARK: - 路径常量
+    private let baseConfigPath: URL
+    private let pluginsPath: URL
+    private let configsPath: URL
+    private let dataPath: URL
+    private let pluginsRegistryPath: URL
     
     private init() {
-        let lightLauncherDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config/LightLauncher")
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        self.baseConfigPath = homeDirectory.appendingPathComponent(".config/LightLauncher")
+        self.pluginsPath = baseConfigPath.appendingPathComponent("plugins")
+        self.configsPath = baseConfigPath.appendingPathComponent("configs")
+        self.dataPath = baseConfigPath.appendingPathComponent("data")
+        self.pluginsRegistryPath = baseConfigPath.appendingPathComponent("plugins.yaml")
         
-        self.configsDirectory = lightLauncherDir.appendingPathComponent("configs")
-        self.dataDirectory = lightLauncherDir.appendingPathComponent("data")
-        
+        // 确保目录存在
         createDirectoriesIfNeeded()
     }
     
-    // MARK: - 公开方法
+    // MARK: - 目录管理
+    private func createDirectoriesIfNeeded() {
+        let directories = [baseConfigPath, pluginsPath, configsPath, dataPath]
+        for directory in directories {
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+    }
     
+    // MARK: - 插件注册表管理
+    struct PluginRegistryEntry: Codable {
+        let name: String
+        var enabled: Bool
+        let command: String
+        let version: String
+        let path: String
+    }
+    
+    struct PluginRegistry: Codable {
+        var plugins: [PluginRegistryEntry]
+        
+        init() {
+            self.plugins = []
+        }
+    }
+    
+    /// 读取插件注册表
+    func loadPluginRegistry() -> PluginRegistry {
+        guard FileManager.default.fileExists(atPath: pluginsRegistryPath.path) else {
+            return PluginRegistry()
+        }
+        
+        do {
+            let data = try Data(contentsOf: pluginsRegistryPath)
+            let registry = try YAMLDecoder().decode(PluginRegistry.self, from: data)
+            return registry
+        } catch {
+            print("读取插件注册表失败: \(error)")
+            return PluginRegistry()
+        }
+    }
+    
+    /// 保存插件注册表
+    func savePluginRegistry(_ registry: PluginRegistry) {
+        do {
+            let yamlString = try YAMLEncoder().encode(registry)
+            try yamlString.write(to: pluginsRegistryPath, atomically: true, encoding: .utf8)
+        } catch {
+            print("保存插件注册表失败: \(error)")
+        }
+    }
+    
+    /// 注册新插件到注册表
+    func registerPlugin(name: String, command: String, version: String, path: String, enabled: Bool = true) {
+        var registry = loadPluginRegistry()
+        
+        // 检查是否已存在
+        if let index = registry.plugins.firstIndex(where: { $0.name == name }) {
+            // 更新现有插件
+            registry.plugins[index] = PluginRegistryEntry(
+                name: name,
+                enabled: enabled,
+                command: command,
+                version: version,
+                path: path
+            )
+        } else {
+            // 添加新插件
+            registry.plugins.append(PluginRegistryEntry(
+                name: name,
+                enabled: enabled,
+                command: command,
+                version: version,
+                path: path
+            ))
+        }
+        
+        savePluginRegistry(registry)
+    }
+    
+    /// 设置插件启用状态
+    func setPluginEnabled(_ name: String, enabled: Bool) {
+        var registry = loadPluginRegistry()
+        if let index = registry.plugins.firstIndex(where: { $0.name == name }) {
+            registry.plugins[index].enabled = enabled
+            savePluginRegistry(registry)
+        }
+    }
+    
+    /// 获取已启用的插件列表
+    func getEnabledPlugins() -> [PluginRegistryEntry] {
+        return loadPluginRegistry().plugins.filter { $0.enabled }
+    }
+    
+    // MARK: - 插件配置管理
+    /// 读取插件的配置规范
+    func loadConfigSpec(for pluginPath: URL) -> [String: Any]? {
+        let configSpecPath = pluginPath.appendingPathComponent("config_spec.yaml")
+        guard FileManager.default.fileExists(atPath: configSpecPath.path) else {
+            return nil
+        }
+        
+        do {
+            let yamlString = try String(contentsOf: configSpecPath, encoding: .utf8)
+            let configSpec = try Yams.load(yaml: yamlString) as? [String: Any]
+            return configSpec
+        } catch {
+            print("读取配置规范失败 (\(pluginPath.lastPathComponent)): \(error)")
+            return nil
+        }
+    }
+    
+    /// 读取插件的用户配置
+    func loadUserConfig(for pluginName: String) -> [String: Any] {
+        let configPath = configsPath.appendingPathComponent("\(pluginName).yaml")
+        guard FileManager.default.fileExists(atPath: configPath.path) else {
+            return [:]
+        }
+        
+        do {
+            let yamlString = try String(contentsOf: configPath, encoding: .utf8)
+            let config = try Yams.load(yaml: yamlString) as? [String: Any] ?? [:]
+            return config
+        } catch {
+            print("读取用户配置失败 (\(pluginName)): \(error)")
+            return [:]
+        }
+    }
+    
+    /// 保存插件的用户配置
+    func saveUserConfig(for pluginName: String, config: [String: Any]) {
+        let configPath = configsPath.appendingPathComponent("\(pluginName).yaml")
+        
+        do {
+            let yamlString = try Yams.dump(object: config)
+            try yamlString.write(to: configPath, atomically: true, encoding: .utf8)
+        } catch {
+            print("保存用户配置失败 (\(pluginName)): \(error)")
+        }
+    }
+    
+    /// 合并默认配置和用户配置，生成最终生效的配置
+    func getEffectiveConfig(for pluginName: String, pluginPath: URL) -> [String: Any] {
+        var effectiveConfig: [String: Any] = [:]
+        
+        // 1. 加载配置规范中的默认值
+        if let configSpec = loadConfigSpec(for: pluginPath),
+           let fields = configSpec["fields"] as? [[String: Any]] {
+            for field in fields {
+                if let key = field["key"] as? String,
+                   let defaultValue = field["default"] {
+                    effectiveConfig[key] = defaultValue
+                }
+            }
+        }
+        
+        // 2. 用用户配置覆盖默认值
+        let userConfig = loadUserConfig(for: pluginName)
+        for (key, value) in userConfig {
+            effectiveConfig[key] = value
+        }
+        
+        return effectiveConfig
+    }
+    
+    // MARK: - 插件发现
+    /// 扫描插件目录，发现新插件
+    func discoverPlugins() -> [URL] {
+        guard FileManager.default.fileExists(atPath: pluginsPath.path) else {
+            return []
+        }
+        
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: pluginsPath, includingPropertiesForKeys: nil)
+            return contents.filter { url in
+                var isDirectory: ObjCBool = false
+                FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+                return isDirectory.boolValue && 
+                       FileManager.default.fileExists(atPath: url.appendingPathComponent("manifest.yaml").path) &&
+                       FileManager.default.fileExists(atPath: url.appendingPathComponent("index.js").path)
+            }
+        } catch {
+            print("扫描插件目录失败: \(error)")
+            return []
+        }
+    }
+    
+    // MARK: - 数据存储路径
+    /// 获取插件的数据存储目录
+    func getDataPath(for pluginName: String) -> URL {
+        let pluginDataPath = dataPath.appendingPathComponent(pluginName)
+        try? FileManager.default.createDirectory(at: pluginDataPath, withIntermediateDirectories: true)
+        return pluginDataPath
+    }
+    
+    // MARK: - 路径访问器
+    var pluginsDirectory: URL { pluginsPath }
+    var configsDirectory: URL { configsPath }
+    var dataDirectory: URL { dataPath }
+    
+    // MARK: - 配置文件操作
     /// 获取插件配置文件路径
     func getConfigPath(for pluginName: String) -> URL {
-        return configsDirectory.appendingPathComponent("\(pluginName).yaml")
+        return configsPath.appendingPathComponent("\(pluginName).yaml")
     }
     
-    /// 获取插件数据目录路径
-    func getDataDirectory(for pluginName: String) -> URL {
-        return dataDirectory.appendingPathComponent(pluginName)
-    }
-    
-    /// 读取插件配置
-    func readConfig<T: Codable>(for pluginName: String, type: T.Type) -> T? {
+    /// 读取指定类型的配置
+    func readConfig<T: Decodable>(for pluginName: String, type: T.Type) -> T? {
         let configPath = getConfigPath(for: pluginName)
-        
         guard FileManager.default.fileExists(atPath: configPath.path) else {
             return nil
         }
         
         do {
             let yamlString = try String(contentsOf: configPath, encoding: .utf8)
-            let decoder = YAMLDecoder()
-            return try decoder.decode(type, from: yamlString)
+            return try YAMLDecoder().decode(T.self, from: yamlString)
         } catch {
-            print("Failed to read config for plugin \(pluginName): \(error)")
+            print("读取配置失败: \(error)")
             return nil
         }
     }
     
-    /// 写入插件配置
-    func writeConfig<T: Codable>(for pluginName: String, config: T) -> Bool {
+    /// 保存配置
+    @discardableResult
+    func saveConfig<T: Encodable>(_ config: T, for pluginName: String) -> Bool {
         let configPath = getConfigPath(for: pluginName)
         
         do {
-            let encoder = YAMLEncoder()
-            let yamlString = try encoder.encode(config)
+            let yamlString = try YAMLEncoder().encode(config)
             try yamlString.write(to: configPath, atomically: true, encoding: .utf8)
             return true
         } catch {
-            print("Failed to write config for plugin \(pluginName): \(error)")
+            print("保存配置失败: \(error)")
             return false
         }
     }
     
-    /// 获取所有插件配置文件
-    func getAllPluginConfigs() -> [String] {
-        do {
-            let files = try FileManager.default.contentsOfDirectory(at: configsDirectory, 
-                                                                   includingPropertiesForKeys: nil, 
-                                                                   options: [.skipsHiddenFiles])
-            return files
-                .filter { $0.pathExtension == "yaml" }
-                .map { $0.deletingPathExtension().lastPathComponent }
-        } catch {
-            print("Failed to list plugin configs: \(error)")
-            return []
-        }
-    }
-    
-    /// 删除插件配置
+    /// 删除配置文件
+    @discardableResult
     func deleteConfig(for pluginName: String) -> Bool {
         let configPath = getConfigPath(for: pluginName)
-        
         guard FileManager.default.fileExists(atPath: configPath.path) else {
-            return true // 文件不存在，认为删除成功
+            return true // 文件不存在视为删除成功
         }
         
         do {
             try FileManager.default.removeItem(at: configPath)
             return true
         } catch {
-            print("Failed to delete config for plugin \(pluginName): \(error)")
+            print("删除配置失败: \(error)")
             return false
         }
     }
     
-    /// 创建默认配置文件
+    /// 创建默认配置
+    @discardableResult
     func createDefaultConfig(for pluginName: String, config: PluginConfig) -> Bool {
-        let configPath = getConfigPath(for: pluginName)
-        
-        // 如果配置文件已存在，不覆盖
-        guard !FileManager.default.fileExists(atPath: configPath.path) else {
-            return true
-        }
-        
-        do {
-            let encoder = YAMLEncoder()
-            let yamlString = try encoder.encode(config)
-            try yamlString.write(to: configPath, atomically: true, encoding: String.Encoding.utf8)
-            return true
-        } catch {
-            print("Failed to create default config for plugin \(pluginName): \(error)")
-            return false
-        }
-    }
-    
-    // MARK: - 私有方法
-    
-    private func createDirectoriesIfNeeded() {
-        let fileManager = FileManager.default
-        
-        // 创建 configs 目录
-        if !fileManager.fileExists(atPath: configsDirectory.path) {
-            do {
-                try fileManager.createDirectory(at: configsDirectory, 
-                                               withIntermediateDirectories: true, 
-                                               attributes: nil)
-                print("Created configs directory at: \(configsDirectory.path)")
-            } catch {
-                print("Failed to create configs directory: \(error)")
-            }
-        }
-        
-        // 创建 data 目录
-        if !fileManager.fileExists(atPath: dataDirectory.path) {
-            do {
-                try fileManager.createDirectory(at: dataDirectory, 
-                                               withIntermediateDirectories: true, 
-                                               attributes: nil)
-                print("Created data directory at: \(dataDirectory.path)")
-            } catch {
-                print("Failed to create data directory: \(error)")
-            }
-        }
-    }
-}
-
-// MARK: - 通用插件配置结构
-struct PluginConfig: Codable {
-    let enabled: Bool
-    let settings: [String: AnyCodable]
-    let version: String
-    
-    init(enabled: Bool = true, settings: [String: Any] = [:], version: String = "1.0.0") {
-        self.enabled = enabled
-        self.settings = settings.mapValues { AnyCodable($0) }
-        self.version = version
-    }
-}
-
-// MARK: - 支持任意类型编码的包装器
-struct AnyCodable: Codable {
-    let value: Any
-    
-    init(_ value: Any) {
-        self.value = value
-    }
-    
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        
-        if let bool = try? container.decode(Bool.self) {
-            value = bool
-        } else if let int = try? container.decode(Int.self) {
-            value = int
-        } else if let double = try? container.decode(Double.self) {
-            value = double
-        } else if let string = try? container.decode(String.self) {
-            value = string
-        } else if let array = try? container.decode([AnyCodable].self) {
-            value = array.map { $0.value }
-        } else if let dictionary = try? container.decode([String: AnyCodable].self) {
-            value = dictionary.mapValues { $0.value }
-        } else {
-            throw DecodingError.typeMismatch(AnyCodable.self, 
-                                           DecodingError.Context(codingPath: decoder.codingPath, 
-                                                               debugDescription: "Unsupported type"))
-        }
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        
-        switch value {
-        case let bool as Bool:
-            try container.encode(bool)
-        case let int as Int:
-            try container.encode(int)
-        case let double as Double:
-            try container.encode(double)
-        case let string as String:
-            try container.encode(string)
-        case let array as [Any]:
-            try container.encode(array.map { AnyCodable($0) })
-        case let dictionary as [String: Any]:
-            try container.encode(dictionary.mapValues { AnyCodable($0) })
-        default:
-            throw EncodingError.invalidValue(value, 
-                                           EncodingError.Context(codingPath: encoder.codingPath, 
-                                                               debugDescription: "Unsupported type"))
-        }
+        return saveConfig(config, for: pluginName)
     }
 }

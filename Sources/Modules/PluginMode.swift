@@ -1,127 +1,128 @@
 import Foundation
-import os
 import SwiftUI
-import AppKit
 
-// MARK: - 插件模式控制器
 @MainActor
-final class PluginModeController: NSObject, ModeStateController, ObservableObject {
+final class PluginModeController: ObservableObject, ModeStateController {
     static let shared = PluginModeController()
-    private override init() {}
-    @Published var pluginItems: [PluginItem] = []
+    
+    @Published var currentPlugin: Plugin?
+    @Published private var items: [PluginItem] = []
+    
     private let pluginManager = PluginManager.shared
-    private var activePlugin: Plugin?
-    var prefix: String? { activePlugin?.command ?? "!" }
-    // 可显示项插槽
-    var displayableItems: [any DisplayableItem] {
-        pluginItems.map { $0 as any DisplayableItem }
-    }
-    // 元信息属性
+    private let pluginExecutor = PluginExecutor.shared
+    
+    private init() {}
+    
+    // MARK: - ModeStateController Protocol
+    var displayableItems: [any DisplayableItem] { items }
     var displayName: String { "Plugin" }
     var iconName: String { "puzzlepiece" }
-    var placeholder: String { "Plugin mode..." }
-    var modeDescription: String? { "Plugin-powered functionality" }
-    // 1. 触发条件
+    var placeholder: String { currentPlugin?.manifest.placeholder ?? "输入插件命令..." }
+    var modeDescription: String? { "Plugin mode" }
+    var prefix: String? { currentPlugin?.command }
+    
     func shouldActivate(for text: String) -> Bool {
-        // 只要是插件命令前缀就激活
-        if let command = text.components(separatedBy: " ").first {
-            return pluginManager.canHandleCommand(command)
-        }
-        return false
+        guard let command = text.components(separatedBy: " ").first else { return false }
+        return pluginManager.canHandleCommand(command)
     }
-    // 2. 进入模式
+    
     func enterMode(with text: String) {
-        guard let command = text.components(separatedBy: " ").first else {
-            pluginItems = []
-            activePlugin = nil
+        guard let command = text.components(separatedBy: " ").first,
+              let plugin = pluginManager.findPlugin(by: command)
+        else {
+            currentPlugin = nil
+            items = []
             return
         }
-        // 如果当前 activePlugin 已经是目标 command，直接 return，避免重复激活
-        if let current = activePlugin, current.command == command {
-            return
+        
+        currentPlugin = plugin
+        Task {
+            do {
+                let result = try await pluginExecutor.execute(plugin: plugin)
+                if result.success {
+                    // 处理执行结果
+                }
+            } catch {
+                print("插件执行失败: \(error)")
+            }
         }
-        guard let plugin = pluginManager.activatePlugin(command: command), plugin.isEnabled else {
-            pluginItems = []
-            activePlugin = nil
-            return
-        }
-        activePlugin = plugin
-        PluginExecutor.shared.injectViewModel(LauncherViewModel.shared, for: command)
-        PluginExecutor.shared.executePluginSearch(command: plugin.command, query: "")
-        LauncherViewModel.shared.selectedIndex = 0
     }
-    // 3. 处理输入
+    
     func handleInput(_ text: String) {
-        guard let plugin = activePlugin, plugin.context != nil else { return }
-        PluginExecutor.shared.executePluginSearch(plugin: plugin, query: text)
-        LauncherViewModel.shared.selectedIndex = 0
-        print("PluginModeController: handleInput called with text: \(text)")
-        print(pluginItems.map { $0.title }.joined(separator: ", "))
+        guard let plugin = currentPlugin else { return }
+        
+        // 移除命令前缀，只保留搜索查询
+        let query = text.replacingOccurrences(of: plugin.command, with: "").trimmingCharacters(in: .whitespaces)
+        
+        Task {
+            do {
+                let result = try await pluginExecutor.execute(plugin: plugin, with: [query])
+                if result.success {
+                    // 处理执行结果
+                }
+            } catch {
+                print("插件搜索失败: \(error)")
+            }
+        }
     }
-    // 4. 执行动作
+    
     func executeAction(at index: Int) -> Bool {
-        guard let plugin = activePlugin else { return false }
-        guard index >= 0 && index < pluginItems.count else { return false }
-        let item = pluginItems[index]
-        if let action = item.action, !action.isEmpty {
-            return PluginExecutor.shared.executePluginAction(command: plugin.command, action: action)
+        guard let plugin = currentPlugin,
+              index >= 0 && index < items.count
+        else { return false }
+        
+        let item = items[index]
+        Task {
+            do {
+                let result = try await pluginExecutor.execute(plugin: plugin, with: [item.action ?? ""])
+                if result.success {
+                    // 处理执行结果
+                }
+            } catch {
+                print("插件动作执行失败: \(error)")
+            }
+        }
+        
+        return true
+    }
+    
+    func shouldExit(for text: String) -> Bool {
+        guard let plugin = currentPlugin else { return true }
+        if text.hasPrefix("/") {
+            let commandPart = text.components(separatedBy: " ").first ?? ""
+            return commandPart != plugin.command
         }
         return true
     }
-    // 5. 退出条件
-    func shouldExit(for text: String) -> Bool {
-        // 输入不再匹配当前插件命令时退出
-        guard let plugin = activePlugin else { return true }
-        if text.hasPrefix("/") {
-            let commandPart = text.components(separatedBy: " ").first ?? text
-            return commandPart != plugin.command
-        } else {
-            return true
-        }
-    }
-    // 6. 清理操作
+    
     func cleanup() {
-        if let plugin = activePlugin {
-            Task { await PluginExecutor.shared.cleanupPlugin(command: plugin.command) }
-        }
-        activePlugin = nil
-        pluginItems = []
+        currentPlugin = nil
+        items = []
     }
-    // 生成内容视图
+    
+    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+        if let pluginItem = item as? PluginItem {
+            return AnyView(PluginItemRowView(item: pluginItem, isSelected: isSelected, index: index)
+                .onTapGesture { handleItemSelection(index) })
+        }
+        return AnyView(EmptyView())
+    }
+    
     func makeContentView() -> AnyView {
         return AnyView(PluginModeView(viewModel: LauncherViewModel.shared))
     }
-    // --- 辅助方法 ---
-    func updatePluginResults(_ items: [PluginItem]) {
-        self.pluginItems = items
-        print("updatePluginResults: \(items.map { $0.title }.joined(separator: ", "))")
-    }
-    func getActivePlugin() -> Plugin? {
-        return activePlugin
-    }
-    func clearPluginState() {
-        self.pluginItems = []
-        self.activePlugin = nil
-    }
-
+    
     static func getHelpText() -> [String] {
         return [
-            "Type to search applications",
-            "Press ↑↓ arrows or numbers 1-6 to select",
-            "Type / to see all commands",
-            "Press Esc to close"
+            "使用 / 开始插件命令",
+            "输入参数以搜索或执行操作",
+            "使用 ↑↓ 或数字键选择结果",
+            "按 Enter 执行所选项"
         ]
     }
-    // 渲染 PluginItem 行视图
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        if let pluginItem = item as? PluginItem {
-            return AnyView(
-                PluginItemRowView(item: pluginItem, isSelected: isSelected, index: index)
-                    .id(index)
-                    .onTapGesture { handleItemSelection(index) }
-            )
-        } else {
-            return AnyView(EmptyView())
-        }
+    
+    // MARK: - Internal Methods
+    func updateItems(_ items: [PluginItem]) {
+        self.items = items
     }
 }

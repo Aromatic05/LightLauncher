@@ -185,7 +185,7 @@ class LauncherViewModel: ObservableObject {
         if text.hasPrefix("/") {
             let inputCommand = text.components(separatedBy: " ").first ?? text
             let knownCommands = ["/k", "/s", "/w", "/t", "/o", "/v"]
-            let pluginCommands = PluginManager.shared.getAllPlugins().map { $0.command }
+            let pluginCommands = PluginManager.shared.getLoadedPlugins().map { $0.command }
             let allCommands = knownCommands + pluginCommands
             // 只有完全匹配有效命令时才切换模式
             if allCommands.contains(inputCommand) {
@@ -234,7 +234,7 @@ extension ModeStateController {
             if text.hasPrefix("/") {
                 let inputCommand = text.components(separatedBy: " ").first ?? text
                 let knownCommands = ["/k", "/s", "/w", "/t", "/o", "/v"]
-                let pluginCommands = PluginManager.shared.getAllPlugins().map { $0.command }
+                let pluginCommands = PluginManager.shared.getLoadedPlugins().map { $0.command }
                 let allCommands = knownCommands + pluginCommands
                 let should = !allCommands.contains(inputCommand) && inputCommand != prefix
                 if should {

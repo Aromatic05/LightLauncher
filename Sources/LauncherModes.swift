@@ -109,7 +109,11 @@ struct LauncherCommand {
         let enabledCommands = getEnabledCommands()
         
         // 获取插件命令
-        let pluginCommands = PluginManager.shared.getAllPluginCommands()
+        let pluginCommands: [LauncherCommand] = PluginManager.shared.getLoadedPlugins().compactMap { plugin in
+            let command = plugin.command
+            guard !command.isEmpty else { return nil }
+            return LauncherCommand(trigger: command, mode: .plugin, description: plugin.manifest.description, isEnabled: true)
+        }
         
         // 合并所有命令
         let allCommands = enabledCommands + pluginCommands

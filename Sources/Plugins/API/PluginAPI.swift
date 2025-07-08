@@ -1,91 +1,146 @@
 import Foundation
 import JavaScriptCore
+import AppKit
 
-// MARK: - 插件 API 导出协议
+/// 定义插件API的协议，用于JavaScriptCore绑定
 @objc protocol PluginAPIExports: JSExport {
-    /// 注册插件的回调函数，用于处理搜索请求
-    func registerCallback(_ function: JSValue)
-    
-    /// 注册插件的动作处理函数
-    func registerActionHandler(_ function: JSValue)
-    
-    /// 显示插件返回的搜索结果
-    func display(_ results: [[String: Any]])
-    
-    /// 隐藏启动器窗口
-    func hide()
-    
-    /// 记录日志信息到控制台
+    // 系统接口
     func log(_ message: String)
+    func showNotification(_ title: String, _ message: String)
     
-    // MARK: - 文件系统 API
-    
-    /// 获取插件配置文件路径
-    func getConfigPath() -> String
-    
-    /// 获取插件数据目录路径
-    func getDataPath() -> String
-    
-    /// 读取配置文件内容
-    func readConfig() -> String?
-    
-    /// 写入配置文件内容
-    func writeConfig(_ content: String) -> Bool
-    
-    /// 检查文件是否存在
+    // 文件操作
+    func readFile(_ path: String) -> String?
+    func writeFile(_ path: String, _ content: String) -> Bool
     func fileExists(_ path: String) -> Bool
     
-    /// 读取文件内容
-    func readFile(_ path: String) -> String?
+    // 剪贴板操作
+    func getClipboard() -> String
+    func setClipboard(_ text: String)
     
-    /// 写入文件内容
-    func writeFile(_ data: [String: Any]) -> Bool
-    
-    /// 创建目录
-    func createDirectory(_ path: String) -> Bool
+    // UI 交互
+    func showInput(_ prompt: String) -> String?
+    func showAlert(_ message: String)
+    func updateUI(_ data: [String: Any])
 }
 
-// MARK: - 插件 API 错误
-enum PluginAPIError: Error, LocalizedError {
-    case invalidCallback
-    case invalidActionHandler
-    case invalidResults
-    case contextNotAvailable
-    case actionNotFound
-    case fileOperationFailed(String)
-    case configurationError(String)
-    case pathAccessDenied(String)
-    case networkAccessDenied
-    case networkRequestFailed(String)
-    case invalidURL(String)
-    case permissionDenied(String)
+/// 插件API实现类
+@objc class PluginAPI: NSObject, PluginAPIExports {
+    private let plugin: Plugin
     
-    var errorDescription: String? {
-        switch self {
-        case .invalidCallback:
-            return "Invalid callback function provided"
-        case .invalidActionHandler:
-            return "Invalid action handler function provided"
-        case .invalidResults:
-            return "Invalid results format"
-        case .contextNotAvailable:
-            return "JavaScript context not available"
-        case .actionNotFound:
-            return "Action not found in plugin"
-        case .fileOperationFailed(let reason):
-            return "File operation failed: \(reason)"
-        case .configurationError(let reason):
-            return "Configuration error: \(reason)"
-        case .pathAccessDenied(let path):
-            return "Access denied to path: \(path)"
-        case .networkAccessDenied:
-            return "Network access denied for this plugin"
-        case .networkRequestFailed(let reason):
-            return "Network request failed: \(reason)"
-        case .invalidURL(let url):
-            return "Invalid URL: \(url)"
-        case .permissionDenied(let permission):
-            return "Permission denied: \(permission)"
+    init(plugin: Plugin) {
+        self.plugin = plugin
+        super.init()
+    }
+    
+    // MARK: - 系统接口
+    func log(_ message: String) {
+        print("[Plugin \(plugin.name)] \(message)")
+    }
+    
+    func showNotification(_ title: String, _ message: String) {
+        // 调度到主线程执行
+        DispatchQueue.main.async {
+            let notification = NSUserNotification()
+            notification.title = title
+            notification.informativeText = message
+            NSUserNotificationCenter.default.deliver(notification)
+        }
+    }
+    
+    // MARK: - 文件操作
+    func readFile(_ path: String) -> String? {
+        do {
+            return try String(contentsOfFile: path, encoding: .utf8)
+        } catch {
+            log("读取文件失败: \(error)")
+            return nil
+        }
+    }
+    
+    func writeFile(_ path: String, _ content: String) -> Bool {
+        do {
+            try content.write(toFile: path, atomically: true, encoding: .utf8)
+            return true
+        } catch {
+            log("写入文件失败: \(error)")
+            return false
+        }
+    }
+    
+    func fileExists(_ path: String) -> Bool {
+        return FileManager.default.fileExists(atPath: path)
+    }
+    
+    // MARK: - 剪贴板操作
+    func getClipboard() -> String {
+        var clipboardContent = ""
+        // 调度到主线程执行
+        let semaphore = DispatchSemaphore(value: 0)
+        DispatchQueue.main.async {
+            clipboardContent = NSPasteboard.general.string(forType: .string) ?? ""
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return clipboardContent
+    }
+    
+    func setClipboard(_ text: String) {
+        // 调度到主线程执行
+        DispatchQueue.main.async {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
+        }
+    }
+    
+    // MARK: - UI 交互
+    func showInput(_ prompt: String) -> String? {
+        var result: String?
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = prompt
+            alert.addButton(withTitle: "确定")
+            alert.addButton(withTitle: "取消")
+            
+            let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 200, height: 24))
+            alert.accessoryView = input
+            
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                result = input.stringValue
+            }
+            semaphore.signal()
+        }
+        
+        semaphore.wait()
+        return result
+    }
+    
+    func showAlert(_ message: String) {
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = message
+            alert.addButton(withTitle: "确定")
+            alert.runModal()
+        }
+    }
+    
+    func updateUI(_ userInfo: [String: Any]) {
+        // 先序列化为 Data，闭包只捕获 Data，主线程内反序列化
+        let data = try? JSONSerialization.data(withJSONObject: userInfo, options: [])
+        DispatchQueue.main.async {
+            var safeUserInfo: [String: Any] = [:]
+            if let data = data,
+               let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                safeUserInfo = dict
+            }
+            NotificationCenter.default.post(
+                name: Notification.Name("PluginUIUpdate"),
+                object: nil,
+                userInfo: safeUserInfo
+            )
         }
     }
 }

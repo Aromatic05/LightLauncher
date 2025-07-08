@@ -3,14 +3,10 @@ import Foundation
 
 // MARK: - 插件设置视图
 struct PluginSettingsView: View {
-    @ObservedObject private var pluginManager = PluginManager.shared
     @State private var selectedPlugin: Plugin?
     @State private var showingPluginFolder = false
     @State private var refreshTrigger = false
-    
-    var allPlugins: [Plugin] {
-        pluginManager.getAllPlugins()
-    }
+    @State private var allPlugins: [Plugin] = []
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -28,7 +24,9 @@ struct PluginSettingsView: View {
                     
                     // 刷新按钮
                     Button(action: {
-                        pluginManager.reloadPlugins()
+                        Task {
+                            await loadPlugins()
+                        }
                         refreshTrigger.toggle()
                     }) {
                         Image(systemName: "arrow.clockwise")
@@ -38,22 +36,9 @@ struct PluginSettingsView: View {
                     .controlSize(.regular)
                     .help("刷新插件列表")
                     
-                    // 重载插件配置文件
-                    Button(action: {
-                        ConfigManager.shared.pluginsConfig = ConfigManager.loadPluginsConfig(from: ConfigManager.shared.pluginsConfigURL) ?? PluginsConfig(plugins: [])
-                        pluginManager.reloadPlugins()
-                        refreshTrigger.toggle()
-                    }) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                            .font(.system(size: 16))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.regular)
-                    .help("重载插件配置文件并重新发现插件")
-                    
                     // 打开插件文件夹
                     Button(action: {
-                        let pluginsDir = FileManager.default.homeDirectoryForCurrentUser
+                        let pluginsDir = FileManager.default.homeDirectoryForCurrentUser 
                             .appendingPathComponent(".config/LightLauncher/plugins")
                         NSWorkspace.shared.open(pluginsDir)
                     }) {
@@ -94,7 +79,7 @@ struct PluginSettingsView: View {
                     }
                     
                     Button("打开插件文件夹") {
-                        let pluginsDir = FileManager.default.homeDirectoryForCurrentUser
+                        let pluginsDir = FileManager.default.homeDirectoryForCurrentUser 
                             .appendingPathComponent(".config/LightLauncher/plugins")
                         
                         // 创建目录（如果不存在）
@@ -138,7 +123,7 @@ struct PluginSettingsView: View {
                                             selectedPlugin = plugin
                                         },
                                         onToggle: { enabled in
-                                            pluginManager.togglePlugin(command: plugin.command, enabled: enabled)
+                                            plugin.isEnabled = enabled
                                         }
                                     )
                                 }
@@ -169,9 +154,12 @@ struct PluginSettingsView: View {
             }
         }
         .onAppear {
-            // 选择第一个插件
-            if selectedPlugin == nil && !allPlugins.isEmpty {
-                selectedPlugin = allPlugins.first
+            Task {
+                await loadPlugins()
+                // 选择第一个插件
+                if selectedPlugin == nil && !allPlugins.isEmpty {
+                    selectedPlugin = allPlugins.first
+                }
             }
         }
         .onChange(of: refreshTrigger) { _ in
@@ -180,6 +168,13 @@ struct PluginSettingsView: View {
                 selectedPlugin = allPlugins.first { $0.name == currentName }
             }
         }
+    }
+    
+    @MainActor
+    private func loadPlugins() async {
+        let pluginManager = PluginManager.shared
+        await pluginManager.initialize()
+        allPlugins = pluginManager.getLoadedPlugins()
     }
 }
 
@@ -200,7 +195,7 @@ struct PluginListItem: View {
                     .frame(width: 24, height: 24)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(plugin.displayName)
+                    Text(plugin.manifest.displayName)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.primary)
                         .lineLimit(1)
@@ -271,7 +266,7 @@ struct PluginDetailView: View {
                     .foregroundColor(.accentColor)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(plugin.displayName)
+                    Text(plugin.manifest.displayName)
                         .font(.title2)
                         .fontWeight(.bold)
                     
@@ -325,12 +320,12 @@ struct PluginDetailView: View {
                 HStack {
                     Image(systemName: "folder")
                         .foregroundColor(.secondary)
-                    Text("路径: \(plugin.pluginDirectory.lastPathComponent)")
+                    Text("路径: \(plugin.url.lastPathComponent)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
-                if plugin.shouldHideWindowAfterAction {
+                if let shouldHide = plugin.manifest.shouldHideWindowAfterAction, shouldHide {
                     HStack {
                         Image(systemName: "eye.slash")
                             .foregroundColor(.secondary)
@@ -423,14 +418,14 @@ struct PluginDetailView: View {
             
             VStack(spacing: 8) {
                 Button("打开插件目录") {
-                    NSWorkspace.shared.selectFile(plugin.pluginDirectory.path, inFileViewerRootedAtPath: "")
+                    NSWorkspace.shared.selectFile(plugin.url.path, inFileViewerRootedAtPath: "")
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.bordered)
                 
                 Button("重新加载插件") {
                     Task {
-                        // await PluginManager.shared.reloadPlugin(plugin.name)
+                        await PluginManager.shared.initialize()
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -462,6 +457,6 @@ struct PluginDetailView: View {
 struct PluginSettingsView_Previews: PreviewProvider {
     static var previews: some View {
         PluginSettingsView()
-            .frame(width: 960, height: 740)
+            .frame(width: 800, height: 600)
     }
 }

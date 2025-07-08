@@ -1,88 +1,49 @@
 import Foundation
 
-// MARK: - 插件系统错误类型
+/// 插件相关的错误类型
 enum PluginError: Error, LocalizedError {
-    case directoryNotFound(String)
-    case manifestNotFound(String)
-    case invalidManifest(String)
-    case scriptLoadFailed(String)
-    case javascriptExecutionError(String)
-    case pluginNotFound(String)
-    case duplicateCommand(String)
-    case invalidCommand(String)
-    case contextCreationFailed
+    case invalidManifest(String) // 需要传递错误信息
+    case missingMainFile(String)
+    case loadFailed(String)
+    case executionFailed(String)
+    case invalidConfiguration(String)
+    case dependencyNotFound(String)
+    case versionMismatch(String)
+    case permissionDenied(String)
+    case timeout(String)
+    case invalidAPI(String)
+    case missingScript(String)
+    case invalidScript(String)
+    case scriptEvaluationFailed(String)
     
     var errorDescription: String? {
         switch self {
-        case .directoryNotFound(let path):
-            return "Plugin directory not found: \(path)"
-        case .manifestNotFound(let path):
-            return "Plugin manifest not found: \(path)"
-        case .invalidManifest(let reason):
-            return "Invalid plugin manifest: \(reason)"
-        case .scriptLoadFailed(let reason):
-            return "Failed to load plugin script: \(reason)"
-        case .javascriptExecutionError(let error):
-            return "JavaScript execution error: \(error)"
-        case .pluginNotFound(let name):
-            return "Plugin not found: \(name)"
-        case .duplicateCommand(let command):
-            return "Duplicate plugin command: \(command)"
-        case .invalidCommand(let command):
-            return "Invalid plugin command: \(command)"
-        case .contextCreationFailed:
-            return "Failed to create JavaScript context"
+        case .invalidManifest(let message):
+            return "插件清单文件无效: \(message)"
+        case .missingMainFile(let path):
+            return "找不到插件主文件: \(path)"
+        case .loadFailed(let message):
+            return "插件加载失败: \(message)"
+        case .executionFailed(let message):
+            return "插件执行失败: \(message)"
+        case .invalidConfiguration(let message):
+            return "插件配置无效: \(message)"
+        case .dependencyNotFound(let dependency):
+            return "找不到依赖: \(dependency)"
+        case .versionMismatch(let message):
+            return "版本不匹配: \(message)"
+        case .permissionDenied(let message):
+            return "权限被拒绝: \(message)"
+        case .timeout(let message):
+            return "操作超时: \(message)"
+        case .invalidAPI(let message):
+            return "无效的API调用: \(message)"
+        case .missingScript(let message):
+            return "缺少脚本: \(message)"
+        case .invalidScript(let message):
+            return "无效的脚本: \(message)"
+        case .scriptEvaluationFailed(let message):
+            return "脚本评估失败: \(message)"
         }
-    }
-    
-    var recoverySuggestion: String? {
-        switch self {
-        case .directoryNotFound:
-            return "Check if the plugin directory exists and is accessible"
-        case .manifestNotFound:
-            return "Ensure the plugin has a valid manifest.json file"
-        case .invalidManifest:
-            return "Check the plugin manifest format and required fields"
-        case .scriptLoadFailed:
-            return "Verify the plugin script file exists and is readable"
-        case .javascriptExecutionError:
-            return "Check the plugin JavaScript code for syntax errors"
-        case .pluginNotFound:
-            return "Install the plugin or check if it's properly loaded"
-        case .duplicateCommand:
-            return "Remove duplicate plugins or change the command trigger"
-        case .invalidCommand:
-            return "Use a valid command format starting with '/'"
-        case .contextCreationFailed:
-            return "Restart the application or check system resources"
-        }
-    }
-}
-
-// MARK: - 插件加载结果
-enum PluginLoadResult {
-    case success(Plugin)
-    case failure(PluginError)
-    case skipped(String) // 跳过加载的原因
-    
-    var isSuccess: Bool {
-        if case .success = self {
-            return true
-        }
-        return false
-    }
-    
-    var plugin: Plugin? {
-        if case .success(let plugin) = self {
-            return plugin
-        }
-        return nil
-    }
-    
-    var error: PluginError? {
-        if case .failure(let error) = self {
-            return error
-        }
-        return nil
     }
 }

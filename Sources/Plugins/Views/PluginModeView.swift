@@ -68,8 +68,8 @@ struct PluginEmptyStateView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
             
-            if let plugin = pluginController?.getActivePlugin() {
-                Text("Plugin: \(plugin.displayName)")
+            if let plugin = pluginController?.currentPlugin {
+                Text("Plugin: \(plugin.manifest.displayName)")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary.opacity(0.8))
             }

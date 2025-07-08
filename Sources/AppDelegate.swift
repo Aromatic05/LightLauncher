@@ -51,17 +51,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupPluginSystem() {
         // 初始化插件管理器并发现插件
-        PluginManager.shared.discoverPlugins()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            let plugins = PluginManager.shared.getAllPlugins()
-            print("✅ 插件系统就绪，已加载 \(plugins.count) 个插件")
-            
-            let loadErrors = PluginManager.shared.loadErrors
-            if !loadErrors.isEmpty {
-                print("⚠️ 插件加载时发现 \(loadErrors.count) 个错误:")
-                for error in loadErrors {
-                    print("  • \(error)")
-                }
+        Task {
+            await PluginManager.shared.initialize()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                let plugins = PluginManager.shared.getLoadedPlugins()
+                print("✅ 插件系统就绪，已加载 \(plugins.count) 个插件")
             }
         }
     }
