@@ -236,11 +236,13 @@ extension ModeStateController {
                 let knownCommands = ["/k", "/s", "/w", "/t", "/o", "/v"]
                 let pluginCommands = PluginManager.shared.getLoadedPlugins().map { $0.command }
                 let allCommands = knownCommands + pluginCommands
-                let should = !allCommands.contains(inputCommand) && inputCommand != prefix
-                if should {
-                    return true
+                // 只要输入以 / 开头，并且能匹配到任何命令前缀，就不切回 launch
+                let hasPrefixMatch = allCommands.contains { cmd in cmd.hasPrefix(inputCommand) }
+                if hasPrefixMatch {
+                    return false
                 }
-                return false
+                // 只有完全无效命令才切回 launch
+                return true
             } else {
                 let should = !text.hasPrefix(prefix)
                 if should {
