@@ -1,7 +1,42 @@
-name: Todo Plugin
-version: 1.0.0
-description: Simple todo list manager
+# Todo 插件清单文件
+# 基本信息
+name: todo
+version: 2.0.0
+displayName: 待办事项
+description: 简单高效的待办事项管理插件，支持添加、完成、搜索和删除功能
 command: /todo
 author: LightLauncher Team
 main: main.js
-should_hide_window_after_action: false
+
+# UI 配置
+placeholder: "添加新待办事项或搜索现有项目..."
+iconName: SF:checklist.unchecked
+shouldHideWindowAfterAction: false
+
+# 帮助信息
+help:
+  - "输入内容直接添加新的待办事项"
+  - "搜索关键词可以快速找到相关待办事项"
+  - "点击待办事项可以切换完成状态"
+  - "使用 /todo 命令快速进入待办事项模式"
+  - "支持清除已完成的待办事项"
+
+# 权限声明
+permissions:
+  - type: file_write
+    directories: []  # 仅访问插件数据目录，无需特殊权限
+
+# 元信息
+keywords: 
+  - "todo"
+  - "task"
+  - "productivity"
+  - "list"
+  - "管理"
+  - "待办"
+homepage: "https://github.com/LightLauncher/plugins/todo"
+repository: "https://github.com/LightLauncher/plugins"
+min_lightlauncher_version: "1.0.0"
+
+# 接口版本
+interface: "1.0"

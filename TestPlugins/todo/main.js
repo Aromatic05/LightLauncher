@@ -1,172 +1,337 @@
-// LightLauncher Todo 插件全新实现
+// LightLauncher Todo 插件 - 重写版本
+// 与新插件架构完全兼容
+
 class TodoPlugin {
     constructor() {
-        this.config = {
-            dataFile: "todos.json"
-        };
+        // 初始化配置
+        this.config = lightlauncher.getConfig();
+        this.dataFile = this.config.dataFile || "todos.json";
+        
+        // 初始化数据
         this.todos = [];
-        this.permissions = {};
         this.currentInput = "";
-        this.lastNonEmptyInput = "";
-        this.loadTodos();
-        lightlauncher.registerCallback(this.handleSearch.bind(this));
+        this.lastQuery = "";
+        
+        // 注册插件回调
+        lightlauncher.registerCallback(this.handleInput.bind(this));
         lightlauncher.registerActionHandler(this.handleAction.bind(this));
-        this.checkPermissions();
-        this.displayAllTodos();
-        lightlauncher.log("Todo plugin initialized todos");
+        
+        // 加载数据
+        this.loadTodos();
+        
+        // 显示初始状态
+        this.displayTodos();
+        
+        lightlauncher.log("Todo plugin initialized successfully");
     }
 
-    // 新增：插件被重建时自动恢复 currentInput 状态
-    restoreState(state) {
-        if (state && typeof state.currentInput === "string") {
-            this.currentInput = state.currentInput;
-        }
-    }
-    // 新增：插件被销毁前保存 currentInput 状态
-    getState() {
-        return { currentInput: this.currentInput };
-    }
-
-    checkPermissions() {
-        this.permissions.fileWrite = lightlauncher.hasFileWritePermission();
-        this.permissions.network = lightlauncher.hasNetworkPermission();
-    }
-
-    loadTodos() {
-        lightlauncher.log("Loading todos from file");
-        try {
-            const path = lightlauncher.getDataPath() + "/" + this.config.dataFile;
-            const data = lightlauncher.readFile(path);
-            if (data) this.todos = JSON.parse(data);
-            lightlauncher.log(`Loaded ${this.todos.length} todos`);
-        } catch {}
-    }
-
-    saveTodos() {
-        try {
-            const path = lightlauncher.getDataPath() + "/" + this.config.dataFile;
-            lightlauncher.writeFile({path, content: JSON.stringify(this.todos, null, 2)});
-        } catch {}
-    }
-
-    handleSearch(query) {
+    /**
+     * 处理用户输入
+     */
+    handleInput(query) {
+        // 清理输入
         let cleanQuery = query ? query.trim() : "";
+        
+        // 移除命令前缀
         if (cleanQuery.startsWith("/todo")) {
             cleanQuery = cleanQuery.replace(/^\/todo\s*/, "");
         }
+        
+        this.currentInput = cleanQuery;
+        this.lastQuery = cleanQuery || this.lastQuery;
+        
         if (cleanQuery) {
-            this.currentInput = cleanQuery;
-            this.lastNonEmptyInput = cleanQuery;
+            // 如果有输入，进行搜索
             this.searchTodos(cleanQuery);
         } else {
-            // 不清空 lastNonEmptyInput，保持上次输入
-            this.currentInput = "";
-            this.displayAllTodos();
+            // 显示所有待办事项
+            this.displayTodos();
         }
-        lightlauncher.log(`currentInput: ${this.currentInput}, lastNonEmptyInput: ${this.lastNonEmptyInput}`);
+        
+        lightlauncher.log(`Handling input: "${cleanQuery}"`);
     }
 
+    /**
+     * 处理用户动作
+     */
     handleAction(action) {
-        if (action.startsWith("add_new")) {
-            lightlauncher.log("Adding new todo from action");
-            let text = "";
-            const idx = action.indexOf(":");
-            if (idx !== -1) text = action.substring(idx + 1).trim();
-            else text = this.currentInput;
-            if (text) this.addTodo(text);
-            return true;
-        } else if (action.startsWith("toggle_")) {
-            const id = parseInt(action.substring(7));
-            this.toggleTodo(id);
-            return true;
-        } else if (action.startsWith("delete_")) {
-            const id = parseInt(action.substring(7));
-            this.deleteTodo(id);
-            return true;
-        } else if (action === "show_all") {
-            this.displayAllTodos();
-            return true;
+        lightlauncher.log(`Handling action: ${action}`);
+        
+        try {
+            if (action.startsWith("add:")) {
+                // 添加新待办事项
+                const text = action.substring(4).trim();
+                if (text) {
+                    this.addTodo(text);
+                    return true;
+                }
+            } else if (action.startsWith("toggle:")) {
+                // 切换完成状态
+                const id = parseInt(action.substring(7));
+                this.toggleTodo(id);
+                return true;
+            } else if (action.startsWith("delete:")) {
+                // 删除待办事项
+                const id = parseInt(action.substring(7));
+                this.deleteTodo(id);
+                return true;
+            } else if (action === "show_all") {
+                // 显示所有待办事项
+                this.displayTodos();
+                return true;
+            } else if (action === "clear_completed") {
+                // 清除已完成的待办事项
+                this.clearCompleted();
+                return true;
+            }
+        } catch (error) {
+            lightlauncher.log(`Action error: ${error.message}`);
         }
+        
         return false;
     }
 
-    displayAllTodos() {
-        lightlauncher.log("Displaying all todos");
-        lightlauncher.log(`Current input: ${this.currentInput}`);
-        lightlauncher.log(`Todos : ${JSON.stringify(this.todos)}`);
-        const results = this.todos.map(todo => ({
-            title: (todo.completed ? "✅ " : "⭕ ") + todo.text,
-            subtitle: todo.completed ? "Completed" : "Todo",
-            icon: todo.completed ? "checkmark.circle.fill" : "circle",
-            action: "toggle_" + todo.id
-        }));
-        results.unshift({
-            title: "Add new todo...",
-            subtitle: this.lastNonEmptyInput ? `添加：${this.lastNonEmptyInput}` : "Type and click to add new todo",
-            icon: "plus.circle",
-            action: `add_new:${this.lastNonEmptyInput}`
-        });
-        lightlauncher.display(JSON.parse(JSON.stringify(results)));
+    /**
+     * 加载待办事项数据
+     */
+    loadTodos() {
+        try {
+            const dataPath = lightlauncher.getDataPath();
+            const filePath = `${dataPath}/${this.dataFile}`;
+            
+            lightlauncher.log(`Loading todos from: ${filePath}`);
+            
+            const data = lightlauncher.readFile(filePath);
+            if (data) {
+                this.todos = JSON.parse(data);
+                lightlauncher.log(`Loaded ${this.todos.length} todos`);
+            } else {
+                this.todos = [];
+                lightlauncher.log("No existing todos file, starting fresh");
+            }
+        } catch (error) {
+            lightlauncher.log(`Error loading todos: ${error.message}`);
+            this.todos = [];
+        }
     }
 
+    /**
+     * 保存待办事项数据
+     */
+    saveTodos() {
+        try {
+            const dataPath = lightlauncher.getDataPath();
+            const filePath = `${dataPath}/${this.dataFile}`;
+            const content = JSON.stringify(this.todos, null, 2);
+            
+            const success = lightlauncher.writeFile({
+                path: filePath,
+                content: content
+            });
+            
+            if (success) {
+                lightlauncher.log(`Saved ${this.todos.length} todos`);
+            } else {
+                lightlauncher.log("Failed to save todos");
+            }
+        } catch (error) {
+            lightlauncher.log(`Error saving todos: ${error.message}`);
+        }
+    }
+
+    /**
+     * 添加新待办事项
+     */
     addTodo(text) {
-        lightlauncher.log(`Adding new todo: ${text}`);
+        if (!text || text.trim().length === 0) {
+            return;
+        }
+
         const newId = this.todos.length > 0 ? Math.max(...this.todos.map(t => t.id)) + 1 : 1;
-        this.todos.push({ id: newId, text, completed: false });
+        const newTodo = {
+            id: newId,
+            text: text.trim(),
+            completed: false,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+
+        this.todos.push(newTodo);
         this.saveTodos();
-        this.displayAllTodos();
+        this.displayTodos();
+        
+        lightlauncher.log(`Added todo: "${text}"`);
     }
 
+    /**
+     * 切换待办事项完成状态
+     */
     toggleTodo(id) {
         const todo = this.todos.find(t => t.id === id);
         if (todo) {
             todo.completed = !todo.completed;
+            todo.updatedAt = Date.now();
             this.saveTodos();
-            this.displayAllTodos();
+            this.displayTodos();
+            lightlauncher.log(`Toggled todo ${id}: ${todo.completed ? 'completed' : 'active'}`);
         }
     }
 
+    /**
+     * 删除待办事项
+     */
     deleteTodo(id) {
-        const idx = this.todos.findIndex(t => t.id === id);
-        if (idx !== -1) {
-            this.todos.splice(idx, 1);
+        const index = this.todos.findIndex(t => t.id === id);
+        if (index !== -1) {
+            const deleted = this.todos.splice(index, 1)[0];
             this.saveTodos();
-            this.displayAllTodos();
+            this.displayTodos();
+            lightlauncher.log(`Deleted todo: "${deleted.text}"`);
         }
     }
 
+    /**
+     * 清除已完成的待办事项
+     */
+    clearCompleted() {
+        const completedCount = this.todos.filter(t => t.completed).length;
+        this.todos = this.todos.filter(t => !t.completed);
+        this.saveTodos();
+        this.displayTodos();
+        lightlauncher.log(`Cleared ${completedCount} completed todos`);
+    }
+
+    /**
+     * 搜索待办事项
+     */
     searchTodos(query) {
-        const filtered = this.todos.filter(todo => todo.text.toLowerCase().includes(query.toLowerCase()));
-        const results = filtered.map(todo => ({
-            title: (todo.completed ? "✅ " : "⭕ ") + todo.text,
-            subtitle: todo.completed ? "Completed" : "Todo",
-            icon: todo.completed ? "checkmark.circle.fill" : "circle",
-            action: "toggle_" + todo.id
-        }));
-        // 无论有无结果，都插入 add_new 行
-        results.unshift({
-            title: "Add new todo...",
-            subtitle: query ? `添加：${query}` : "Type and click to add new todo",
-            icon: "plus.circle",
-            action: `add_new:${query}`
-        });
-        if (filtered.length === 0) {
+        const filtered = this.todos.filter(todo => 
+            todo.text.toLowerCase().includes(query.toLowerCase())
+        );
+
+        this.displayTodos(filtered, query);
+    }
+
+    /**
+     * 显示待办事项列表
+     */
+    displayTodos(todoList = null, searchQuery = "") {
+        const todos = todoList || this.todos;
+        const query = searchQuery || this.currentInput;
+        
+        let results = [];
+
+        // 添加"新增待办事项"选项
+        if (query && query.trim().length > 0) {
             results.push({
-                title: "No todos found",
-                subtitle: "Try a different search term",
-                icon: "magnifyingglass",
-                action: "show_all"
+                title: `➕ 添加待办事项: "${query}"`,
+                subtitle: "按回车键添加新的待办事项",
+                icon: "SF:plus.circle.fill",
+                action: `add:${query}`
+            });
+        } else if (this.lastQuery && this.lastQuery.trim().length > 0) {
+            results.push({
+                title: `➕ 添加待办事项: "${this.lastQuery}"`,
+                subtitle: "按回车键添加新的待办事项",
+                icon: "SF:plus.circle.fill", 
+                action: `add:${this.lastQuery}`
+            });
+        } else {
+            results.push({
+                title: "➕ 添加新的待办事项",
+                subtitle: "输入内容后按回车键添加",
+                icon: "SF:plus.circle",
+                action: "add:"
             });
         }
-        lightlauncher.display(JSON.parse(JSON.stringify(results)));
+
+        // 添加现有待办事项
+        if (todos.length > 0) {
+            // 按状态排序：未完成在前，已完成在后
+            const sortedTodos = [...todos].sort((a, b) => {
+                if (a.completed === b.completed) {
+                    return b.updatedAt - a.updatedAt; // 最近更新的在前
+                }
+                return a.completed ? 1 : -1; // 未完成的在前
+            });
+
+            sortedTodos.forEach(todo => {
+                const icon = todo.completed ? "SF:checkmark.circle.fill" : "SF:circle";
+                const statusText = todo.completed ? "已完成" : "待完成";
+                
+                results.push({
+                    title: `${todo.completed ? "✅" : "⭕"} ${todo.text}`,
+                    subtitle: `${statusText} • 点击切换状态`,
+                    icon: icon,
+                    action: `toggle:${todo.id}`
+                });
+            });
+
+            // 添加管理选项
+            results.push({
+                title: "🗑️ 清除已完成的待办事项",
+                subtitle: `清除 ${todos.filter(t => t.completed).length} 个已完成项目`,
+                icon: "SF:trash.circle",
+                action: "clear_completed"
+            });
+        } else if (searchQuery) {
+            // 搜索无结果
+            results.push({
+                title: "🔍 未找到匹配的待办事项",
+                subtitle: "尝试其他搜索关键词",
+                icon: "SF:magnifyingglass.circle",
+                action: "show_all"
+            });
+        } else {
+            // 空状态
+            results.push({
+                title: "📋 暂无待办事项",
+                subtitle: "开始添加你的第一个待办事项吧",
+                icon: "SF:list.bullet.circle",
+                action: ""
+            });
+        }
+
+        // 添加统计信息
+        const totalCount = this.todos.length;
+        const completedCount = this.todos.filter(t => t.completed).length;
+        const activeCount = totalCount - completedCount;
+
+        if (totalCount > 0) {
+            results.push({
+                title: `📊 统计: ${activeCount} 个待完成，${completedCount} 个已完成`,
+                subtitle: `共 ${totalCount} 个待办事项`,
+                icon: "SF:chart.bar.circle",
+                action: ""
+            });
+        }
+
+        // 显示结果
+        lightlauncher.display(results);
+        lightlauncher.log(`Displayed ${results.length} items`);
+    }
+
+    /**
+     * 获取插件统计信息
+     */
+    getStats() {
+        const total = this.todos.length;
+        const completed = this.todos.filter(t => t.completed).length;
+        const active = total - completed;
+        
+        return {
+            total,
+            completed,
+            active,
+            completionRate: total > 0 ? Math.round((completed / total) * 100) : 0
+        };
     }
 }
 
-const todoPlugin = new TodoPlugin();
-// 新增：插件主程序可通过 lightlauncher.getPluginState()/setPluginState() 调用 getState/restoreState
-if (typeof lightlauncher.setPluginStateHandler === "function") {
-    lightlauncher.setPluginStateHandler(
-        () => todoPlugin.getState(),
-        (state) => todoPlugin.restoreState(state)
-    );
+// 初始化插件
+try {
+    const todoPlugin = new TodoPlugin();
+    lightlauncher.log("Todo plugin loaded successfully");
+} catch (error) {
+    lightlauncher.log(`Plugin initialization error: ${error.message}`);
 }

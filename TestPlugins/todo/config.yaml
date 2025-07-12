@@ -1,78 +1,61 @@
 # Todo 插件配置文件
-# 这个文件定义了插件的运行时配置和权限要求
+# 数据存储配置
+dataFile: "todos.json"
 
-# 基本设置
-enabled: true
-version: "1.0.0"
-
-# 权限要求
-permissions:
-  # 外部文件写入权限 - 用于在插件数据目录之外写入文件（插件数据目录内的文件无需权限）
-  file_write: false
-  # 网络访问权限 - 如果需要同步到云端服务
-  network: false
-  # 剪贴板权限 - 用于复制待办事项内容
-  clipboard: false
-  # 通知权限 - 用于提醒功能
-  notifications: false
-
-# 插件设置
-settings:
+# 界面设置
+ui:
   # 最大显示条目数
-  max_items: 10
+  maxItems: 20
   # 是否显示已完成的项目
-  show_completed: true
+  showCompleted: true
+  # 是否显示统计信息
+  showStats: true
+  # 图标主题
+  iconTheme: "sf_symbols"
+
+# 功能设置
+features:
+  # 是否启用搜索功能
+  enableSearch: true
+  # 是否启用自动保存
+  autoSave: true
   # 自动保存间隔（秒）
-  auto_save_interval: 30
-  # 数据文件名
-  data_file: "todos.json"
-  
-  # UI 设置
-  ui:
-    # 图标主题
-    icon_theme: "sf_symbols"
-    # 颜色方案
-    color_scheme: "auto"
-    # 是否显示行号
-    show_numbers: true
-  
-  # 快捷键设置
-  shortcuts:
-    # 切换完成状态
-    toggle_complete: "space"
-    # 删除项目
-    delete_item: "cmd+delete"
-    # 编辑项目
-    edit_item: "enter"
-  
-  # 分类设置
-  categories:
-    - name: "工作"
-      color: "#FF6B6B"
-      icon: "briefcase"
-    - name: "个人"
-      color: "#4ECDC4"
-      icon: "person"
-    - name: "学习"
-      color: "#45B7D1"
-      icon: "book"
-  
-  # 通知设置
-  notifications:
-    # 是否启用提醒
-    enabled: false
-    # 默认提醒时间（分钟）
-    default_reminder: 60
-    # 声音设置
-    sound: "default"
+  autoSaveInterval: 30
+  # 是否启用完成提示音
+  completionSound: false
+
+# 快捷键设置（保留扩展用）
+shortcuts:
+  # 切换完成状态
+  toggleComplete: "space"
+  # 删除项目
+  deleteItem: "cmd+delete"
+  # 新增项目
+  addItem: "cmd+enter"
+
+# 排序设置
+sorting:
+  # 排序方式: "date", "alphabetical", "completion"
+  method: "date"
+  # 排序方向: "asc", "desc"
+  direction: "desc"
+  # 是否将已完成项目放在最后
+  completedLast: true
+
+# 数据管理
+data:
+  # 是否启用数据备份
+  enableBackup: false
+  # 备份间隔（天）
+  backupInterval: 7
+  # 最大备份文件数
+  maxBackups: 5
 
 # 高级设置
 advanced:
   # 调试模式
-  debug_mode: false
-  # 日志级别
-  log_level: "info"
-  # 缓存大小（MB）
-  cache_size: 10
-  # 性能模式
-  performance_mode: "balanced"
+  debugMode: false
+  # 日志级别: "info", "debug", "error"
+  logLevel: "info"
+  # 性能模式: "fast", "balanced", "quality"
+  performanceMode: "balanced"
