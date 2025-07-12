@@ -133,7 +133,10 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     func executeAction(at index: Int) -> Bool {
         guard index < self.displayableItems.count else { return false }
         guard let app = self.displayableItems[index] as? RunningAppInfo else { return false }
-        return RunningAppsManager.shared.killApp(app)
+        let result = RunningAppsManager.shared.killApp(app)
+        // 无论 killApp 是否成功，直接移除该项
+        self.displayableItems.remove(at: index)
+        return result
     }
     // 5. 退出条件
     func shouldExit(for text: String) -> Bool {
