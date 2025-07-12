@@ -106,7 +106,7 @@ class PluginExecutor {
         let result = context.evaluateScript(script)
         
         if let exception = context.exception {
-            throw PluginError.scriptEvaluationFailed("脚本执行失败: \(exception.toString())")
+            throw PluginError.scriptEvaluationFailed("脚本执行失败: \(String(describing: exception.toString()))")
         }
         
         if result?.isUndefined == true {

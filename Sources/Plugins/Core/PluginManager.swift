@@ -127,7 +127,7 @@ class PluginManager: ObservableObject {
     /// 启用插件
     /// - Parameter name: 插件名称
     func enablePlugin(_ name: String) {
-        if var plugin = plugins[name] {
+        if let plugin = plugins[name] {
             plugin.isEnabled = true
             plugins[name] = plugin
             print("插件已启用: \(name)")
@@ -137,7 +137,7 @@ class PluginManager: ObservableObject {
     /// 禁用插件
     /// - Parameter name: 插件名称
     func disablePlugin(_ name: String) {
-        if var plugin = plugins[name] {
+        if let plugin = plugins[name] {
             plugin.isEnabled = false
             plugins[name] = plugin
             print("插件已禁用: \(name)")
