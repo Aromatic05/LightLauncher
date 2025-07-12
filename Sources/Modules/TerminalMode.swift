@@ -2,24 +2,40 @@ import Foundation
 import AppKit
 import SwiftUI
 
+struct CurrentCommandItem: DisplayableItem {
+    let id = UUID()
+    let title: String
+    var subtitle: String? { "将要执行的命令: \(title)" }
+    var icon: NSImage? { nil }
+}
+
 // MARK: - 终端模式控制器
 @MainActor
 final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = TerminalModeController()
     private override init() {}
     var prefix: String? { "/t" }
+    @Published var currentQuery: String = ""
     // 可显示项插槽
-    var displayableItems: [any DisplayableItem] { [] }
+    var displayableItems: [any DisplayableItem] {
+        var items: [any DisplayableItem] = []
+        if !currentQuery.isEmpty {
+            items.append(CurrentCommandItem(title: currentQuery))
+        }
+        return items
+    }
     // 1. 触发条件
     func shouldActivate(for text: String) -> Bool {
         return text.hasPrefix("/t")
     }
     // 2. 进入模式
     func enterMode(with text: String) {
+        currentQuery = extractQuery(from: text)
         LauncherViewModel.shared.selectedIndex = 0
     }
     // 3. 处理输入
     func handleInput(_ text: String) {
+        currentQuery = extractQuery(from: text)
         LauncherViewModel.shared.selectedIndex = 0
     }
     // 4. 执行动作
@@ -39,6 +55,14 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     var iconName: String { "terminal" }
     var placeholder: String { "Enter terminal command..." }
     var modeDescription: String? { "Execute commands in Terminal" }
+
+    private func extractQuery(from text: String) -> String {
+        let prefix = "/t "
+        if text.hasPrefix(prefix) {
+            return String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     // --- 终端检测与执行相关辅助方法 ---
     private func executeTerminalCommandWithDetection(command: String) -> Bool {
@@ -149,7 +173,9 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         guard isApplicationInstalled("com.mitchellh.ghostty") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
-        process.arguments = ["-a", "Ghostty", "--args", "-e", "zsh", "-c", command]
+        // 构造命令：open -n -a "Ghostty" --args -e "zsh -c '<command>; zsh -l'"
+        let shellCommand = "zsh -c '" + command.replacingOccurrences(of: "'", with: "'\\''") + "; zsh -l'"
+        process.arguments = ["-n", "-a", "Ghostty", "--args", "-e", shellCommand]
         do {
             try process.run()
             return true
@@ -159,7 +185,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         guard isApplicationInstalled("net.kovidgoyal.kitty") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
-        process.arguments = ["-a", "kitty", "--args", "--hold", "-e", "zsh", "-c", command]
+        process.arguments = ["-n", "-a", "kitty", "--args", "--hold", "-e", "zsh", "-c", command]
         do {
             try process.run()
             return true
@@ -169,7 +195,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         guard isApplicationInstalled("io.alacritty") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
-        process.arguments = ["-a", "Alacritty", "--args", "--hold", "-e", "zsh", "-c", command]
+        process.arguments = ["-n", "-a", "Alacritty", "--args", "--hold", "-e", "zsh", "-c", command]
         do {
             try process.run()
             return true
@@ -179,7 +205,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         guard isApplicationInstalled("com.github.wez.wezterm") else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
-        process.arguments = ["-a", "WezTerm", "--args", "start", "--", "zsh", "-c", command]
+        process.arguments = ["-n", "-a", "WezTerm", "--args", "start", "--", "zsh", "-c", command]
         do {
             try process.run()
             return true
