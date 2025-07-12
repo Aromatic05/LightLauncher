@@ -360,9 +360,11 @@ class TodoPlugin {
 }
 
 // 初始化插件
+let todoPlugin;
 try {
-    const todoPlugin = new TodoPlugin();
+    todoPlugin = new TodoPlugin();
     lightlauncher.log("Todo plugin loaded successfully");
 } catch (error) {
     lightlauncher.log(`Plugin initialization error: ${error.message}`);
 }
+todoPlugin; // 让 JSContext 返回插件实例
