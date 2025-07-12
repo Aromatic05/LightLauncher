@@ -24,9 +24,11 @@ class CalcPlugin {
         }
         let result, error = null;
         try {
-            // 只允许安全字符
-            if (/^[0-9+\-*/().%\s]+$/.test(cleanQuery)) {
-                result = eval(cleanQuery);
+            // 允许 ^ 作为乘方
+            if (/^[0-9+\-*/().%^\s]+$/.test(cleanQuery)) {
+                // 将 a^b 替换为 Math.pow(a,b)
+                let expr = cleanQuery.replace(/(\d+(?:\.\d+)?|\([^()]+\))\s*\^\s*(\d+(?:\.\d+)?|\([^()]+\))/g, 'Math.pow($1,$2)');
+                result = eval(expr);
                 this.lastResult = result;
             } else {
                 error = "表达式包含非法字符";
@@ -78,7 +80,7 @@ class CalcPlugin {
         lightlauncher.display([
             {
                 title: "🧮 输入表达式进行计算",
-                subtitle: "支持 + - * / % ()，如 1+2*3",
+                subtitle: "支持 + - * / % ^ ()，如 2^3 或 1+2*3",
                 icon: "SF:plus.slash.minus",
                 action: ""
             }
