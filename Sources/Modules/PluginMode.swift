@@ -170,7 +170,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
                 } else {
                     LazyVStack(spacing: 4) {
                         ForEach(Array(displayableItems.enumerated()), id: \.offset) { index, item in
-                            makeRowView(for: item, isSelected: false, index: index) { _ in }
+                            self.makeRowView(for: item, isSelected: false, index: index) { _ in }
                         }
                     }
                     .padding()
