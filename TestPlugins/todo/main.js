@@ -31,15 +31,12 @@ class TodoPlugin {
     handleInput(query) {
         // 清理输入
         let cleanQuery = query ? query.trim() : "";
-        
         // 移除命令前缀
         if (cleanQuery.startsWith("/todo")) {
             cleanQuery = cleanQuery.replace(/^\/todo\s*/, "");
         }
-        
         this.currentInput = cleanQuery;
         this.lastQuery = cleanQuery || this.lastQuery;
-        
         if (cleanQuery) {
             // 如果有输入，进行搜索
             this.searchTodos(cleanQuery);
@@ -47,8 +44,10 @@ class TodoPlugin {
             // 显示所有待办事项
             this.displayTodos();
         }
-        
-        lightlauncher.log(`Handling input: "${cleanQuery}"`);
+        // 强制刷新视图（兼容部分宿主环境）
+        if (typeof lightlauncher.refresh === "function") {
+            lightlauncher.refresh();
+        }
     }
 
     /**
@@ -339,7 +338,6 @@ class TodoPlugin {
 
         // 显示结果
         lightlauncher.display(results);
-        lightlauncher.log(`Displayed ${results.length} items`);
     }
 
     /**

@@ -6,11 +6,12 @@ import SwiftUI
 @MainActor
 final class PluginModeController: ObservableObject, ModeStateController {
     static let shared = PluginModeController()
-    
+
     // MARK: - ModeStateController 协议属性
-    var displayName: String { "插件" }
+    var displayName: String { "Plugin" }
+
     var iconName: String { "puzzlepiece.extension" }
-    var placeholder: String { 
+    var placeholder: String {
         if let activePlugin = currentPlugin {
             return activePlugin.manifest.placeholder ?? "输入命令..."
         }
@@ -18,99 +19,100 @@ final class PluginModeController: ObservableObject, ModeStateController {
     }
     var modeDescription: String? { "使用插件扩展功能" }
     var prefix: String? { "/p" }
-    
+
     // MARK: - 插件相关属性
     @Published private(set) var displayableItems: [any DisplayableItem] = []
     @Published private(set) var currentPlugin: Plugin?
     @Published private(set) var activeInstance: PluginInstance?
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
-    
+
     // MARK: - 依赖组件
     private let pluginManager = PluginManager.shared
     private let pluginExecutor = PluginExecutor.shared
     private let configManager = PluginConfigManager.shared
     private let permissionManager = PluginPermissionManager.shared
-    
+
     // MARK: - 内部状态
     private var commandMap: [String: String] = [:]
     private var lastInput: String = ""
-    
+
     private init() {
         setupPluginSystem()
     }
-    
+
     // MARK: - ModeStateController 协议实现
-    
+
     func shouldActivate(for text: String) -> Bool {
         // 检查是否以插件前缀开头
         if text.hasPrefix("/p ") || text == "/p" {
             return true
         }
-        
+
         // 检查是否是已知的插件命令
         let command = text.components(separatedBy: " ").first ?? text
         return commandMap.keys.contains(command)
     }
-    
+
     func enterMode(with text: String) {
         isLoading = true
         errorMessage = nil
-        
+
         Task {
             // 确保插件已加载
             if pluginManager.getLoadedPlugins().isEmpty {
                 await pluginManager.loadAllPlugins()
             }
-            
+
             // 重建命令映射
             rebuildCommandMap()
-            
+
             // 处理输入
             handleInput(text)
-            
+
             isLoading = false
         }
     }
-    
+
     func handleInput(_ text: String) {
         lastInput = text
-        
+
         Task {
             await processInput(text)
         }
     }
-    
+
     func executeAction(at index: Int) -> Bool {
         guard index >= 0 && index < displayableItems.count else { return false }
-        
+
         if let pluginItem = displayableItems[index] as? PluginItem,
-           let action = pluginItem.action,
-           let instance = activeInstance {
-            
+            let action = pluginItem.action,
+            let instance = activeInstance
+        {
+
             let success = instance.executeAction(action)
-            
+
             // 检查是否应该隐藏窗口
             if success && (currentPlugin?.manifest.shouldHideWindowAfterAction == true) {
                 return true
             }
-            
+
             return success
         }
-        
+
         return false
     }
-    
+
     func shouldExit(for text: String) -> Bool {
         // 如果输入为空或不匹配任何插件命令，退出插件模式
         if text.isEmpty {
             return true
         }
-        
+
         let command = text.components(separatedBy: " ").first ?? text
         return !commandMap.keys.contains(command) && !text.hasPrefix("/p")
     }
-    
+
     func cleanup() {
         currentPlugin = nil
         activeInstance = nil
@@ -118,8 +120,11 @@ final class PluginModeController: ObservableObject, ModeStateController {
         errorMessage = nil
         lastInput = ""
     }
-    
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
+
+    func makeRowView(
+        for item: any DisplayableItem, isSelected: Bool, index: Int,
+        handleItemSelection: @escaping (Int) -> Void
+    ) -> AnyView {
         if let pluginItem = item as? PluginItem {
             return AnyView(
                 PluginItemRowView(
@@ -132,69 +137,26 @@ final class PluginModeController: ObservableObject, ModeStateController {
                 }
             )
         }
-        
+
         return AnyView(EmptyView())
     }
-    
+
     func makeContentView() -> AnyView {
-        return AnyView(
-            VStack {
-                if isLoading {
-                    ProgressView("加载插件...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let errorMessage = errorMessage {
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
-                            .foregroundColor(.orange)
-                        Text(errorMessage)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if displayableItems.isEmpty {
-                    VStack {
-                        Image(systemName: "puzzlepiece.extension")
-                            .font(.largeTitle)
-                            .foregroundColor(.secondary)
-                        Text("输入插件命令开始使用")
-                            .foregroundColor(.secondary)
-                        
-                        if !commandMap.isEmpty {
-                            Text("可用命令: \(commandMap.keys.joined(separator: ", "))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.top, 4)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    LazyVStack(spacing: 4) {
-                        ForEach(Array(displayableItems.enumerated()), id: \.offset) { index, item in
-                            self.makeRowView(
-                                for: item,
-                                isSelected: index == LauncherViewModel.shared.selectedIndex,
-                                index: index
-                            ) { _ in }
-                        }
-                    }
-                    .padding()
-                }
-            }
-        )
+        return AnyView(PluginModeView(viewModel: LauncherViewModel.shared))
     }
-    
+
     static func getHelpText() -> [String] {
         let pluginManager = PluginManager.shared
         let plugins = pluginManager.getEnabledPlugins()
-        
+
         var helpTexts = ["插件模式帮助:"]
-        
+
         if plugins.isEmpty {
             helpTexts.append("- 当前没有可用的插件")
         } else {
             for plugin in plugins {
                 helpTexts.append("- \(plugin.command): \(plugin.description)")
-                
+
                 if let help = plugin.manifest.help {
                     for helpLine in help {
                         helpTexts.append("  \(helpLine)")
@@ -202,30 +164,30 @@ final class PluginModeController: ObservableObject, ModeStateController {
                 }
             }
         }
-        
+
         return helpTexts
     }
-    
+
     // MARK: - 私有方法
-    
+
     private func setupPluginSystem() {
         Task {
             await pluginManager.loadAllPlugins()
             rebuildCommandMap()
         }
     }
-    
+
     private func rebuildCommandMap() {
         commandMap.removeAll()
-        
+
         for plugin in pluginManager.getEnabledPlugins() {
             commandMap[plugin.command] = plugin.name
         }
     }
-    
+
     private func processInput(_ text: String) async {
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        
+
         // 处理插件前缀
         var actualInput = trimmedText
         if trimmedText.hasPrefix("/p ") {
@@ -233,32 +195,33 @@ final class PluginModeController: ObservableObject, ModeStateController {
         } else if trimmedText == "/p" {
             actualInput = ""
         }
-        
+
         // 解析命令
         let components = actualInput.components(separatedBy: " ")
         let command = components.first ?? ""
         let args = components.count > 1 ? Array(components.dropFirst()).joined(separator: " ") : ""
-        
+
         // 如果没有命令，显示可用插件列表
         if command.isEmpty {
             await showAvailablePlugins()
             return
         }
-        
+
         // 查找对应的插件
         guard let pluginName = commandMap[command],
-              let plugin = pluginManager.getPlugin(named: pluginName) else {
+            let plugin = pluginManager.getPlugin(named: pluginName)
+        else {
             await showPluginNotFound(command: command)
             return
         }
-        
+
         // 切换到对应插件
         await switchToPlugin(plugin, input: args.isEmpty ? actualInput : args)
     }
-    
+
     private func showAvailablePlugins() async {
         let plugins = pluginManager.getEnabledPlugins()
-        
+
         let items = plugins.map { plugin in
             PluginItem(
                 title: plugin.manifest.displayName,
@@ -267,12 +230,12 @@ final class PluginModeController: ObservableObject, ModeStateController {
                 action: "select_plugin:\(plugin.name)"
             )
         }
-        
+
         displayableItems = items
         currentPlugin = nil
         activeInstance = nil
     }
-    
+
     private func showPluginNotFound(command: String) async {
         let item = PluginItem(
             title: "未找到插件命令: \(command)",
@@ -280,65 +243,66 @@ final class PluginModeController: ObservableObject, ModeStateController {
             iconName: "questionmark.circle",
             action: nil
         )
-        
+
         displayableItems = [item]
         currentPlugin = nil
         activeInstance = nil
     }
-    
+
     private func switchToPlugin(_ plugin: Plugin, input: String) async {
         // 如果已经是当前插件，直接处理输入
         if currentPlugin?.name == plugin.name,
-           let instance = activeInstance {
+            let instance = activeInstance
+        {
             instance.handleInput(input)
             updateDisplayableItems(from: instance)
             return
         }
-        
+
         // 切换到新插件
         currentPlugin = plugin
-        
+
         // 获取或创建插件实例
         if let existingInstance = pluginExecutor.getInstance(for: plugin.name) {
             activeInstance = existingInstance
         } else {
             activeInstance = pluginExecutor.createInstance(for: plugin)
         }
-        
+
         guard let instance = activeInstance else {
             errorMessage = "无法创建插件实例: \(plugin.name)"
             return
         }
-        
+
         // 处理输入
         instance.handleInput(input)
         updateDisplayableItems(from: instance)
     }
-    
-    private func updateDisplayableItems(from instance: PluginInstance) {
+
+    func updateDisplayableItems(from instance: PluginInstance) {
         displayableItems = instance.currentItems
     }
-    
+
     // MARK: - 公共方法
-    
+
     /// 重新加载所有插件
     func reloadPlugins() async {
         isLoading = true
-        
+
         await pluginManager.reloadPlugins()
         rebuildCommandMap()
-        
+
         // 清理当前状态
         cleanup()
-        
+
         isLoading = false
     }
-    
+
     /// 获取当前插件是否应该隐藏窗口
     func getPluginShouldHideWindowAfterAction() -> Bool {
         return currentPlugin?.manifest.shouldHideWindowAfterAction ?? true
     }
-    
+
     /// 获取插件统计信息
     func getStatistics() -> [String: Any] {
         return [
@@ -346,7 +310,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
             "enabledPlugins": pluginManager.getEnabledPlugins().count,
             "activeInstances": pluginExecutor.getAllInstances().count,
             "currentPlugin": currentPlugin?.name ?? "none",
-            "commandMap": commandMap
+            "commandMap": commandMap,
         ]
     }
 }
@@ -358,25 +322,25 @@ extension PluginModeController {
         pluginManager.enablePlugin(pluginName)
         rebuildCommandMap()
     }
-    
+
     /// 禁用插件
     func disablePlugin(_ pluginName: String) {
         pluginManager.disablePlugin(pluginName)
         pluginExecutor.destroyInstance(for: pluginName)
         rebuildCommandMap()
-        
+
         // 如果当前插件被禁用，清理状态
         if currentPlugin?.name == pluginName {
             cleanup()
         }
     }
-    
+
     /// 重启插件
     func restartPlugin(_ pluginName: String) {
         if let plugin = pluginManager.getPlugin(named: pluginName) {
             pluginExecutor.destroyInstance(for: pluginName)
             _ = pluginExecutor.createInstance(for: plugin)
-            
+
             // 如果是当前插件，重新激活
             if currentPlugin?.name == pluginName {
                 Task {

@@ -20,6 +20,9 @@ class PluginInstance {
     var actionHandler: JSValue?
     /// 当前显示的项目
     var currentItems: [PluginItem] = []
+
+    /// items 更新时的通知回调，由主程序设置
+    var onItemsUpdated: (() -> Void)?
     
     init(plugin: Plugin) {
         self.plugin = plugin
