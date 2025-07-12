@@ -178,18 +178,18 @@ class PluginManager: ObservableObject {
         var directories: [URL] = []
         
         // 1. 测试插件目录 (开发环境)
-        let currentDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        let testPluginsDir = currentDir.appendingPathComponent("TestPlugins")
-        if FileManager.default.fileExists(atPath: testPluginsDir.path) {
-            directories.append(testPluginsDir)
-        }
+        // let currentDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        // let testPluginsDir = currentDir.appendingPathComponent("TestPlugins")
+        // if FileManager.default.fileExists(atPath: testPluginsDir.path) {
+        //     directories.append(testPluginsDir)
+        // }
         
-        // 2. 用户插件目录
+        // 1. 用户插件目录
         let homeDir = URL(fileURLWithPath: NSHomeDirectory())
         let userPluginsDir = homeDir.appendingPathComponent(".config/LightLauncher/plugins")
         directories.append(userPluginsDir)
         
-        // 3. 应用程序支持目录
+        // 2. 应用程序支持目录
         if let appSupportDir = FileManager.default.urls(for: .applicationSupportDirectory, 
                                                        in: .userDomainMask).first {
             let pluginsDir = appSupportDir.appendingPathComponent("LightLauncher/plugins")
