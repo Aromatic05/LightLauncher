@@ -67,7 +67,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
             rebuildCommandMap()
             
             // 处理输入
-            await handleInput(text)
+            handleInput(text)
             
             isLoading = false
         }
@@ -170,7 +170,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
                 } else {
                     LazyVStack(spacing: 4) {
                         ForEach(Array(displayableItems.enumerated()), id: \.offset) { index, item in
-                            self.makeRowView(for: item, isSelected: false, index: index) { _ in }
+                            makeRowView(for: item, isSelected: false, index: index) { _ in }
                         }
                     }
                     .padding()
