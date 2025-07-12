@@ -98,16 +98,47 @@ class TodoPlugin {
         try {
             const dataPath = lightlauncher.getDataPath();
             const filePath = `${dataPath}/${this.dataFile}`;
-            
             lightlauncher.log(`Loading todos from: ${filePath}`);
-            
             const data = lightlauncher.readFile(filePath);
             if (data) {
                 this.todos = JSON.parse(data);
                 lightlauncher.log(`Loaded ${this.todos.length} todos`);
             } else {
-                this.todos = [];
-                lightlauncher.log("No existing todos file, starting fresh");
+                // 文件不存在，填充样例数据
+                this.todos = [
+                    {
+                        id: 1,
+                        text: "欢迎使用 Todo 插件！",
+                        completed: false,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    },
+                    {
+                        id: 2,
+                        text: "点击切换完成状态",
+                        completed: false,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    },
+                    {
+                        id: 3,
+                        text: "点击删除待办事项",
+                        completed: false,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    }
+                ];
+                // 创建文件
+                const content = JSON.stringify(this.todos, null, 2);
+                const success = lightlauncher.writeFile({
+                    path: filePath,
+                    content: content
+                });
+                if (success) {
+                    lightlauncher.log("Created todos file with sample data");
+                } else {
+                    lightlauncher.log("Failed to create todos file");
+                }
             }
         } catch (error) {
             lightlauncher.log(`Error loading todos: ${error.message}`);
