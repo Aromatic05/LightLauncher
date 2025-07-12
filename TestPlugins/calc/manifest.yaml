@@ -1,0 +1,34 @@
+# Calc 插件清单文件
+# 基本信息
+name: calc
+version: 1.0.0
+displayName: 计算器
+description: 简单的表达式计算插件，支持加减乘除和括号运算
+command: /calc
+author: LightLauncher Team
+main: main.js
+
+# UI 配置
+placeholder: "输入表达式并回车计算结果，如 1+2*3 ..."
+iconName: SF:plus.slash.minus
+shouldHideWindowAfterAction: false
+
+# 帮助信息
+help:
+  - "输入表达式即可计算结果"
+  - "支持 + - * / % () 运算符"
+  - "使用 /calc 命令快速进入计算器模式"
+
+# 元信息
+keywords:
+  - "calc"
+  - "calculator"
+  - "math"
+  - "计算"
+  - "表达式"
+homepage: "https://github.com/LightLauncher/plugins/calc"
+repository: "https://github.com/LightLauncher/plugins"
+min_lightlauncher_version: "1.0.0"
+
+# 接口版本
+interface: "1.0"
