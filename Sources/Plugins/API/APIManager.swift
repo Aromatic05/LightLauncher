@@ -1,6 +1,7 @@
 import Foundation
-import JavaScriptCore
+@preconcurrency import JavaScriptCore
 import AppKit
+import UserNotifications
 
 /// 插件 API 管理器 - 为插件提供与主程序交互的 API
 @MainActor
@@ -333,13 +334,21 @@ class APIManager {
     
     private func showNotification(params: [String: Any], pluginInstance: PluginInstance) -> Bool {
         guard let title = params["title"] as? String else { return false }
-        
-        let notification = NSUserNotification()
-        notification.title = title
-        notification.subtitle = params["subtitle"] as? String
-        notification.informativeText = params["body"] as? String
-        
-        NSUserNotificationCenter.default.deliver(notification)
+        let subtitle = params["subtitle"] as? String
+        let body = params["body"] as? String
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        if let subtitle = subtitle { content.subtitle = subtitle }
+        if let body = body { content.body = body }
+
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        let center = UNUserNotificationCenter.current()
+        center.add(request) { error in
+            if let error = error {
+                print("通知发送失败: \(error.localizedDescription)")
+            }
+        }
         return true
     }
     
