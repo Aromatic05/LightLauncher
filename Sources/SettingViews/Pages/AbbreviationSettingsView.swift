@@ -44,7 +44,7 @@ struct AbbreviationSettingsView: View {
 
             LazyVStack(spacing: 8) {
                 ForEach(Array(configManager.config.commonAbbreviations.keys.sorted()), id: \.self) { key in
-                    SettingsAbbreviationRow(
+                    AbbreviationRow(
                         key: key,
                         values: configManager.config.commonAbbreviations[key] ?? [],
                         isEditing: editingKey == key,
