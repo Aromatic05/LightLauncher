@@ -125,21 +125,21 @@ struct GeneralSettingsView: View {
                         
                         // 横向排列的快捷键类型
                         HStack(alignment: .top, spacing: 20) {
-                            SettingsHotKeyInfoCard(
+                            HotKeyInfoCard(
                                 title: "修饰键组合",
                                 icon: "command",
                                 iconColor: .blue,
                                 examples: ["⌘ + 字母", "⌥ + 数字", "⌃ + 功能键", "多键组合"]
                             )
                             
-                            SettingsHotKeyInfoCard(
+                            HotKeyInfoCard(
                                 title: "单独修饰键",
                                 icon: "option",
                                 iconColor: .purple,
                                 examples: ["右 Command", "右 Option", "左/右 Control", "Shift 键"]
                             )
                             
-                            SettingsHotKeyInfoCard(
+                            HotKeyInfoCard(
                                 title: "功能键",
                                 icon: "f.cursive",
                                 iconColor: .orange,
