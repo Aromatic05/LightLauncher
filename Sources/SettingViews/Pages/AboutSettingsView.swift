@@ -47,11 +47,11 @@ struct AboutSettingsView: View {
                             .fontWeight(.semibold)
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            SettingsFeatureItem(icon: "magnifyingglass", text: "快速应用搜索和启动")
-                            SettingsFeatureItem(icon: "keyboard", text: "支持自定义快捷键（包括左右修饰键）")
-                            SettingsFeatureItem(icon: "textformat.abc", text: "智能缩写匹配")
-                            SettingsFeatureItem(icon: "folder", text: "可配置搜索目录")
-                            SettingsFeatureItem(icon: "doc.text", text: "YAML 配置文件管理")
+                            FeatureItem(icon: "magnifyingglass", text: "快速应用搜索和启动")
+                            FeatureItem(icon: "keyboard", text: "支持自定义快捷键（包括左右修饰键）")
+                            FeatureItem(icon: "textformat.abc", text: "智能缩写匹配")
+                            FeatureItem(icon: "folder", text: "可配置搜索目录")
+                            FeatureItem(icon: "doc.text", text: "YAML 配置文件管理")
                         }
                     }
                     .padding(20)
