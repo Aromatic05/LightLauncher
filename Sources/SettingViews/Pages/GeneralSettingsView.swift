@@ -27,7 +27,7 @@ struct GeneralSettingsView: View {
                 // 设置组
                 VStack(spacing: 32) {
                     // 开机自启动
-                    SettingsRow(
+                    SettingRow(
                         icon: "power",
                         iconColor: .green,
                         title: "开机自启动",
