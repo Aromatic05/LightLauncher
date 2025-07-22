@@ -111,7 +111,7 @@ struct AboutSettingsView: View {
             .padding(32)
         }
         .sheet(isPresented: $showingConfigContent) {
-            SettingsConfigContentView(content: configContent)
+            ConfigContentView(content: configContent)
         }
     }
     
