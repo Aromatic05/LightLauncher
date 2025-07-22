@@ -12,7 +12,7 @@ enum SettingsTab {
 }
 
 // MARK: - 主设置视图
-struct MainSettingsView: View {
+struct SettingsView: View {
     @ObservedObject var settingsManager = SettingsManager.shared
     @ObservedObject var configManager = ConfigManager.shared
     @State private var selectedTab: SettingsTab = .general
