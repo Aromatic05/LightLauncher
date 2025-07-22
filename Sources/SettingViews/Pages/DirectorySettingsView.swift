@@ -87,7 +87,7 @@ struct DirectorySettingsView: View {
                     
                     LazyVStack(spacing: 8) {
                         ForEach(searchDirectories) { directory in
-                            SettingsDirectoryRow(directory: directory.path) {
+                            DirectoryRow(directory: directory.path) {
                                 removeDirectory(directory)
                             }
                         }
