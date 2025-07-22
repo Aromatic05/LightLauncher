@@ -48,7 +48,7 @@ struct ModeSettingsView: View {
                 // 模式设置组
                 VStack(spacing: 32) {
                     // 关闭模式
-                    SettingsModeSection(
+                    ModeSettingSection(
                         title: "关闭模式 (/k)",
                         icon: "xmark.circle",
                         iconColor: .red,
@@ -78,7 +78,7 @@ struct ModeSettingsView: View {
                     Divider()
                     
                     // 剪贴板模式
-                    SettingsModeSection(
+                    ModeSettingSection(
                         title: "剪贴板模式 (/c)",
                         icon: "doc.on.clipboard",
                         iconColor: .purple,
@@ -122,7 +122,7 @@ struct ModeSettingsView: View {
                     // Divider()
 
                     // 插件模式
-                    SettingsModeSection(
+                    ModeSettingSection(
                         title: "插件模式 (/p)",
                         icon: "puzzlepiece.extension",
                         iconColor: .teal,
@@ -145,7 +145,7 @@ struct ModeSettingsView: View {
                     Divider()
 
                     // 网页搜索模式
-                    SettingsModeSection(
+                    ModeSettingSection(
                         title: "网页搜索 (/s)",
                         icon: "globe",
                         iconColor: .blue,
@@ -186,7 +186,7 @@ struct ModeSettingsView: View {
                     Divider()
                     
                     // 网页打开模式
-                    SettingsModeSection(
+                    ModeSettingSection(
                         title: "网页打开 (/w)",
                         icon: "safari",
                         iconColor: .green,
@@ -292,7 +292,7 @@ struct ModeSettingsView: View {
                     Divider()
                     
                     // 终端执行模式
-                    SettingsModeSection(
+                    ModeSettingSection(
                         title: "终端执行 (/t)",
                         icon: "terminal",
                         iconColor: .orange,
@@ -366,7 +366,7 @@ struct ModeSettingsView: View {
                     Divider()
                     
                     // 文件管理器模式
-                    SettingsModeSection(
+                    ModeSettingSection(
                         title: "文件管理器 (/o)",
                         icon: "folder",
                         iconColor: .blue,
@@ -416,7 +416,7 @@ struct ModeSettingsView: View {
                     Divider()
                     
                     // 命令提示
-                    SettingsRow(
+                    SettingRow(
                         icon: "lightbulb",
                         iconColor: .yellow,
                         title: "命令提示",
