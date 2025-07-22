@@ -40,13 +40,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let actions = StatusMenuManager.Actions(
             showLauncher: { [weak self] in self?.showWindow() },
             openSettings: { [weak self] in self?.showSettingsWindow() },
-            showAbout: { /* 可自定义关于窗口弹窗 */ },
+            showAbout: { [weak self] in self?.windowManager?.showAboutWindow() },
             quitApp: { NSApplication.shared.terminate(nil) }
         )
         statusMenuManager = StatusMenuManager(
             actions: actions,
             hotkeyDescription: settingsManager.getHotKeyDescription()
-            )
+        )
     }
 
     // private func setupPluginSystem() {

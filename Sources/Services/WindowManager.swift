@@ -12,6 +12,30 @@ final class WindowManager: NSObject, NSWindowDelegate {
     
     private var launcherWindow: LauncherWindow?
     private var settingsWindow: NSWindow?
+    private var aboutWindow: NSWindow?
+    /// 显示关于窗口
+    public func showAboutWindow() {
+        if aboutWindow != nil {
+            aboutWindow?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+        let aboutView = AboutView()
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 260),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "关于 LightLauncher"
+        window.contentView = NSHostingView(rootView: aboutView)
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        centerWindow(window)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        aboutWindow = window
+    }
     
     /// 内部持有一个输入法管理器，在窗口显示/隐藏时调用。
     private let inputMethodManager = InputMethodManager()
