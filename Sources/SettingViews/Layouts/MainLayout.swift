@@ -48,7 +48,7 @@ struct MainSettingsView: View {
                 
                 // 选项卡列表
                 VStack(spacing: 4) {
-                    SettingsTabButton(
+                    TabButton(
                         title: "通用",
                         icon: "gear",
                         isSelected: selectedTab == .general
@@ -56,7 +56,7 @@ struct MainSettingsView: View {
                         selectedTab = .general
                     }
                     
-                    SettingsTabButton(
+                    TabButton(
                         title: "功能模式",
                         icon: "slider.horizontal.3",
                         isSelected: selectedTab == .modes
@@ -64,7 +64,7 @@ struct MainSettingsView: View {
                         selectedTab = .modes
                     }
                     
-                    SettingsTabButton(
+                    TabButton(
                         title: "搜索目录",
                         icon: "folder",
                         isSelected: selectedTab == .directories
@@ -72,7 +72,7 @@ struct MainSettingsView: View {
                         selectedTab = .directories
                     }
                     
-                    SettingsTabButton(
+                    TabButton(
                         title: "缩写匹配",
                         icon: "textformat.abc",
                         isSelected: selectedTab == .abbreviations
@@ -80,7 +80,7 @@ struct MainSettingsView: View {
                         selectedTab = .abbreviations
                     }
                     
-                    SettingsTabButton(
+                    TabButton(
                         title: "插件管理",
                         icon: "puzzlepiece.extension",
                         isSelected: selectedTab == .plugins
@@ -88,7 +88,7 @@ struct MainSettingsView: View {
                         selectedTab = .plugins
                     }
                     
-                    SettingsTabButton(
+                    TabButton(
                         title: "关于",
                         icon: "info.circle",
                         isSelected: selectedTab == .about
