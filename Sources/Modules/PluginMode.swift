@@ -121,26 +121,6 @@ final class PluginModeController: ObservableObject, ModeStateController {
         lastInput = ""
     }
 
-    func makeRowView(
-        for item: any DisplayableItem, isSelected: Bool, index: Int,
-        handleItemSelection: @escaping (Int) -> Void
-    ) -> AnyView {
-        if let pluginItem = item as? PluginItem {
-            return AnyView(
-                PluginItemRowView(
-                    item: pluginItem,
-                    isSelected: isSelected,
-                    index: index
-                )
-                .onTapGesture {
-                    handleItemSelection(index)
-                }
-            )
-        }
-
-        return AnyView(EmptyView())
-    }
-
     func makeContentView() -> AnyView {
         return AnyView(PluginModeView(viewModel: LauncherViewModel.shared))
     }

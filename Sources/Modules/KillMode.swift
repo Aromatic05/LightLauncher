@@ -183,5 +183,4 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(EmptyStateView(mode: .kill, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
-    // makeRowView 已由 RunningAppInfo 实现，无需在控制器中实现
 }

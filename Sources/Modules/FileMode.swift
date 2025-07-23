@@ -320,7 +320,6 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(FileCommandInputView(currentPath: NSHomeDirectory()))
         }
     }
-    // makeRowView 已由各 item 自行实现，无需在控制器中实现
     static func getHelpText() -> [String] {
         return [
             "Browse files and folders starting from home directory",

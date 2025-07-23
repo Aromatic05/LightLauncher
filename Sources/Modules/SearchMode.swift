@@ -161,10 +161,6 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
     func makeContentView() -> AnyView {
         return AnyView(SearchHistoryView(viewModel: LauncherViewModel.shared))
     }
-    
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        return AnyView(EmptyView())
-    }
 
     static func getHelpText() -> [String] {
         return [

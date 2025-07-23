@@ -254,9 +254,4 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         }
         return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
-
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        // 目前无终端结果项，后续可扩展为历史命令、建议等
-        return AnyView(EmptyView())   
-    }
 }

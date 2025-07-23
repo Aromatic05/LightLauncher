@@ -165,10 +165,4 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject  
             return AnyView(WebCommandInputView(searchText: LauncherViewModel.shared.searchText))
         }
     }
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        if let browserItem = item as? BrowserItem {
-            return AnyView(BrowserItemRowView(item: browserItem, isSelected: isSelected, index: index))
-        }
-        return AnyView(EmptyView())
-    }
 }

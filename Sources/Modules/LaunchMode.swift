@@ -169,7 +169,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             return AnyView(EmptyStateView(mode: .launch, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
-    // makeRowView 已由 AppInfo 实现，无需在控制器中实现
 
     static func getHelpText() -> [String] {
         return [

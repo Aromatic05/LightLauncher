@@ -106,18 +106,6 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(EmptyStateView(mode: .clip, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
-    
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        if let clip = item as? ClipboardItem {
-            return AnyView(
-                ClipItemRowView(item: clip, isSelected: isSelected, index: index)
-                    .id(index)
-                    .onTapGesture { handleItemSelection(index) }
-            )
-        } else {
-            return AnyView(EmptyView())
-        }
-    }
 
     static func getHelpText() -> [String] {
         return [
