@@ -4,8 +4,6 @@ import SwiftUI
 import Combine
 
 // MARK: - 剪切板模式控制器
-import SwiftUI
-
 @MainActor
 final class ClipModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = ClipModeController()
