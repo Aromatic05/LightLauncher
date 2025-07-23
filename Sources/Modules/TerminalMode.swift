@@ -23,9 +23,9 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     @Published var currentQuery: String = ""
 
     var displayableItems: [any DisplayableItem] {
-        guard !currentQuery.isEmpty else { return [] }
-        let tempItem = TerminalHistoryItem(command: currentQuery)
-        return [tempItem]
+        let currentItem = TerminalHistoryItem(command: currentQuery)
+        let historyItems = historyManager.getMatchingHistory(for: currentQuery)
+        return [currentItem] + historyItems
     }
     let dataDidChange = PassthroughSubject<Void, Never>()
 
@@ -35,10 +35,21 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     }
 
     func executeAction(at index: Int) -> Bool {
-        // 执行命令并保存到历史
-        let result = terminalExecutor.execute(command: currentQuery)
+        // index == 0 执行当前命令，否则执行历史项
+        let items = displayableItems
+        guard index < items.count else { return false }
+        let commandToExecute: String
+        if index == 0 {
+            commandToExecute = currentQuery
+        } else if let historyItem = items[index] as? TerminalHistoryItem {
+            commandToExecute = historyItem.command
+        } else {
+            return false
+        }
+        
+        let result = terminalExecutor.execute(command: commandToExecute)
         if result {
-            historyManager.addCommand(currentQuery)
+            historyManager.addCommand(commandToExecute)
         }
         return result
     }
@@ -50,9 +61,17 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
 
     func makeContentView() -> AnyView {
         let history = historyManager.getMatchingHistory(for: currentQuery)
-        return AnyView(TerminalCommandInputView(searchText: self.currentQuery, historyItems: history, onSelectHistory: { item in
-            self.currentQuery = item.command
-        }))
+        return AnyView(TerminalCommandInputView(
+            searchText: self.currentQuery,
+            historyItems: history,
+            onSelectHistory: { item in
+                self.currentQuery = item.command
+                let result = self.terminalExecutor.execute(command: item.command)
+                if result {
+                    self.historyManager.addCommand(item.command)
+                }
+            }
+        ))
     }
 
     func getHelpText() -> [String] {
