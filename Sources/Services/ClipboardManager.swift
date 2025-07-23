@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// 剪切板历史记录项
-enum ClipboardItem: Codable, Equatable {
+enum ClipboardItem: Codable, Equatable, DisplayableItem {
     case text(String)
     case file(URL)
     
@@ -38,9 +38,6 @@ enum ClipboardItem: Codable, Equatable {
             try container.encode(url, forKey: .value)
         }
     }
-}
-
-extension ClipboardItem: DisplayableItem {
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         AnyView(ClipItemRowView(item: self, isSelected: isSelected, index: index))
