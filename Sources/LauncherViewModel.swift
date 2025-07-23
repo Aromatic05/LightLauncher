@@ -26,9 +26,6 @@ class LauncherViewModel: ObservableObject {
     @Published private var refreshID = UUID()
     private var controllerCancellable: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
-    
-    // ✅ 新增：一个标志位，用于防止在自动补全后立即再次触发补全
-    private var justAutoCompleted = false
 
     var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []
@@ -60,11 +57,8 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Input Handling
     private func bindSearchText() {
-        // ✅ 修改：不再使用 debounce，而是用 .removeDuplicates 来防止重复处理
-        // 这样可以保证 updateCommandSuggestions 的即时性
         $searchText
-            .removeDuplicates() // 只有当文本真正改变时才触发
-            .receive(on: RunLoop.main)
+            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .sink { [weak self] text in
                 self?.handleSearchTextChange(text: text)
             }
@@ -72,15 +66,15 @@ class LauncherViewModel: ObservableObject {
     }
 
     private func handleSearchTextChange(text: String) {
-        // ✅ updateCommandSuggestions 现在会同步执行，并且可能改变 searchText
         updateCommandSuggestions(for: text)
-        // ✅ processInput 也同步执行，保证 UI 状态一致
-        processInput(self.searchText) // 使用 self.searchText，因为它可能已被补全
+        processInput(text)
     }
 
     private func processInput(_ text: String) {
         if text.isEmpty {
-            if self.mode != .launch { self.mode = .launch }
+            if self.mode != .launch {
+                self.mode = .launch
+            }
             controllers[.launch]?.handleInput(arguments: "")
             return
         }
@@ -90,7 +84,8 @@ class LauncherViewModel: ObservableObject {
                 if record.prefix == "/p" {
                     record.controller.handleInput(arguments: arguments)
                 } else {
-                    let fullPluginCommand = (record.prefix + " " + arguments).trimmingCharacters(in: .whitespaces)
+                    let fullPluginCommand = (record.prefix + " " + arguments).trimmingCharacters(
+                        in: .whitespaces)
                     record.controller.handleInput(arguments: fullPluginCommand)
                 }
             } else {
@@ -98,16 +93,23 @@ class LauncherViewModel: ObservableObject {
             }
             return
         }
-        if self.mode != .launch { self.mode = .launch }
+
+        if self.mode != .launch {
+            self.mode = .launch
+        }
+
         controllers[.launch]?.handleInput(arguments: text)
     }
 
     // MARK: - Mode & Controller Switching
     private func modeSwitchIfNeeded(to newMode: LauncherMode) {
-        if self.mode != newMode { self.mode = newMode }
+        if self.mode != newMode {
+            self.mode = newMode
+        }
     }
 
     func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
+        // 【修复】安全地解包可选的 oldMode
         if let mode = oldMode, let oldController = controllers[mode] {
             oldController.cleanup()
         }
@@ -120,13 +122,16 @@ class LauncherViewModel: ObservableObject {
         guard let controller = activeController else { return }
         controllerCancellable = controller.dataDidChange
             .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.refreshID = UUID() }
+            .sink { [weak self] in
+                self?.refreshID = UUID()
+            }
         refreshID = UUID()
     }
 
     // MARK: - UI Interaction
     func executeSelectedAction() -> Bool {
-        guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count else { return false }
+        guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count
+        else { return false }
         return activeController?.executeAction(at: selectedIndex) ?? false
     }
 
@@ -150,15 +155,7 @@ class LauncherViewModel: ObservableObject {
     }
 
     // MARK: - Command Suggestions
-    
-    /// ✅ 【已增强】现在包含自动补全逻辑
     private func updateCommandSuggestions(for text: String) {
-        // 如果刚刚执行了自动补全，则跳过此次处理，防止循环
-        if justAutoCompleted {
-            justAutoCompleted = false
-            return
-        }
-        
         if SettingsManager.shared.showCommandSuggestions && text.hasPrefix("/") {
             let newSuggestions = LauncherCommand.getSuggestions(for: text)
             if self.commandSuggestions.map({ $0.prefix }) != newSuggestions.map({ $0.prefix }) {
@@ -168,32 +165,14 @@ class LauncherViewModel: ObservableObject {
             if self.showCommandSuggestions != shouldShow {
                 self.showCommandSuggestions = shouldShow
             }
-            
-            // --- ✅ 自动补全逻辑 ---
-            // 1. 只有一条建议
-            // 2. 并且当前输入文本完全等于该建议的前缀
-            if newSuggestions.count == 1, let uniqueSuggestion = newSuggestions.first, uniqueSuggestion.prefix == text {
-                // 调用补全方法
-                applySelectedCommand(uniqueSuggestion, isAutoCompletion: true)
-            }
-            
         } else {
             if showCommandSuggestions { showCommandSuggestions = false }
             if !commandSuggestions.isEmpty { commandSuggestions = [] }
         }
     }
 
-    /// ✅ 【已增强】现在可以处理自动补全的情况
-    func applySelectedCommand(_ command: CommandRecord, isAutoCompletion: Bool = false) {
-        // 如果是自动补全，设置标志位
-        if isAutoCompletion {
-            self.justAutoCompleted = true
-        }
-        
-        // 补全文本
+    func applySelectedCommand(_ command: CommandRecord) {
         searchText = command.prefix + " "
-        
-        // 隐藏建议列表
         showCommandSuggestions = false
         commandSuggestions = []
     }
