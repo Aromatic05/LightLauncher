@@ -2,46 +2,6 @@ import SwiftUI
 import AppKit
 
 // MARK: - Web Mode Views
-
-/// 负责显示 Web 模式下的搜索结果列表
-struct WebModeResultsView: View {
-    @ObservedObject var viewModel: LauncherViewModel
-    
-    var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(spacing: 4) {
-                    ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
-                        if let browserItem = item as? BrowserItem {
-                            AnyView(
-                                BrowserItemRowView(
-                                    item: browserItem,
-                                    isSelected: index == viewModel.selectedIndex,
-                                    index: index
-                                )
-                                .onTapGesture {
-                                    viewModel.selectedIndex = index
-                                }
-                            )
-                            .id(index)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
-            .onChange(of: viewModel.selectedIndex) { newIndex in
-                if newIndex < viewModel.displayableItems.count {
-                    let selectedItemID = viewModel.displayableItems[newIndex].id
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        proxy.scrollTo(selectedItemID, anchor: .center)
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// 当没有搜索结果时，显示的特定输入视图
 struct WebCommandInputView: View {
     let currentQuery: String
