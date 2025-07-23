@@ -67,8 +67,9 @@ class BrowserDataManager {
     private var lastLoadTime: Date?
     private var enabledBrowsers: Set<BrowserType>
     
-    // 新增：用于URL净化的常量
     private let URL_SEGMENT_MAX_LENGTH = 35
+    // 新增：定义分层搜索的阈值
+    private let SHORT_QUERY_THRESHOLD = 2
     
     private init() {
         enabledBrowsers = ConfigManager.shared.getEnabledBrowsers()
@@ -108,7 +109,7 @@ class BrowserDataManager {
     private struct SearchWeights {
         static let urlMatch: Double = 10.0
         static let titleMatch: Double = 6.0
-        static let prefixMatchBonus: Double = 4.0
+        static let prefixMatchBonus: Double = 5.0 // 稍微提高前缀匹配奖励
         static let isBookmarkBonus: Double = 3.0
         static let visitCountMultiplier: Double = 1.2
         static let recencyScore: Double = 5.0
@@ -121,33 +122,21 @@ class BrowserDataManager {
         let baseScore: Double
         let isBookmark: Bool
         let lowercasedTitle: String
-        // 修改：使用净化后的“可搜索URL”
         let searchableUrl: String
     }
     
-    // 新增：URL净化辅助函数
     private func createSearchableUrl(from urlString: String) -> String {
-        guard let urlComponents = URLComponents(string: urlString) else {
-            return urlString.lowercased()
-        }
-        
-        // 域名永远保留
+        guard let urlComponents = URLComponents(string: urlString) else { return urlString.lowercased() }
         let host = urlComponents.host ?? ""
-        
-        // 过滤路径部分
         let pathSegments = urlComponents.path.split(separator: "/")
-        let filteredPath = pathSegments.filter { segment in
-            // 规则：保留短的片段，或者不包含数字的长片段
-            return segment.count < URL_SEGMENT_MAX_LENGTH || !segment.contains(where: \.isNumber)
+        let filteredPath = pathSegments.filter {
+            return $0.count < URL_SEGMENT_MAX_LENGTH || !$0.contains(where: \.isNumber)
         }.joined(separator: "/")
-        
-        // 重新组合域名和净化后的路径
         return (host + "/" + filteredPath).lowercased()
     }
     
     private func prepareAndPreScoreItems(bookmarks: [BrowserItem], history: [BrowserItem]) -> [PreScoredItem] {
         var uniqueItems: [String: BrowserItem] = [:]
-
         for bookmark in bookmarks { uniqueItems[bookmark.url] = bookmark }
         for historyItem in history where uniqueItems[historyItem.url] == nil {
             uniqueItems[historyItem.url] = historyItem
@@ -168,7 +157,6 @@ class BrowserDataManager {
                 baseScore: baseScore,
                 isBookmark: isBookmark,
                 lowercasedTitle: item.title.lowercased(),
-                // 修改：调用净化函数生成可搜索URL
                 searchableUrl: createSearchableUrl(from: item.url)
             )
         }
@@ -178,33 +166,54 @@ class BrowserDataManager {
         let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if queryLower.isEmpty { return [] }
 
-        let searchResults = allItems.compactMap { preScoredItem -> (item: BrowserItem, score: Double)? in
-            var queryScore: Double = 0.0
-            
-            // 修改：现在匹配净化后的 URL
-            if preScoredItem.searchableUrl.contains(queryLower) {
-                queryScore += SearchWeights.urlMatch
-                // 域名匹配奖励（通过hasPrefix间接实现）
+        var searchResults: [(item: BrowserItem, score: Double)]
+
+        // 核心优化：根据查询长度选择不同策略
+        if queryLower.count <= SHORT_QUERY_THRESHOLD {
+            // --- 快速路径：仅限前缀匹配，保证极速响应 ---
+            searchResults = allItems.compactMap { preScoredItem -> (item: BrowserItem, score: Double)? in
+                var queryScore: Double = 0.0
+                
                 if preScoredItem.searchableUrl.hasPrefix(queryLower) {
-                    queryScore += SearchWeights.hostMatchBonus
+                    queryScore += SearchWeights.urlMatch + SearchWeights.hostMatchBonus
                 }
-            }
-            
-            if preScoredItem.lowercasedTitle.contains(queryLower) {
-                queryScore += SearchWeights.titleMatch
+                
                 if preScoredItem.lowercasedTitle.hasPrefix(queryLower) {
-                    queryScore += SearchWeights.prefixMatchBonus
+                    queryScore += SearchWeights.titleMatch
                 }
+
+                if queryScore == 0 { return nil }
+                
+                let finalScore = preScoredItem.baseScore + queryScore + SearchWeights.prefixMatchBonus
+                return (item: preScoredItem.item, score: finalScore)
             }
-            
-            if queryScore == 0 { return nil }
-            
-            var finalScore = preScoredItem.baseScore + queryScore
-            if preScoredItem.isBookmark {
-                finalScore += SearchWeights.isBookmarkBonus
+        } else {
+            // --- 完整路径：执行高精度加权搜索 ---
+            searchResults = allItems.compactMap { preScoredItem -> (item: BrowserItem, score: Double)? in
+                var queryScore: Double = 0.0
+                
+                if preScoredItem.searchableUrl.contains(queryLower) {
+                    queryScore += SearchWeights.urlMatch
+                    if preScoredItem.searchableUrl.hasPrefix(queryLower) {
+                        queryScore += SearchWeights.hostMatchBonus
+                    }
+                }
+                
+                if preScoredItem.lowercasedTitle.contains(queryLower) {
+                    queryScore += SearchWeights.titleMatch
+                    if preScoredItem.lowercasedTitle.hasPrefix(queryLower) {
+                        queryScore += SearchWeights.prefixMatchBonus
+                    }
+                }
+                
+                if queryScore == 0 { return nil }
+                
+                var finalScore = preScoredItem.baseScore + queryScore
+                if preScoredItem.isBookmark {
+                    finalScore += SearchWeights.isBookmarkBonus
+                }
+                return (item: preScoredItem.item, score: finalScore)
             }
-            
-            return (item: preScoredItem.item, score: finalScore)
         }
         
         return searchResults.sorted { $0.score > $1.score }.map { $0.item }
