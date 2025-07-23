@@ -1,19 +1,10 @@
 import SwiftUI
 import Combine
 
-struct CurrentCommandItem: DisplayableItem {
-    @ViewBuilder
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(TerminalCommandInputView(searchText: title))
-    }
-    let id = UUID()
-    let title: String
-    var subtitle: String? { "将要执行的命令: \(title)" }
-    var icon: NSImage? { nil }
-}
-
 @MainActor
 final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
+    // 终端命令历史管理器
+    private let historyManager = TerminalHistoryManager.shared
     static let shared = TerminalModeController()
     private override init() {}
 
@@ -32,25 +23,36 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     @Published var currentQuery: String = ""
 
     var displayableItems: [any DisplayableItem] {
-        return currentQuery.isEmpty ? [] : [CurrentCommandItem(title: currentQuery)]
+        guard !currentQuery.isEmpty else { return [] }
+        let tempItem = TerminalHistoryItem(command: currentQuery)
+        return [tempItem]
     }
     let dataDidChange = PassthroughSubject<Void, Never>()
 
     func handleInput(arguments: String) {
         self.currentQuery = arguments
+        dataDidChange.send()
     }
 
     func executeAction(at index: Int) -> Bool {
-        // 职责极度简化：直接调用服务来执行命令
-        return terminalExecutor.execute(command: currentQuery)
+        // 执行命令并保存到历史
+        let result = terminalExecutor.execute(command: currentQuery)
+        if result {
+            historyManager.addCommand(currentQuery)
+        }
+        return result
     }
 
     func cleanup() {
         self.currentQuery = ""
+        dataDidChange.send()
     }
 
     func makeContentView() -> AnyView {
-        return AnyView(TerminalCommandInputView(searchText: self.currentQuery))
+        let history = historyManager.getMatchingHistory(for: currentQuery)
+        return AnyView(TerminalCommandInputView(searchText: self.currentQuery, historyItems: history, onSelectHistory: { item in
+            self.currentQuery = item.command
+        }))
     }
 
     func getHelpText() -> [String] {
