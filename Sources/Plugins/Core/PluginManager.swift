@@ -3,6 +3,8 @@ import Foundation
 /// 插件管理器 - 负责插件的注册、管理和生命周期控制
 @MainActor
 class PluginManager: ObservableObject {
+    // 假设 CommandRegistry 是全局单例
+    private let commandRegistry = CommandRegistry.shared
     static let shared = PluginManager()
     
     @Published private(set) var plugins: [String: Plugin] = [:]
@@ -46,23 +48,22 @@ class PluginManager: ObservableObject {
         for pluginDirectory in allPluginDirs {
             do {
                 let plugin = try loader.load(from: pluginDirectory)
-                
                 // 检查是否已存在同名插件
                 if let existingPlugin = plugins[plugin.name] {
                     print("警告: 插件 '\(plugin.name)' 已存在，将被替换")
                     print("  现有版本: \(existingPlugin.version)")
                     print("  新版本: \(plugin.version)")
                 }
-                
                 plugins[plugin.name] = plugin
+                // ✅ 新增：加载成功后，立即注册命令
+                if plugin.isEnabled {
+                    commandRegistry.register(plugin: plugin, with: PluginModeController.shared)
+                }
                 loadedCount += 1
                 loadingProgress = Double(loadedCount) / Double(totalCount)
-                
                 print("成功加载插件: \(plugin.name) v\(plugin.version)")
-                
             } catch {
                 print("加载插件失败 (\(pluginDirectory.lastPathComponent)): \(error.localizedDescription)")
-                
                 loadedCount += 1
                 loadingProgress = Double(loadedCount) / Double(totalCount)
             }
@@ -73,6 +74,8 @@ class PluginManager: ObservableObject {
     
     /// 重新加载所有插件
     func reloadPlugins() async {
+        // ✅ 重载前，先清空注册表中的所有旧插件命令
+        commandRegistry.unregisterAllPluginCommands()
         plugins.removeAll()
         await loadAllPlugins()
     }
@@ -130,6 +133,8 @@ class PluginManager: ObservableObject {
         if let plugin = plugins[name] {
             plugin.isEnabled = true
             plugins[name] = plugin
+            // ✅ 新增：启用插件时，向注册表添加其命令
+            commandRegistry.register(plugin: plugin, with: PluginModeController.shared)
             print("插件已启用: \(name)")
         }
     }
@@ -140,6 +145,8 @@ class PluginManager: ObservableObject {
         if let plugin = plugins[name] {
             plugin.isEnabled = false
             plugins[name] = plugin
+            // ✅ 新增：禁用插件时，从注册表移除其命令
+            commandRegistry.unregister(prefix: plugin.command)
             print("插件已禁用: \(name)")
         }
     }

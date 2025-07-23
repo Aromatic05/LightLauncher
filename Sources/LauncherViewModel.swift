@@ -1,6 +1,6 @@
-import Foundation
-import Combine
 import AppKit
+import Combine
+import Foundation
 
 @MainActor
 class LauncherViewModel: ObservableObject {
@@ -35,7 +35,7 @@ class LauncherViewModel: ObservableObject {
     var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []
     }
-    
+
     var hasResults: Bool {
         !displayableItems.isEmpty
     }
@@ -53,7 +53,7 @@ class LauncherViewModel: ObservableObject {
             LaunchModeController.shared, KillModeController.shared,
             FileModeController.shared, PluginModeController.shared,
             SearchModeController.shared, WebModeController.shared,
-            ClipModeController.shared, TerminalModeController.shared
+            ClipModeController.shared, TerminalModeController.shared,
         ]
         allControllers.forEach { controller in
             controllers[controller.mode] = controller
@@ -78,26 +78,39 @@ class LauncherViewModel: ObservableObject {
 
     private func processInput(_ text: String) {
         if text.isEmpty {
-            if self.mode != .launch { self.mode = .launch }
+            if self.mode != .launch {
+                self.mode = .launch
+            }
             controllers[.launch]?.handleInput(arguments: "")
             return
         }
         if let (record, arguments) = CommandRegistry.shared.findCommand(for: text) {
             modeSwitchIfNeeded(to: record.mode)
-            record.controller.handleInput(arguments: arguments)
+
+            if record.mode == .plugin {
+                let fullPluginCommand = (record.prefix + " " + arguments).trimmingCharacters(
+                    in: .whitespaces)
+                record.controller.handleInput(arguments: fullPluginCommand)
+            } else {
+                record.controller.handleInput(arguments: arguments)
+            }
             return
         }
-        if self.mode != .launch { self.mode = .launch }
+
+        if self.mode != .launch {
+            self.mode = .launch
+        }
+
         controllers[.launch]?.handleInput(arguments: text)
     }
-    
+
     // MARK: - Mode & Controller Switching
     private func modeSwitchIfNeeded(to newMode: LauncherMode) {
         if self.mode != newMode {
             self.mode = newMode
         }
     }
-    
+
     func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
         // 【修复】安全地解包可选的 oldMode
         if let mode = oldMode, let oldController = controllers[mode] {
@@ -106,7 +119,7 @@ class LauncherViewModel: ObservableObject {
         activeController = controllers[newMode]
         selectedIndex = 0
     }
-    
+
     private func setupControllerSubscription() {
         controllerCancellable?.cancel()
         guard let controller = activeController else { return }
@@ -120,7 +133,8 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - UI Interaction
     func executeSelectedAction() -> Bool {
-        guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count else { return false }
+        guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count
+        else { return false }
         return activeController?.executeAction(at: selectedIndex) ?? false
     }
 
@@ -133,21 +147,21 @@ class LauncherViewModel: ObservableObject {
         guard !displayableItems.isEmpty else { return }
         selectedIndex = selectedIndex < displayableItems.count - 1 ? selectedIndex + 1 : 0
     }
-    
+
     func clearSearch() {
         searchText = ""
         selectedIndex = 0
     }
-    
+
     func hideLauncher() {
         NotificationCenter.default.post(name: .hideWindow, object: nil)
     }
-    
+
     // MARK: - Command Suggestions
     private func updateCommandSuggestions(for text: String) {
         if SettingsManager.shared.showCommandSuggestions && text.hasPrefix("/") {
             let newSuggestions = LauncherCommand.getSuggestions(for: text)
-            if self.commandSuggestions.map({$0.prefix}) != newSuggestions.map({$0.prefix}) {
+            if self.commandSuggestions.map({ $0.prefix }) != newSuggestions.map({ $0.prefix }) {
                 self.commandSuggestions = newSuggestions
             }
             let shouldShow = !newSuggestions.isEmpty

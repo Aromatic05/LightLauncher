@@ -23,7 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         setupStatusMenuManager()
         setupHotkeyManager()
-        // setupPluginSystem()
+        setupPluginSystem()
 
     }
     
@@ -49,16 +49,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    // private func setupPluginSystem() {
-    //     // 初始化插件管理器并发现插件
-    //     Task {
-    //         await PluginManager.shared.initialize()
-    //         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-    //             let plugins = PluginManager.shared.getLoadedPlugins()
-    //             print("✅ 插件系统就绪，已加载 \(plugins.count) 个插件")
-    //         }
-    //     }
-    // }
+    private func setupPluginSystem() {
+        // 初始化插件管理器并发现插件
+        Task {
+            await PluginManager.shared.loadAllPlugins()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                let plugins = PluginManager.shared.getLoadedPlugins()
+                print("✅ 插件系统就绪，已加载 \(plugins.count) 个插件")
+            }
+        }
+    }
 
     deinit {
         // Cleanup will be handled when the app terminates

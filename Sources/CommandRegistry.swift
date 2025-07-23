@@ -1,5 +1,3 @@
-// CommandRegistry.swift
-
 import Foundation
 
 /**
@@ -17,8 +15,6 @@ struct CommandRecord {
     
     /// 命令所关联的启动器模式。
     let mode: LauncherMode
-    
-    // --- 用于快速呈现的UI元数据缓存 ---
     
     /// 命令的显示名称，例如 "Search Web"
     let displayName: String
@@ -118,6 +114,57 @@ final class CommandRegistry {
         }
         
         return nil
+    }
+
+    // ✅ 【新增】注册插件命令的专用方法
+    ///
+    /// 这个方法会将一个插件的命令前缀，与统一的 PluginModeController 关联起来。
+    ///
+    /// - Parameters:
+    ///   - plugin: 要注册的插件。
+    ///   - controller: 统一处理所有插件逻辑的 PluginModeController 实例。
+    func register(plugin: Plugin, with controller: ModeStateController) {
+        let prefix = plugin.command
+        guard !prefix.isEmpty else { return }
+        
+        // 安全校验
+        guard controller.mode == .plugin else {
+            print("❌ Error: Trying to register a plugin with a non-plugin controller.")
+            return
+        }
+        guard prefixMap[prefix] == nil else {
+            print("⚠️ Warning: Plugin command prefix '\(prefix)' is already registered. Ignoring.")
+            return
+        }
+        
+        // 为插件创建一个专属的 CommandRecord，但控制器指向统一的 PluginModeController
+        let record = CommandRecord(
+            prefix: prefix,
+            mode: .plugin, // 模式总是 .plugin
+            displayName: plugin.manifest.displayName,
+            iconName: plugin.manifest.iconName ?? "puzzlepiece.extension",
+            description: plugin.description,
+            controller: controller // 执行者是统一的插件控制器
+        )
+        
+        prefixMap[prefix] = record
+        print("🧩 Plugin command registered: '\(record.prefix)' -> \(record.displayName)")
+    }
+
+    func unregister(prefix: String) {
+        if prefixMap.removeValue(forKey: prefix) != nil {
+            print("Unregistered command for prefix: \(prefix)")
+        }
+    }
+    
+    func unregisterAllPluginCommands() {
+        let pluginPrefixes = prefixMap.values
+            .filter { $0.mode == .plugin && $0.prefix != "/p" } // 排除主 /p 命令
+            .map { $0.prefix }
+            
+        for prefix in pluginPrefixes {
+            unregister(prefix: prefix)
+        }
     }
     
     /**
