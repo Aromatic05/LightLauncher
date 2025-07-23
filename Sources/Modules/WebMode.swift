@@ -4,16 +4,12 @@ import SwiftUI
 import Combine
 
 // MARK: - 网页模式控制器
-
 @MainActor
 final class WebModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = WebModeController()
     private override init() {
-        // Pre-load browser data if needed
         BrowserDataManager.shared.loadBrowserData()
     }
-
-    // MARK: - ModeStateController Protocol Implementation
 
     // 1. 身份与元数据
     let mode: LauncherMode = .web
@@ -67,16 +63,8 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
         self.currentQuery = "" // 清理时也要重置
     }
 
-    /// 【已修复】这个方法现在会根据是否有数据显示正确的视图
     func makeContentView() -> AnyView {
-        // 如果有可显示的项目，就使用通用的结果列表视图
-        if !displayableItems.isEmpty {
-            // 假设您的通用列表视图是 ResultsListView
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        } else {
-            // 否则，显示特定的输入视图，并传递纯净的查询数据
-            return AnyView(WebCommandInputView(currentQuery: self.currentQuery))
-        }
+        return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
     }
 
     func getHelpText() -> [String] {

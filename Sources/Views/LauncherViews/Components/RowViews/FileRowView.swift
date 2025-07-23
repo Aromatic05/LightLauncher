@@ -118,3 +118,13 @@ struct FileRowView: View {
         .contentShape(Rectangle())
     }
 }
+
+// MARK: - 日期格式化扩展
+extension DateFormatter {
+    static let fileDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }()
+}
