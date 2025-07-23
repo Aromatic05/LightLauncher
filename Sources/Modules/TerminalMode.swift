@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import Combine
 
 struct CurrentCommandItem: DisplayableItem {
     @ViewBuilder
@@ -37,6 +38,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         // This mode only shows one item: the command to be executed.
         return currentQuery.isEmpty ? [] : [CurrentCommandItem(title: currentQuery)]
     }
+    let dataDidChange = PassthroughSubject<Void, Never>()
 
     // 2. 核心逻辑
     func handleInput(arguments: String) {

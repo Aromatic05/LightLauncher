@@ -1,9 +1,6 @@
 import Foundation
 import SwiftUI
-
-/// 插件模式控制器 - 插件系统的核心控制器
-/// 负责集成所有插件组件，提供统一的插件管理接口
-import SwiftUI
+import Combine
 
 @MainActor
 final class PluginModeController: ObservableObject, ModeStateController {
@@ -22,6 +19,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
     var modeDescription: String? = "Extend functionality with plugins"
 
     @Published private(set) var displayableItems: [any DisplayableItem] = []
+    let dataDidChange = PassthroughSubject<Void, Never>()
 
     // 2. 核心逻辑
     func handleInput(arguments: String) {

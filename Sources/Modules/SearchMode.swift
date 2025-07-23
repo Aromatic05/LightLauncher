@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import Combine
 
 // MARK: - 当前搜索项结构体（文件级）
 struct CurrentQueryItem: DisplayableItem {
@@ -40,6 +41,7 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
         items.append(contentsOf: searchHistory)
         return items
     }
+    let dataDidChange = PassthroughSubject<Void, Never>()
 
     // 2. 核心逻辑
     func handleInput(arguments: String) {

@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import Combine
 
 // MARK: - 运行中应用信息结构
 struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
@@ -102,6 +103,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     let modeDescription: String? = "Force quit a running application"
 
     @Published var displayableItems: [any DisplayableItem] = []
+    let dataDidChange = PassthroughSubject<Void, Never>()
     
     // 2. 核心逻辑
     func handleInput(arguments: String) {

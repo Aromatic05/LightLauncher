@@ -95,6 +95,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     
     /// 用于 UI 绑定的可显示项目
     @Published var displayableItems: [any DisplayableItem] = []
+    let dataDidChange = PassthroughSubject<Void, Never>()
 
     /// 创建 SwiftUI 视图
     func makeContentView() -> AnyView {

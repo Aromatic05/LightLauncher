@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import Combine
 
 // MARK: - 文件信息结构
 struct FileItem: Identifiable, Hashable, DisplayableItem {
@@ -210,6 +211,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     let modeDescription: String? = "Browse your file system"
 
     @Published var displayableItems: [any DisplayableItem] = []
+    let dataDidChange = PassthroughSubject<Void, Never>()
     
     // 2. 核心逻辑
     func handleInput(arguments: String) {

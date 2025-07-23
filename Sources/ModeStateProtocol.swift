@@ -18,6 +18,7 @@ protocol ModeStateController: AnyObject {
     static var shared: Self { get }
     /// 当前模式下所有可显示项（用于 UI 统一绑定）
     var displayableItems: [any DisplayableItem] { get }
+    var dataDidChange: PassthroughSubject<Void, Never> { get }
 
     // 新增：模式元信息属性
     var displayName: String { get }

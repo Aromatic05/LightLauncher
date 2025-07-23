@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import SwiftUI
+import Combine
 
 // MARK: - 剪切板模式控制器
 import SwiftUI
@@ -21,6 +22,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     let modeDescription: String? = "Browse and paste clipboard history (text/files)"
 
     @Published var displayableItems: [any DisplayableItem] = []
+    let dataDidChange = PassthroughSubject<Void, Never>()
 
     // 2. 核心逻辑
     func handleInput(arguments: String) {

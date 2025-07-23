@@ -1,9 +1,9 @@
 import Foundation
 import AppKit
 import SwiftUI
+import Combine
 
 // MARK: - 网页模式控制器
-import SwiftUI
 
 @MainActor
 final class WebModeController: NSObject, ModeStateController, ObservableObject {
@@ -24,6 +24,7 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
     let modeDescription: String? = "Open a URL or search for a site"
 
     @Published var displayableItems: [any DisplayableItem] = []
+    let dataDidChange = PassthroughSubject<Void, Never>()
     
     // 2. 核心逻辑
     func handleInput(arguments: String) {
