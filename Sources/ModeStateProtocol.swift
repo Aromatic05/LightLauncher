@@ -48,5 +48,5 @@ protocol ModeStateController: AnyObject {
 
     func makeContentView() -> AnyView
 
-    static func getHelpText() -> [String]
+    func getHelpText() -> [String]
 }

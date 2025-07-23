@@ -320,7 +320,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(FileCommandInputView(currentPath: NSHomeDirectory()))
         }
     }
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         return [
             "Browse files and folders starting from home directory",
             "Press Enter to open files or navigate folders",

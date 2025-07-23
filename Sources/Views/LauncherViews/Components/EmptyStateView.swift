@@ -75,23 +75,6 @@ struct EmptyStateView: View {
     }
     
     private func getHelpText(for mode: LauncherMode) -> [String] {
-        switch mode {
-        case .launch:
-            return LaunchModeController.getHelpText()
-        case .kill:
-            return KillModeController.getHelpText()
-        case .search:
-            return SearchModeController.getHelpText()
-        case .web:
-            return WebModeController.getHelpText()
-        case .terminal:
-            return TerminalModeController.getHelpText()
-        case .file:
-            return FileModeController.getHelpText()
-        case .clip:
-            return ClipModeController.getHelpText()
-        case .plugin:
-            return ["Plugin mode", "Functionality provided by active plugin"]
-        }
+        LauncherViewModel.shared.activeController?.getHelpText() ?? []
     }
 }

@@ -209,7 +209,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         }
     }
 
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         return [
             "Type to search applications",
             "Press ↑↓ arrows or numbers 1-6 to select",

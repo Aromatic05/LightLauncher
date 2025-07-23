@@ -237,7 +237,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         return AnyView(TerminalCommandInputView(searchText: LauncherViewModel.shared.searchText))
     }
 
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         return [
             "Type after /t to execute terminal command",
             "Press Enter to run in Terminal",

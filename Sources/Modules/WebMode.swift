@@ -143,7 +143,7 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject  
         return text.contains(".") && !text.contains(" ") && !text.hasPrefix(".")
     }
 
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         return [
             "Type after /w to open website or URL",
             "Press Enter to open in browser",

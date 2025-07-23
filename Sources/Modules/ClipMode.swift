@@ -107,7 +107,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         }
     }
 
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         return [
             "浏览和粘贴剪切板历史（文本/文件）",
             "回车复制选中项到剪切板",

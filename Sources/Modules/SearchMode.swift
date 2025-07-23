@@ -162,7 +162,7 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
         return AnyView(SearchHistoryView(viewModel: LauncherViewModel.shared))
     }
 
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         return [
             "Type after /s to search the web",
             "Press Enter to execute search",

@@ -125,7 +125,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
         return AnyView(PluginModeView(viewModel: LauncherViewModel.shared))
     }
 
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         let pluginManager = PluginManager.shared
         let plugins = pluginManager.getEnabledPlugins()
 

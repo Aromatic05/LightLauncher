@@ -147,7 +147,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
         self.displayableItems = []
     }
 
-    static func getHelpText() -> [String] {
+    func getHelpText() -> [String] {
         return [
             "Type '/k ' (with space) then search text to find running apps",
             "Example: '/k chrome' to search for Chrome",
