@@ -18,6 +18,7 @@ protocol ModeStateController: AnyObject {
     static var shared: Self { get }
     /// 当前模式下所有可显示项（用于 UI 统一绑定）
     var displayableItems: [any DisplayableItem] { get }
+    /// 用于通知数据变化的发布者
     var dataDidChange: PassthroughSubject<Void, Never> { get }
 
     // 新增：模式元信息属性
@@ -29,23 +30,13 @@ protocol ModeStateController: AnyObject {
     var prefix: String? { get }
     var mode: LauncherMode { get }
 
-    // 1. 触发条件：什么输入会激活该模式
-    // 返回 true 表示该输入应激活本模式
-    // func shouldActivate(for text: String) -> Bool
-
-    // // 2. 进入模式：初始化 ViewModel 状态
-    // func enterMode(with text: String)
-
-    // 3. 处理输入：模式激活后每次输入的处理（如搜索、过滤等）
+    // 处理输入：模式激活后每次输入的处理（如搜索、过滤等）
     func handleInput(arguments: String)
 
-    // 4. 执行动作：用户确认选择时的操作
+    // 执行动作：用户确认选择时的操作
     func executeAction(at index: Int) -> Bool
 
-    // 5. 退出条件：是否应退出本模式，返回 true 表示应回到默认模式
-    // func shouldExit(for text: String) -> Bool
-
-    // 6. 模式退出或切换时的清理操作
+    // 模式退出或切换时的清理操作
     func cleanup()
 
     func makeContentView() -> AnyView
