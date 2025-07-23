@@ -1,6 +1,6 @@
+import AppKit
 // file: LauncherMode.swift
 import Foundation
-import AppKit
 
 // MARK: - 启动器模式枚举（已简化）
 enum LauncherMode: String, CaseIterable {
@@ -21,7 +21,7 @@ enum LauncherMode: String, CaseIterable {
     var description: String? {
         LauncherViewModel.shared.controllers[self]?.modeDescription
     }
-    
+
     /// 检查模式是否在设置中启用，此功能依然需要。
     @MainActor
     func isEnabled() -> Bool {
@@ -34,7 +34,7 @@ enum LauncherMode: String, CaseIterable {
 // MARK: - 命令建议提供者
 // 这个结构体的职责现在是作为UI层和CommandRegistry之间获取建议的桥梁。
 struct LauncherCommand {
-    
+
     /**
      * 根据用户输入，从注册中心获取命令建议。
      *
@@ -43,20 +43,13 @@ struct LauncherCommand {
      */
     @MainActor
     static func getSuggestions(for text: String) -> [CommandRecord] {
-        // 如果输入不是以 "/" 开头，则不提供任何命令建议。
-        guard text.hasPrefix("/") else {
+        guard let firstChar = text.first else {
             return []
         }
-        
-        // 从注册中心一次性获取所有缓存好的命令记录。
-        let allCommands = CommandRegistry.shared.getCommandSuggestions()
-        
-        // 如果用户只输入了 "/"，显示所有可用的命令。
-        if text == "/" {
-            return allCommands
+        guard !firstChar.isLetter else {
+            return []
         }
-        
-        // 否则，在缓存的记录中进行高效过滤。
+        let allCommands = CommandRegistry.shared.getCommandSuggestions()
         return allCommands.filter { $0.prefix.hasPrefix(text) }
     }
 }
