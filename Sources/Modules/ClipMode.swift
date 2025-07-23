@@ -63,7 +63,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
 
     func makeContentView() -> AnyView {
         if !displayableItems.isEmpty {
-            return AnyView(ClipModeResultsView(viewModel: LauncherViewModel.shared))
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
             return AnyView(EmptyStateView(mode: .clip, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }

@@ -60,19 +60,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     }
 
     func makeContentView() -> AnyView {
-        // let history = historyManager.getMatchingHistory(for: currentQuery)
         return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        // return AnyView(TerminalCommandInputView(
-        //     searchText: self.currentQuery,
-        //     historyItems: history,
-        //     onSelectHistory: { item in
-        //         self.currentQuery = item.command
-        //         let result = self.terminalExecutor.execute(command: item.command)
-        //         if result {
-        //             self.historyManager.addCommand(item.command)
-        //         }
-        //     }
-        // ))
     }
 
     func getHelpText() -> [String] {
