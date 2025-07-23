@@ -52,10 +52,7 @@ struct AppMatch {
 // MARK: - 启动模式控制器
 @MainActor
 final class LaunchModeController: NSObject, ModeStateController, ObservableObject {
-    // MARK: - Properties
     static let shared = LaunchModeController()
-    
-    // --- ModeStateController 协议实现 ---
     
     // 1. 身份与元数据
     let mode: LauncherMode = .launch
@@ -66,10 +63,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     let modeDescription: String? = nil
     
     // 2. 核心逻辑 (单一输入入口)
-    
-    /// 【最终版】处理输入的核心方法。
-    /// 对于 LaunchModeController，这是它的主要工作：根据输入文本过滤应用列表。
-    /// - Parameter arguments: 用户的完整输入文本。
     func handleInput(arguments: String) {
         filterApps(searchText: arguments)
     }
@@ -120,12 +113,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             "Press Esc to close"
         ]
     }
-    
-    // ❌ --- 已移除的旧方法 --- ❌
-    // func shouldActivate(for text: String) -> Bool
-    // func enterMode(with text: String)
-    // func shouldExit(for text: String) -> Bool
-    //   -> 原因：所有这些模式切换的决策逻辑，现在都已上移到 LauncherViewModel.processInput 集中处理。
 
     // MARK: - Private Properties & Methods
     
