@@ -3,7 +3,7 @@ import SQLite3
 import AppKit
 import SwiftUI
 
-// MARK: - 浏览器数据项
+// MARK: - 浏览器数据项 (无变动)
 struct BrowserItem: Identifiable, Hashable, DisplayableItem {
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
@@ -16,12 +16,10 @@ struct BrowserItem: Identifiable, Hashable, DisplayableItem {
     let source: BrowserType
     let lastVisited: Date?
     let visitCount: Int
-    // 新增：用于自定义显示
     let subtitle: String?
     let iconName: String?
     let actionHint: String?
     var icon: NSImage? { nil }
-    // 兼容 DisplayableItem 协议
     var displaySubtitle: String? { subtitle ?? url }
     
     init(title: String, url: String, type: BrowserItemType, source: BrowserType = .safari, lastVisited: Date? = nil, visitCount: Int = 0, subtitle: String? = nil, iconName: String? = nil, actionHint: String? = nil) {
@@ -40,7 +38,7 @@ struct BrowserItem: Identifiable, Hashable, DisplayableItem {
 enum BrowserItemType {
     case bookmark
     case history
-    case input // 新增：当前输入项
+    case input
 }
 
 enum BrowserType: String, CaseIterable {
@@ -50,35 +48,27 @@ enum BrowserType: String, CaseIterable {
     case firefox = "Firefox"
     case arc = "Arc"
     
-    var displayName: String {
-        return self.rawValue
-    }
-    
+    var displayName: String { self.rawValue }
     var isInstalled: Bool {
-        let appPaths = [
-            "/Applications/\(self.rawValue).app",
-            "/System/Applications/\(self.rawValue).app",
-            "/Applications/Microsoft Edge.app" // Edge 特殊处理
-        ]
-        
+        let appPaths = ["/Applications/\(self.rawValue).app", "/System/Applications/\(self.rawValue).app"]
         switch self {
-        case .edge:
-            return FileManager.default.fileExists(atPath: "/Applications/Microsoft Edge.app")
-        default:
-            return appPaths.contains { FileManager.default.fileExists(atPath: $0) }
+        case .edge: return FileManager.default.fileExists(atPath: "/Applications/Microsoft Edge.app")
+        default: return appPaths.contains { FileManager.default.fileExists(atPath: $0) }
         }
     }
 }
 
-// MARK: - 浏览器数据管理器
+// MARK: - 浏览器数据管理器 (已优化)
 @MainActor
 class BrowserDataManager {
     static let shared = BrowserDataManager()
     
-    private var bookmarks: [BrowserItem] = []
-    private var historyItems: [BrowserItem] = []
+    private var allItems: [PreScoredItem] = []
     private var lastLoadTime: Date?
-    private var enabledBrowsers: Set<BrowserType> = [.safari] // 默认只启用 Safari
+    private var enabledBrowsers: Set<BrowserType>
+    
+    // 新增：用于URL净化的常量
+    private let URL_SEGMENT_MAX_LENGTH = 35
     
     private init() {
         enabledBrowsers = ConfigManager.shared.getEnabledBrowsers()
@@ -86,7 +76,6 @@ class BrowserDataManager {
     
     func setEnabledBrowsers(_ browsers: Set<BrowserType>) {
         enabledBrowsers = browsers
-        // 清除缓存，强制重新加载
         lastLoadTime = nil
     }
     
@@ -94,149 +83,152 @@ class BrowserDataManager {
         return enabledBrowsers
     }
     
-    func loadBrowserData() {        
-        // 避免频繁加载，缓存5分钟
-        if let lastLoad = lastLoadTime, Date().timeIntervalSince(lastLoad) < 300 {
-            return
-        }
+    func loadBrowserData() {
+        if let lastLoad = lastLoadTime, Date().timeIntervalSince(lastLoad) < 300 { return }
         
-        Task.detached {
+        Task.detached(priority: .utility) {
             var allBookmarks: [BrowserItem] = []
             var allHistory: [BrowserItem] = []
             
-            // 加载所有启用的浏览器数据
-            for browser in await self.enabledBrowsers {
-                // await print(self.enabledBrowsers)
-                if browser.isInstalled {
-                    let (bookmarks, history) = await Self.loadBrowserData(for: browser)
-                    allBookmarks.append(contentsOf: bookmarks)
-                    allHistory.append(contentsOf: history)
-                }
+            for browser in await self.enabledBrowsers where browser.isInstalled {
+                let (bookmarks, history) = await Self.loadBrowserData(for: browser)
+                allBookmarks.append(contentsOf: bookmarks)
+                allHistory.append(contentsOf: history)
             }
             
-            // 合并和去重
-            let uniqueBookmarks = await Self.removeDuplicates(from: allBookmarks)
-            let uniqueHistory = await Self.removeDuplicates(from: allHistory)
-            
-            // print("🔍 Final result: \(uniqueBookmarks.count) unique bookmarks, \(uniqueHistory.count) unique history items")
+            let preScoredItems = await self.prepareAndPreScoreItems(bookmarks: allBookmarks, history: allHistory)
             
             await MainActor.run { [weak self] in
-                self?.bookmarks = uniqueBookmarks
-                self?.historyItems = uniqueHistory
+                self?.allItems = preScoredItems
                 self?.lastLoadTime = Date()
             }
         }
     }
     
+    private struct SearchWeights {
+        static let urlMatch: Double = 10.0
+        static let titleMatch: Double = 6.0
+        static let prefixMatchBonus: Double = 4.0
+        static let isBookmarkBonus: Double = 3.0
+        static let visitCountMultiplier: Double = 1.2
+        static let recencyScore: Double = 5.0
+        static let recencyDecayDays: Double = 30.0
+        static let hostMatchBonus: Double = 8.0
+    }
+
+    private struct PreScoredItem {
+        let item: BrowserItem
+        let baseScore: Double
+        let isBookmark: Bool
+        let lowercasedTitle: String
+        // 修改：使用净化后的“可搜索URL”
+        let searchableUrl: String
+    }
+    
+    // 新增：URL净化辅助函数
+    private func createSearchableUrl(from urlString: String) -> String {
+        guard let urlComponents = URLComponents(string: urlString) else {
+            return urlString.lowercased()
+        }
+        
+        // 域名永远保留
+        let host = urlComponents.host ?? ""
+        
+        // 过滤路径部分
+        let pathSegments = urlComponents.path.split(separator: "/")
+        let filteredPath = pathSegments.filter { segment in
+            // 规则：保留短的片段，或者不包含数字的长片段
+            return segment.count < URL_SEGMENT_MAX_LENGTH || !segment.contains(where: \.isNumber)
+        }.joined(separator: "/")
+        
+        // 重新组合域名和净化后的路径
+        return (host + "/" + filteredPath).lowercased()
+    }
+    
+    private func prepareAndPreScoreItems(bookmarks: [BrowserItem], history: [BrowserItem]) -> [PreScoredItem] {
+        var uniqueItems: [String: BrowserItem] = [:]
+
+        for bookmark in bookmarks { uniqueItems[bookmark.url] = bookmark }
+        for historyItem in history where uniqueItems[historyItem.url] == nil {
+            uniqueItems[historyItem.url] = historyItem
+        }
+        
+        return uniqueItems.values.map { item in
+            let isBookmark = item.type == .bookmark
+            var baseScore: Double = 0.0
+            baseScore += log(Double(item.visitCount + 1)) * SearchWeights.visitCountMultiplier
+            if let lastVisited = item.lastVisited {
+                let daysAgo = Calendar.current.dateComponents([.day], from: lastVisited, to: Date()).day ?? Int.max
+                if Double(daysAgo) < SearchWeights.recencyDecayDays {
+                    baseScore += SearchWeights.recencyScore * (1.0 - (Double(daysAgo) / SearchWeights.recencyDecayDays))
+                }
+            }
+            return PreScoredItem(
+                item: item,
+                baseScore: baseScore,
+                isBookmark: isBookmark,
+                lowercasedTitle: item.title.lowercased(),
+                // 修改：调用净化函数生成可搜索URL
+                searchableUrl: createSearchableUrl(from: item.url)
+            )
+        }
+    }
+
     func searchBrowserData(query: String) -> [BrowserItem] {
         let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        var results: [BrowserItem] = []
-        
-        // 优先匹配URL的项目（书签和历史记录混合）
-        let urlMatchingBookmarks = bookmarks.filter { bookmark in
-            bookmark.url.lowercased().contains(queryLower)
-        }
-        
-        let urlMatchingHistory = historyItems.filter { item in
-            item.url.lowercased().contains(queryLower)
-        }.sorted { item1, item2 in
-            // 按访问次数和最后访问时间排序
-            if item1.visitCount != item2.visitCount {
-                return item1.visitCount > item2.visitCount
+        if queryLower.isEmpty { return [] }
+
+        let searchResults = allItems.compactMap { preScoredItem -> (item: BrowserItem, score: Double)? in
+            var queryScore: Double = 0.0
+            
+            // 修改：现在匹配净化后的 URL
+            if preScoredItem.searchableUrl.contains(queryLower) {
+                queryScore += SearchWeights.urlMatch
+                // 域名匹配奖励（通过hasPrefix间接实现）
+                if preScoredItem.searchableUrl.hasPrefix(queryLower) {
+                    queryScore += SearchWeights.hostMatchBonus
+                }
             }
-            return (item1.lastVisited ?? Date.distantPast) > (item2.lastVisited ?? Date.distantPast)
-        }
-        
-        // 然后匹配标题的项目（书签和历史记录混合）
-        let titleMatchingBookmarks = bookmarks.filter { bookmark in
-            !bookmark.url.lowercased().contains(queryLower) &&
-            bookmark.title.lowercased().contains(queryLower)
-        }
-        
-        let titleMatchingHistory = historyItems.filter { item in
-            !item.url.lowercased().contains(queryLower) &&
-            item.title.lowercased().contains(queryLower)
-        }.sorted { item1, item2 in
-            // 按访问次数和最后访问时间排序
-            if item1.visitCount != item2.visitCount {
-                return item1.visitCount > item2.visitCount
+            
+            if preScoredItem.lowercasedTitle.contains(queryLower) {
+                queryScore += SearchWeights.titleMatch
+                if preScoredItem.lowercasedTitle.hasPrefix(queryLower) {
+                    queryScore += SearchWeights.prefixMatchBonus
+                }
             }
-            return (item1.lastVisited ?? Date.distantPast) > (item2.lastVisited ?? Date.distantPast)
+            
+            if queryScore == 0 { return nil }
+            
+            var finalScore = preScoredItem.baseScore + queryScore
+            if preScoredItem.isBookmark {
+                finalScore += SearchWeights.isBookmarkBonus
+            }
+            
+            return (item: preScoredItem.item, score: finalScore)
         }
         
-        // 按优先级合并结果：
-        // 1. URL匹配的书签（最高优先级）
-        results.append(contentsOf: urlMatchingBookmarks)
-        // 2. URL匹配的历史记录（高优先级）
-        results.append(contentsOf: Array(urlMatchingHistory.prefix(10)))
-        // 3. 标题匹配的书签（中等优先级）
-        results.append(contentsOf: titleMatchingBookmarks)
-        // 4. 标题匹配的历史记录（低优先级）
-        results.append(contentsOf: Array(titleMatchingHistory.prefix(5)))
-        
-        return results
+        return searchResults.sorted { $0.score > $1.score }.map { $0.item }
     }
     
     func getDefaultBrowserItems(limit: Int = 10) -> [BrowserItem] {
-        var results: [BrowserItem] = []
-        
-        // 先添加一些书签
-        let recentBookmarks = Array(bookmarks.prefix(limit / 2))
-        results.append(contentsOf: recentBookmarks)
-        
-        // 再添加最近访问的历史记录
-        let recentHistory = historyItems
-            .sorted { item1, item2 in
-                if item1.visitCount != item2.visitCount {
-                    return item1.visitCount > item2.visitCount
-                }
-                return (item1.lastVisited ?? Date.distantPast) > (item2.lastVisited ?? Date.distantPast)
-            }
-            .prefix(limit - results.count)
-        
-        results.append(contentsOf: recentHistory)
-        
-        return Array(results.prefix(limit))
+        return allItems
+            .sorted { $0.baseScore > $1.baseScore }
+            .prefix(limit)
+            .map { $0.item }
     }
     
-    // MARK: - 多浏览器数据加载
     private static func loadBrowserData(for browser: BrowserType) async -> ([BrowserItem], [BrowserItem]) {
         switch browser {
         case .safari:
-            let bookmarks = await SafariDataLoader.loadBookmarks()
-            let history = await SafariDataLoader.loadHistory()
-            return (bookmarks, history)
+            return (await SafariDataLoader.loadBookmarks(), await SafariDataLoader.loadHistory())
         case .chrome:
-            let bookmarks = await ChromeDataLoader.loadBookmarks()
-            let history = await ChromeDataLoader.loadHistory()
-            return (bookmarks, history)
+            return (await ChromeDataLoader.loadBookmarks(), await ChromeDataLoader.loadHistory())
         case .edge:
-            let bookmarks = await EdgeDataLoader.loadBookmarks()
-            let history = await EdgeDataLoader.loadHistory()
-            return (bookmarks, history)
+            return (await EdgeDataLoader.loadBookmarks(), await EdgeDataLoader.loadHistory())
         case .firefox:
-            let bookmarks = await FirefoxDataLoader.loadBookmarks()
-            let history = await FirefoxDataLoader.loadHistory()
-            return (bookmarks, history)
+            return (await FirefoxDataLoader.loadBookmarks(), await FirefoxDataLoader.loadHistory())
         case .arc:
-            let bookmarks = await ArcDataLoader.loadBookmarks()
-            let history = await ArcDataLoader.loadHistory()
-            return (bookmarks, history)
+            return (await ArcDataLoader.loadBookmarks(), await ArcDataLoader.loadHistory())
         }
-    }
-    
-    private static func removeDuplicates(from items: [BrowserItem]) -> [BrowserItem] {
-        var seen = Set<String>()
-        var result: [BrowserItem] = []
-        
-        for item in items {
-            let key = "\(item.url)|\(item.type)"
-            if !seen.contains(key) {
-                seen.insert(key)
-                result.append(item)
-            }
-        }
-        
-        return result
     }
 }
