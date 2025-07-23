@@ -24,18 +24,18 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
     let modeDescription: String? = "Open a URL or search for a site"
 
     @Published var displayableItems: [any DisplayableItem] = [] {
-        didSet {
-            dataDidChange.send()
-        }
+        didSet { dataDidChange.send() }
     }
     let dataDidChange = PassthroughSubject<Void, Never>()
-    
-    // 2. 核心逻辑
+
+    // ✅ 新增这个属性来保存纯净的查询
+    @Published private var currentQuery: String = ""
+
     func handleInput(arguments: String) {
         let query = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.currentQuery = query // 保存纯净的查询
+
         var items: [any DisplayableItem] = []
-        
-        // Always add the current input as the first item
         let inputItem = BrowserItem(
             title: query.isEmpty ? "Enter a URL or search term" : query,
             url: query, type: .input, source: .safari,
@@ -43,14 +43,13 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
             iconName: "globe"
         )
         items.append(inputItem)
-        
-        // Add history or search results
+
         if query.isEmpty {
             items += BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
         } else {
             items += BrowserDataManager.shared.searchBrowserData(query: query)
         }
-        
+
         self.displayableItems = items
         if LauncherViewModel.shared.selectedIndex != 0 {
             LauncherViewModel.shared.selectedIndex = 0
@@ -59,21 +58,25 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
 
     func executeAction(at index: Int) -> Bool {
         guard index >= 0 && index < displayableItems.count,
-              let item = displayableItems[index] as? BrowserItem else {
-            return false
-        }
-        
-        // The URL to open is always stored in the item's `url` property
+              let item = displayableItems[index] as? BrowserItem else { return false }
         return openWebURL(item.url)
     }
 
-    // 3. 生命周期与UI
     func cleanup() {
         self.displayableItems = []
+        self.currentQuery = "" // 清理时也要重置
     }
 
+    /// 【已修复】这个方法现在会根据是否有数据显示正确的视图
     func makeContentView() -> AnyView {
-        return AnyView(WebCommandInputView(searchText: LauncherViewModel.shared.searchText))
+        // 如果有可显示的项目，就使用通用的结果列表视图
+        if !displayableItems.isEmpty {
+            // 假设您的通用列表视图是 ResultsListView
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
+        } else {
+            // 否则，显示特定的输入视图，并传递纯净的查询数据
+            return AnyView(WebCommandInputView(currentQuery: self.currentQuery))
+        }
     }
 
     func getHelpText() -> [String] {
