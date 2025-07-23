@@ -26,7 +26,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
 
     // 1. 身份与元数据
     let mode: LauncherMode = .terminal
-    let prefix: String? = "/t"
+    let prefix: String? = ">"
     let displayName: String = "Terminal"
     let iconName: String = "terminal"
     let placeholder: String = "Enter terminal command to execute..."
