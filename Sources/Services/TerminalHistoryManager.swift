@@ -11,9 +11,13 @@ struct TerminalHistoryItem: Codable, Identifiable, Hashable, @preconcurrency Dis
     var subtitle: String? { "终端命令" }
     var icon: NSImage? { nil }
 
-    @ViewBuilder @MainActor
+    @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(TerminalHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {}))
+        if index == 0 {
+            return AnyView(TerminalCurrentCommandRowView(command: command, isSelected: isSelected))
+        } else {
+            return AnyView(TerminalHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {}))
+        }
     }
     
     init(command: String) {
