@@ -11,23 +11,19 @@ struct WebModeResultsView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    // 【已修复】ForEach 的 id 使用 item.id 来保证唯一性和稳定性
                     ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
-                        // 确保 item 是我们期望的类型
                         if let browserItem = item as? BrowserItem {
-                            // 【已修复】传递 BrowserItemRowView 需要的所有参数
                             AnyView(
                                 BrowserItemRowView(
                                     item: browserItem,
                                     isSelected: index == viewModel.selectedIndex,
-                                    index: index // 传递正确的索引
+                                    index: index
                                 )
                                 .onTapGesture {
-                                    // 【已修复】单击只负责更新选择的索引，不立即执行
                                     viewModel.selectedIndex = index
                                 }
                             )
-                            .id(index) // ScrollViewReader 依赖这个 id
+                            .id(index)
                         }
                     }
                 }
@@ -48,7 +44,6 @@ struct WebModeResultsView: View {
 
 /// 当没有搜索结果时，显示的特定输入视图
 struct WebCommandInputView: View {
-    // 【已修复】接收由 Controller 处理好的、纯净的当前查询
     let currentQuery: String
     
     var body: some View {
