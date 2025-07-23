@@ -1,19 +1,13 @@
+// file: LauncherMode.swift
 import Foundation
 import AppKit
-import AppKit
 
-// MARK: - 启动器模式枚举
+// MARK: - 启动器模式枚举（已简化）
 enum LauncherMode: String, CaseIterable {
-    case launch = "launch"    // 启动模式 (默认)
-    case kill = "kill"        // 关闭应用模式 (/k)
-    case search = "search"    // 网页搜索模式 (/s)
-    case web = "web"          // 网页打开模式 (/w)
-    case terminal = "terminal" // 终端执行模式 (/t)
-    case file = "file"        // 文件管理器模式 (/o)
-    case clip = "clip"        // 剪切板历史模式 (/clip)
-    case plugin = "plugin"    // 插件模式 (动态)
+    case launch, kill, search, web, terminal, file, clip, plugin
     
-    // 通过ModeStateController获取元信息，需在@MainActor上下文下访问
+    // --- 元信息获取逻辑保持不变 ---
+    // 这些计算属性仍然依赖于从 ViewModel 的控制器字典中查找实例，这是合理的。
     @MainActor
     var displayName: String {
         LauncherViewModel.shared.controllers[self]?.displayName ?? self.rawValue
@@ -31,99 +25,56 @@ enum LauncherMode: String, CaseIterable {
         LauncherViewModel.shared.controllers[self]?.modeDescription
     }
     
-    var trigger: String? {
-        switch self {
-        case .kill: return "/k"
-        case .search: return "/s"
-        case .web: return "/w"
-        case .terminal: return "/t"
-        case .file: return "/o"
-        case .clip: return "/v"
-        case .launch: return ""
-        case .plugin: return "" // 插件模式由具体插件的命令触发
-        }
-    }
+    // --- 已移除的逻辑 ---
+    // 移除了硬编码的 'trigger' 计算属性。前缀现在由每个控制器自己定义。
+    // 移除了 'fromPrefix' 静态方法。此逻辑现在由 CommandRegistry 高效处理。
     
-    // 检查模式是否启用的方法
+    // --- 保留的逻辑 ---
+    
+    /// 检查模式是否在设置中启用，此功能依然需要。
     @MainActor
     func isEnabled() -> Bool {
+        // 假设 SettingsManager 存在
         let settings = SettingsManager.shared
         return settings.isModeEnabled(self.rawValue)
     }
-
-    static func fromPrefix(_ prefix: String) -> LauncherMode? {
-        switch prefix {
-        case "/k": return .kill
-        case "/s": return .search
-        case "/w": return .web
-        case "/t": return .terminal
-        case "/o": return .file
-        case "/v": return .clip
-        case "": return .launch
-        default: return nil
-        }
-    }
 }
 
-// MARK: - 命令定义
+// file: LauncherCommand.swift
+import Foundation
+
+// MARK: - 命令建议提供者（已重构）
+// 这个结构体的职责现在是作为UI层和CommandRegistry之间获取建议的桥梁。
 struct LauncherCommand {
-    let trigger: String          // 触发字符串，如 "/k"
-    let mode: LauncherMode      // 对应的模式
-    let description: String?     // 命令描述
-    let isEnabled: Bool         // 是否启用
     
-    // 基于ModeStateController获取元信息
+    /**
+     * 根据用户输入，从注册中心获取命令建议。
+     *
+     * @param text 用户当前的输入文本。
+     * @return 返回一个 CommandRecord 数组，可直接用于UI渲染。
+     */
     @MainActor
-    static var allCommands: [LauncherCommand] {
-        let viewModel = LauncherViewModel.shared
-        return LauncherMode.allCases.compactMap { mode in
-            guard let controller = viewModel.controllers[mode],
-                  let trigger = controller.prefix else {
-                return nil
-            }
-            // description 可为 nil
-            return LauncherCommand(
-                trigger: trigger,
-                mode: mode,
-                description: controller.modeDescription,
-                isEnabled: mode.isEnabled()
-            )
-        }
-    }
-    
-    @MainActor
-    static func parseCommand(from text: String) -> LauncherCommand? {
-        return getEnabledCommands().first { command in
-            text == command.trigger || text.hasPrefix(command.trigger + " ")
-        }
-    }
-    
-    @MainActor
-    static func getEnabledCommands() -> [LauncherCommand] {
-        return allCommands.filter { $0.isEnabled }
-    }
-    
-    @MainActor
-    static func getCommandSuggestions(for text: String) -> [LauncherCommand] {
-        // 获取内置命令
-        let enabledCommands = getEnabledCommands()
-        
-        // 获取插件命令
-        let pluginCommands: [LauncherCommand] = PluginManager.shared.getLoadedPlugins().compactMap { plugin in
-            let command = plugin.command
-            guard !command.isEmpty else { return nil }
-            return LauncherCommand(trigger: command, mode: .plugin, description: plugin.manifest.description, isEnabled: true)
+    static func getSuggestions(for text: String) -> [CommandRecord] {
+        // 如果输入不是以 "/" 开头，则不提供任何命令建议。
+        guard text.hasPrefix("/") else {
+            return []
         }
         
-        // 合并所有命令
-        let allCommands = enabledCommands + pluginCommands
+        // 从注册中心一次性获取所有缓存好的命令记录。
+        let allCommands = CommandRegistry.shared.getCommandSuggestions()
         
+        // 如果用户只输入了 "/"，显示所有可用的命令。
         if text == "/" {
             return allCommands
         }
         
-        return allCommands.filter { command in
-            command.trigger.hasPrefix(text)
-        }
+        // 否则，在缓存的记录中进行高效过滤。
+        return allCommands.filter { $0.prefix.hasPrefix(text) }
     }
+    
+    // --- 已移除的逻辑 ---
+    // 移除了所有旧的属性 (trigger, mode, description, etc.)。
+    // 移除了所有旧的静态方法 (allCommands, parseCommand, getEnabledCommands)，
+    // 因为它们的功能已被 CommandRegistry 和 getSuggestions(for:) 完全取代。
+    // 插件命令现在也应该通过注册一个控制器来统一处理。
 }

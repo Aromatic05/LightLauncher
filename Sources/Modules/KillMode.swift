@@ -84,98 +84,82 @@ class RunningAppsManager: @unchecked Sendable {
 }
 
 // MARK: - 关闭应用模式控制器
+import SwiftUI
+
 @MainActor
 final class KillModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = KillModeController()
     private override init() {}
-    var displayableItems: [any DisplayableItem] = []
-    var prefix: String? { "/k" }
-    // 元信息属性
-    var displayName: String { "Kill Mode" }
-    var iconName: String { "xmark.circle" }
-    var placeholder: String { "Search running apps to close..." }
-    var modeDescription: String? { "Enter kill mode to close running applications" }
-    private func makeKillItems(for text: String) -> [RunningAppInfo] {
-        let all = RunningAppsManager.shared.loadRunningApps()
-        let prefix = "/k"
-        let trimmedText: String
-        if text.hasPrefix(prefix + " ") {
-            trimmedText = String(text.dropFirst(prefix.count + 1)).trimmingCharacters(in: .whitespacesAndNewlines)
-        } else if text.hasPrefix(prefix) {
-            trimmedText = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        } else {
-            trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        if trimmedText.isEmpty {
-            return all
-        } else {
-            return RunningAppsManager.shared.filterRunningApps(all, with: trimmedText)
+
+    // MARK: - ModeStateController Protocol Implementation
+
+    // 1. 身份与元数据
+    let mode: LauncherMode = .kill
+    let prefix: String? = "/k"
+    let displayName: String = "Kill Process"
+    let iconName: String = "xmark.circle"
+    let placeholder: String = "Search running apps to kill..."
+    let modeDescription: String? = "Force quit a running application"
+
+    @Published var displayableItems: [any DisplayableItem] = []
+    
+    // 2. 核心逻辑
+    func handleInput(arguments: String) {
+        let items = filterRunningApps(with: arguments)
+        self.displayableItems = items.map { $0 as any DisplayableItem }
+        if LauncherViewModel.shared.selectedIndex != 0 {
+            LauncherViewModel.shared.selectedIndex = 0
         }
     }
-    // 1. 触发条件
-    func shouldActivate(for text: String) -> Bool {
-        return text.hasPrefix("/k")
-    }
-    // 2. 进入模式
-    func enterMode(with text: String) {
-        let items = makeKillItems(for: text)
-        self.displayableItems = items.map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    // 3. 处理输入
-    func handleInput(_ text: String) {
-        let items = makeKillItems(for: text)
-        self.displayableItems = items.map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    // 4. 执行动作
+
     func executeAction(at index: Int) -> Bool {
-        guard index < self.displayableItems.count else { return false }
-        guard let app = self.displayableItems[index] as? RunningAppInfo else { return false }
+        guard index < self.displayableItems.count,
+              let app = self.displayableItems[index] as? RunningAppInfo else {
+            return false
+        }
         let result = RunningAppsManager.shared.killApp(app)
-        // 无论 killApp 是否成功，直接移除该项
-        self.displayableItems.remove(at: index)
+        if result {
+            self.displayableItems.remove(at: index)
+        }
         return result
     }
-    // 5. 退出条件
-    func shouldExit(for text: String) -> Bool {
-        // 删除 /k 前缀或切换到其他模式时退出
-        return !text.hasPrefix("/k")
-    }
-    // 6. 清理操作
+
+    // 3. 生命周期与UI
     func cleanup() {
         self.displayableItems = []
     }
 
-    func getHelpText() -> [String] {
-        return [
-            "Type '/k ' (with space) then search text to find running apps",
-            "Example: '/k chrome' to search for Chrome",
-            "Press ↑↓ arrows or numbers 1-6 to select", 
-            "Delete /k prefix to return to launch mode",
-            "Press Esc to close"
-        ]
-    }
-    // 其它便捷方法
-    func reloadApps() {
-        enterMode(with: "")
-    }
-    func filterApps(searchText: String) {
-        handleInput(searchText)
-    }
-    func killSelectedApp(selectedIndex: Int) -> Bool {
-        return executeAction(at: selectedIndex)
-    }
-    func selectKillAppByNumber(_ number: Int) -> Bool {
-        let index = number - 1
-        guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
-        return executeAction(at: index)
-    }
     func makeContentView() -> AnyView {
-        if !self.displayableItems.isEmpty {
+        if !displayableItems.isEmpty {
             return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
             return AnyView(EmptyStateView(mode: .kill, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
+    }
+    
+    func getHelpText() -> [String] {
+        return [
+            "Type to filter running applications",
+            "Press Enter to kill the selected process",
+            "Press Esc to exit"
+        ]
+    }
+
+    // MARK: - Private Helper Methods
+    
+    private func filterRunningApps(with query: String) -> [RunningAppInfo] {
+        let allApps = RunningAppsManager.shared.loadRunningApps()
+        if query.isEmpty {
+            return allApps
+        }
+        return RunningAppsManager.shared.filterRunningApps(allApps, with: query)
+    }
+
+    // MARK: - Public Helper Methods (Optional)
+
+    func selectKillAppByNumber(_ number: Int) -> Bool {
+        let index = number - 1
+        guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
+        return executeAction(at: index)
     }
 }

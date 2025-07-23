@@ -14,18 +14,24 @@ struct CurrentQueryItem: DisplayableItem {
     var icon: NSImage? { nil }
 }
 
-// MARK: - 搜索模式控制器
 @MainActor
 final class SearchModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = SearchModeController()
     private override init() {}
-    
+
+    // MARK: - ModeStateController Protocol Implementation
+
+    // 1. 身份与元数据
+    let mode: LauncherMode = .search
+    let prefix: String? = "/s"
+    let displayName: String = "Web Search"
+    let iconName: String = "globe"
+    let placeholder: String = "Enter search query..."
+    let modeDescription: String? = "Search the web with your default engine"
+
     @Published var searchHistory: [SearchHistoryItem] = []
     @Published var currentQuery: String = ""
-    
-    var prefix: String? { "/s" }
-    
-    // 可显示项插槽
+
     var displayableItems: [any DisplayableItem] {
         var items: [any DisplayableItem] = []
         if !currentQuery.isEmpty {
@@ -34,130 +40,35 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
         items.append(contentsOf: searchHistory)
         return items
     }
-    // 元信息属性
-    var displayName: String { "Web Search" }
-    var iconName: String { "globe" }
-    var placeholder: String { "Enter search query..." }
-    var modeDescription: String? { "Search the web using your default search engine" }
-    
-    // 1. 触发条件
-    func shouldActivate(for text: String) -> Bool {
-        return text.hasPrefix("/s")
-    }
-    // 2. 进入模式
-    func enterMode(with text: String) {
-        currentQuery = extractQuery(from: text)
-        searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: currentQuery, limit: 10)
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    // 3. 处理输入
-    func handleInput(_ text: String) {
-        currentQuery = extractQuery(from: text)
-        searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: currentQuery, limit: 10)
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    // 4. 执行动作
-    func executeAction(at index: Int) -> Bool {
-        if index == 0 {
-            // 当前搜索项
-            let cleanText = currentQuery
-            return openSearchURL(for: cleanText)
-        } else if index > 0 && index <= searchHistory.count {
-            let item = searchHistory[index - 1]
-            return openSearchURL(for: item.query)
+
+    // 2. 核心逻辑
+    func handleInput(arguments: String) {
+        self.currentQuery = arguments
+        self.searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: arguments, limit: 10)
+        if LauncherViewModel.shared.selectedIndex != 0 {
+            LauncherViewModel.shared.selectedIndex = 0
         }
-        return false
     }
-    // 5. 退出条件
-    func shouldExit(for text: String) -> Bool {
-        // 删除 /s 前缀或切换到其他模式时退出
-        return !text.hasPrefix("/s")
+
+    func executeAction(at index: Int) -> Bool {
+        if !currentQuery.isEmpty && index == 0 {
+            return performWebSearch(for: currentQuery)
+        }
+        
+        let historyIndex = currentQuery.isEmpty ? index : index - 1
+        
+        guard historyIndex >= 0 && historyIndex < searchHistory.count else { return false }
+        
+        let item = searchHistory[historyIndex]
+        return performWebSearch(for: item.query)
     }
-    // 6. 清理操作
+    
+    // 3. 生命周期与UI
     func cleanup() {
         searchHistory = []
         currentQuery = ""
     }
-    // --- 辅助方法 ---
-    private func extractQuery(from text: String) -> String {
-        let prefix = "/s "
-        if text.hasPrefix(prefix) {
-            return String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return ""
-    }
-    private func openSearchURL(for query: String) -> Bool {
-        let engine = ConfigManager.shared.config.modes.defaultSearchEngine
-        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        let urlString: String
-        switch engine {
-        case "baidu":
-            urlString = "https://www.baidu.com/s?wd=\(encodedQuery)"
-        case "bing":
-            urlString = "https://www.bing.com/search?q=\(encodedQuery)"
-        case "google":
-            fallthrough
-        default:
-            urlString = "https://www.google.com/search?q=\(encodedQuery)"
-        }
-        guard let url = URL(string: urlString) else { return false }
-        SearchHistoryManager.shared.addSearch(query: query, searchEngine: engine)
-        NSWorkspace.shared.open(url)
-        return true
-    }
 
-    // MARK: - 便捷方法迁移自 LauncherViewModel extension
-    func updateSearchHistory(_ items: [SearchHistoryItem]) {
-        self.searchHistory = items
-    }
-
-    func executeSearchHistoryItem(at index: Int) -> Bool {
-        guard index >= 0 && index < searchHistory.count else { return false }
-        let item = searchHistory[index]
-        return executeWebSearch(item.query)
-    }
-
-    func clearSearchHistory() {
-        self.searchHistory = []
-    }
-
-    func removeSearchHistoryItem(_ item: SearchHistoryItem) {
-        self.searchHistory.removeAll { $0.id == item.id }
-    }
-
-    func extractCleanSearchText(from text: String) -> String {
-        let prefix = "/s "
-        if text.hasPrefix(prefix) {
-            return String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    func executeWebSearch(_ query: String) -> Bool {
-        let configManager = ConfigManager.shared
-        let engine = configManager.config.modes.defaultSearchEngine
-        var searchEngine: String
-        switch engine {
-        case "baidu":
-            searchEngine = "https://www.baidu.com/s?wd={query}"
-        case "bing":
-            searchEngine = "https://www.bing.com/search?q={query}"
-        case "google":
-            fallthrough
-        default:
-            searchEngine = "https://www.google.com/search?q={query}"
-        }
-        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        let searchURL = searchEngine.replacingOccurrences(of: "{query}", with: encodedQuery)
-        guard let url = URL(string: searchURL) else { return false }
-        // 保存到搜索历史
-        SearchHistoryManager.shared.addSearch(query: query, searchEngine: engine)
-        NSWorkspace.shared.open(url)
-        // 注意：不在此处 resetToLaunchMode，由外部控制
-        return true
-    }
-
-    // 生成内容视图
     func makeContentView() -> AnyView {
         return AnyView(SearchHistoryView(viewModel: LauncherViewModel.shared))
     }
@@ -165,9 +76,63 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
     func getHelpText() -> [String] {
         return [
             "Type after /s to search the web",
-            "Press Enter to execute search",
-            "Delete /s prefix to return to launch mode",
-            "Press Esc to close"
+            "Press Enter to execute the search",
+            "Press Esc to exit"
         ]
+    }
+
+    // MARK: - Private Helper Methods
+
+    private func performWebSearch(for query: String) -> Bool {
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        
+        let engine = ConfigManager.shared.config.modes.defaultSearchEngine
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        
+        var urlString: String
+        switch engine {
+        case "baidu": urlString = "https://www.baidu.com/s?wd=\(encodedQuery)"
+        case "bing": urlString = "https://www.bing.com/search?q=\(encodedQuery)"
+        default: urlString = "https://www.google.com/search?q=\(encodedQuery)"
+        }
+        
+        guard let url = URL(string: urlString) else { return false }
+        
+        SearchHistoryManager.shared.addSearch(query: query, searchEngine: engine)
+        NSWorkspace.shared.open(url)
+        return true
+    }
+
+    // MARK: - Public Helper Methods
+    
+    func removeSearchHistoryItem(_ item: SearchHistoryItem) {
+        SearchHistoryManager.shared.removeSearch(item: item)
+        self.searchHistory.removeAll { $0.id == item.id }
+    }
+    
+    /// 【新增】清空搜索历史记录的方法
+    func clearSearchHistory() {
+        // 1. 清除持久化存储
+        SearchHistoryManager.shared.clearHistory()
+        // 2. 清除当前会话的显示列表
+        self.searchHistory.removeAll()
+    }
+
+    func extractCleanSearchText(from fullText: String) -> String {
+        guard let prefix = self.prefix else { return fullText }
+
+        // 检查是否以 "/s " (带空格) 开头
+        let prefixWithSpace = prefix + " "
+        if fullText.hasPrefix(prefixWithSpace) {
+            return String(fullText.dropFirst(prefixWithSpace.count))
+        }
+        
+        // 检查是否只以 "/s" 开头
+        if fullText.hasPrefix(prefix) {
+            return String(fullText.dropFirst(prefix.count))
+        }
+        
+        // 如果不包含前缀，则返回原始文本
+        return fullText
     }
 }

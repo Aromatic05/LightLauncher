@@ -23,12 +23,16 @@ struct LauncherView: View {
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
             
-            // Command Suggestions
+            // ✅ 主要变化在这里：
+            // viewModel.commandSuggestions 现在是 [CommandRecord] 类型
+            // viewModel.applySelectedCommand 现在接收一个 CommandRecord
             if viewModel.showCommandSuggestions {
                 CommandSuggestionsView(
+                    // `commands` 现在是 [CommandRecord]
                     commands: viewModel.commandSuggestions,
                     selectedIndex: $viewModel.selectedIndex,
                     onCommandSelected: { command in
+                        // `command` 现在是 CommandRecord
                         viewModel.applySelectedCommand(command)
                     }
                 )
@@ -39,9 +43,7 @@ struct LauncherView: View {
             }
         }
         .frame(width: 700, height: 500)
-        .background(
-            Color(NSColor.windowBackgroundColor)
-        )
+        .background(Color(NSColor.windowBackgroundColor))
         .opacity(0.95)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)

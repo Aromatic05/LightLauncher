@@ -14,244 +14,159 @@ struct CurrentCommandItem: DisplayableItem {
 }
 
 // MARK: - 终端模式控制器
+import SwiftUI
+
 @MainActor
 final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = TerminalModeController()
     private override init() {}
-    var prefix: String? { "/t" }
+
+    // MARK: - ModeStateController Protocol Implementation
+
+    // 1. 身份与元数据
+    let mode: LauncherMode = .terminal
+    let prefix: String? = "/t"
+    let displayName: String = "Terminal"
+    let iconName: String = "terminal"
+    let placeholder: String = "Enter terminal command to execute..."
+    let modeDescription: String? = "Execute shell commands"
+
     @Published var currentQuery: String = ""
-    // 可显示项插槽
+
     var displayableItems: [any DisplayableItem] {
-        var items: [any DisplayableItem] = []
-        if !currentQuery.isEmpty {
-            items.append(CurrentCommandItem(title: currentQuery))
+        // This mode only shows one item: the command to be executed.
+        return currentQuery.isEmpty ? [] : [CurrentCommandItem(title: currentQuery)]
+    }
+
+    // 2. 核心逻辑
+    func handleInput(arguments: String) {
+        self.currentQuery = arguments
+        if LauncherViewModel.shared.selectedIndex != 0 {
+            LauncherViewModel.shared.selectedIndex = 0
         }
-        return items
     }
-    // 1. 触发条件
-    func shouldActivate(for text: String) -> Bool {
-        return text.hasPrefix("/t")
-    }
-    // 2. 进入模式
-    func enterMode(with text: String) {
-        currentQuery = extractQuery(from: text)
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    // 3. 处理输入
-    func handleInput(_ text: String) {
-        currentQuery = extractQuery(from: text)
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    // 4. 执行动作
+
     func executeAction(at index: Int) -> Bool {
-        let cleanText = self.extractCleanTerminalText(from: LauncherViewModel.shared.searchText)
-        return executeTerminalCommandWithDetection(command: cleanText)
-    }
-    // 5. 退出条件
-    func shouldExit(for text: String) -> Bool {
-        return !text.hasPrefix("/t")
-    }
-    // 6. 清理操作
-    func cleanup() {}
-
-    // 元信息属性
-    var displayName: String { "Terminal" }
-    var iconName: String { "terminal" }
-    var placeholder: String { "Enter terminal command..." }
-    var modeDescription: String? { "Execute commands in Terminal" }
-
-    private func extractQuery(from text: String) -> String {
-        let prefix = "/t "
-        if text.hasPrefix(prefix) {
-            return String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // This mode executes the current query, regardless of the index.
+        return executeTerminalCommandWithDetection(command: currentQuery)
     }
 
-    // --- 终端检测与执行相关辅助方法 ---
+    // 3. 生命周期与UI
+    func cleanup() {
+        self.currentQuery = ""
+    }
+
+    func makeContentView() -> AnyView {
+        return AnyView(TerminalCommandInputView(searchText: self.currentQuery))
+    }
+
+
+
+    func getHelpText() -> [String] {
+        return [
+            "Type after /t to enter a shell command",
+            "Press Enter to run the command in your terminal",
+            "Press Esc to exit"
+        ]
+    }
+
+    // MARK: - Private Terminal Execution Logic
+    
     private func executeTerminalCommandWithDetection(command: String) -> Bool {
-        let configManager = ConfigManager.shared
-        let preferredTerminal = configManager.config.modes.preferredTerminal
         let cleanCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanCommand.isEmpty else { return false }
+        
+        let preferredTerminal = ConfigManager.shared.config.modes.preferredTerminal
+        
         switch preferredTerminal {
-        case "auto":
-            return executeWithAutoDetection(command: cleanCommand)
-        case "terminal":
-            return executeWithTerminal(command: cleanCommand)
-        case "iterm2":
-            return executeWithITerm2(command: cleanCommand) || executeWithFallback(command: cleanCommand)
-        case "ghostty":
-            return executeWithGhostty(command: cleanCommand) || executeWithFallback(command: cleanCommand)
-        case "kitty":
-            return executeWithKitty(command: cleanCommand) || executeWithFallback(command: cleanCommand)
-        case "alacritty":
-            return executeWithAlacritty(command: cleanCommand) || executeWithFallback(command: cleanCommand)
-        case "wezterm":
-            return executeWithWezTerm(command: cleanCommand) || executeWithFallback(command: cleanCommand)
-        default:
-            return executeWithAutoDetection(command: cleanCommand)
+        case "auto":      return executeWithAutoDetection(command: cleanCommand)
+        case "terminal":  return executeWithTerminal(command: cleanCommand)
+        case "iterm2":    return executeWithITerm2(command: cleanCommand) || executeWithAutoDetection(command: cleanCommand)
+        case "ghostty":   return executeWithGhostty(command: cleanCommand) || executeWithAutoDetection(command: cleanCommand)
+        case "kitty":     return executeWithKitty(command: cleanCommand) || executeWithAutoDetection(command: cleanCommand)
+        case "alacritty": return executeWithAlacritty(command: cleanCommand) || executeWithAutoDetection(command: cleanCommand)
+        case "wezterm":   return executeWithWezTerm(command: cleanCommand) || executeWithAutoDetection(command: cleanCommand)
+        default:          return executeWithAutoDetection(command: cleanCommand)
         }
     }
+
     private func executeWithAutoDetection(command: String) -> Bool {
-        if let defaultTerminal = getSystemDefaultTerminal() {
-            switch defaultTerminal {
-            case "com.apple.Terminal":
-                if executeWithTerminal(command: command) { return true }
-            case "com.googlecode.iterm2":
-                if executeWithITerm2(command: command) { return true }
-            case "com.mitchellh.ghostty":
-                if executeWithGhostty(command: command) { return true }
-            case "net.kovidgoyal.kitty":
-                if executeWithKitty(command: command) { return true }
-            case "io.alacritty":
-                if executeWithAlacritty(command: command) { return true }
-            case "com.github.wez.wezterm":
-                if executeWithWezTerm(command: command) { return true }
-            default: break
-            }
-        }
         let terminalPriority: [(String, (String) -> Bool)] = [
-            ("iTerm2", executeWithITerm2),
-            ("Ghostty", executeWithGhostty),
-            ("Kitty", executeWithKitty),
-            ("WezTerm", executeWithWezTerm),
-            ("Alacritty", executeWithAlacritty),
-            ("Terminal", executeWithTerminal)
+            ("iTerm2", executeWithITerm2), ("Ghostty", executeWithGhostty),
+            ("Kitty", executeWithKitty), ("WezTerm", executeWithWezTerm),
+            ("Alacritty", executeWithAlacritty), ("Terminal", executeWithTerminal)
         ]
         for (_, executor) in terminalPriority {
             if executor(command) { return true }
         }
-        return executeDirectly(command: command)
+        return false // Fallback to do nothing if no terminal is found
     }
-    private func getSystemDefaultTerminal() -> String? {
-        let workspace = NSWorkspace.shared
-        let tempShellScript = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("temp.sh")
-        do {
-            try "#!/bin/bash\necho test".write(to: tempShellScript, atomically: true, encoding: .utf8)
-            let defaultApp = workspace.urlForApplication(toOpen: tempShellScript)
-            try FileManager.default.removeItem(at: tempShellScript)
-            if let appURL = defaultApp {
-                let bundle = Bundle(url: appURL)
-                return bundle?.bundleIdentifier
-            }
-        } catch {
-            print("检测默认终端失败: \(error)")
-        }
-        return nil
+
+    private func isApplicationInstalled(_ bundleIdentifier: String) -> Bool {
+        return NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
     }
-    private func executeWithFallback(command: String) -> Bool {
-        return executeWithAutoDetection(command: command)
-    }
+
     private func executeWithTerminal(command: String) -> Bool {
+        guard isApplicationInstalled("com.apple.Terminal") else { return false }
         let appleScript = """
-        tell application \"Terminal\"
+        tell application "Terminal"
             activate
-            do script \"\(command.replacingOccurrences(of: "\"", with: "\\\""))\"
+            do script "\(command.replacingOccurrences(of: "\"", with: "\\\""))"
         end tell
         """
         guard let script = NSAppleScript(source: appleScript) else { return false }
         var error: NSDictionary?
         script.executeAndReturnError(&error)
-        if error != nil { return false }
-        return true
+        return error == nil
     }
+
     private func executeWithITerm2(command: String) -> Bool {
+        guard isApplicationInstalled("com.googlecode.iterm2") else { return false }
         let appleScript = """
-        tell application \"iTerm\"
+        tell application "iTerm"
             activate
             tell current window
                 create tab with default profile
                 tell current session
-                    write text \"\(command.replacingOccurrences(of: "\"", with: "\\\""))\"
+                    write text "\(command.replacingOccurrences(of: "\"", with: "\\\""))"
                 end tell
             end tell
         end tell
         """
-        guard let script = NSAppleScript(source: appleScript) else { return executeDirectly(command: command) }
+        guard let script = NSAppleScript(source: appleScript) else { return false }
         var error: NSDictionary?
         script.executeAndReturnError(&error)
-        if error != nil { return executeDirectly(command: command) }
-        return true
+        return error == nil
     }
-    private func executeWithGhostty(command: String) -> Bool {
-        guard isApplicationInstalled("com.mitchellh.ghostty") else { return false }
+    
+    // Command-line execution for modern terminals
+    private func executeWithModernTerminal(appName: String, bundleId: String, args: [String]) -> Bool {
+        guard isApplicationInstalled(bundleId) else { return false }
         let process = Process()
         process.launchPath = "/usr/bin/open"
-        // 构造命令：open -n -a "Ghostty" --args -e "zsh -c '<command>; zsh -l'"
-        let shellCommand = "zsh -c '" + command.replacingOccurrences(of: "'", with: "'\\''") + "; zsh -l'"
-        process.arguments = ["-n", "-a", "Ghostty", "--args", "-e", shellCommand]
-        do {
-            try process.run()
-            return true
-        } catch { return false }
-    }
-    private func executeWithKitty(command: String) -> Bool {
-        guard isApplicationInstalled("net.kovidgoyal.kitty") else { return false }
-        let process = Process()
-        process.launchPath = "/usr/bin/open"
-        process.arguments = ["-n", "-a", "kitty", "--args", "--hold", "-e", "zsh", "-c", command]
-        do {
-            try process.run()
-            return true
-        } catch { return false }
-    }
-    private func executeWithAlacritty(command: String) -> Bool {
-        guard isApplicationInstalled("io.alacritty") else { return false }
-        let process = Process()
-        process.launchPath = "/usr/bin/open"
-        process.arguments = ["-n", "-a", "Alacritty", "--args", "--hold", "-e", "zsh", "-c", command]
-        do {
-            try process.run()
-            return true
-        } catch { return false }
-    }
-    private func executeWithWezTerm(command: String) -> Bool {
-        guard isApplicationInstalled("com.github.wez.wezterm") else { return false }
-        let process = Process()
-        process.launchPath = "/usr/bin/open"
-        process.arguments = ["-n", "-a", "WezTerm", "--args", "start", "--", "zsh", "-c", command]
-        do {
-            try process.run()
-            return true
-        } catch { return false }
-    }
-    private func isApplicationInstalled(_ bundleIdentifier: String) -> Bool {
-        let workspace = NSWorkspace.shared
-        return workspace.urlForApplication(withBundleIdentifier: bundleIdentifier) != nil
-    }
-    private func executeDirectly(command: String) -> Bool {
-        let process = Process()
-        process.launchPath = "/bin/zsh"
-        process.arguments = ["-c", command]
+        process.arguments = ["-n", "-a", appName, "--args"] + args
         do {
             try process.run()
             return true
         } catch {
-            print("Failed to execute command: \(error)")
             return false
         }
     }
-
-    // 生成内容视图
-    func makeContentView() -> AnyView {
-        return AnyView(TerminalCommandInputView(searchText: LauncherViewModel.shared.searchText))
+    
+    private func executeWithGhostty(command: String) -> Bool {
+        let shellCommand = "zsh -c '\(command.replacingOccurrences(of: "'", with: "'\\''")); zsh -l'"
+        return executeWithModernTerminal(appName: "Ghostty", bundleId: "com.mitchellh.ghostty", args: ["-e", shellCommand])
     }
 
-    func getHelpText() -> [String] {
-        return [
-            "Type after /t to execute terminal command",
-            "Press Enter to run in Terminal",
-            "Delete /t prefix to return to launch mode",
-            "Press Esc to close"
-        ]
+    private func executeWithKitty(command: String) -> Bool {
+        return executeWithModernTerminal(appName: "kitty", bundleId: "net.kovidgoyal.kitty", args: ["--hold", "-e", "zsh", "-c", command])
     }
 
-    // --- 从 LauncherViewModel extension 移动过来的方法 ---
-    func extractCleanTerminalText(from searchText: String) -> String {
-        let prefix = "/t "
-        if searchText.hasPrefix(prefix) {
-            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func executeWithAlacritty(command: String) -> Bool {
+        return executeWithModernTerminal(appName: "Alacritty", bundleId: "io.alacritty", args: ["--hold", "-e", "zsh", "-c", command])
+    }
+
+    private func executeWithWezTerm(command: String) -> Bool {
+        return executeWithModernTerminal(appName: "WezTerm", bundleId: "com.github.wez.wezterm", args: ["start", "--", "zsh", "-c", command])
     }
 }

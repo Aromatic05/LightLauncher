@@ -52,54 +52,33 @@ struct AppMatch {
 // MARK: - 启动模式控制器
 @MainActor
 final class LaunchModeController: NSObject, ModeStateController, ObservableObject {
+    // MARK: - Properties
     static let shared = LaunchModeController()
-    private override init() {
-        super.init()
-        loadUsageData()
-        setupObservers()
-        // appScanner.scanForApplications()
-    }
-    var displayableItems: [any DisplayableItem] = []
-    // 元信息属性
-    var displayName: String { "Light Launcher" }
-    var iconName: String { "magnifyingglass" }
-    var placeholder: String { "Search applications..." }
-    var modeDescription: String? { nil }
-
-    // 应用列表和使用次数
-    private(set) var allApps: [AppInfo] = []
-    private var appUsageCount: [String: Int] = [:]
-    private let appScanner = AppScanner.shared
-    private let userDefaults = UserDefaults.standard
-    private var cancellables = Set<AnyCancellable>()
-    private var searchTextProvider: (() -> String)?
     
     // --- ModeStateController 协议实现 ---
-    var prefix: String? { "" } // 启动模式无前缀
     
-    // 1. 触发条件
-    func shouldActivate(for text: String) -> Bool {
-        // 只要不是以/开头的命令，都可激活启动模式
-        return text.isEmpty || !text.hasPrefix("/")
+    // 1. 身份与元数据
+    let mode: LauncherMode = .launch
+    let prefix: String? = nil // Launch 模式作为默认模式，没有前缀
+    let displayName: String = "Light Launcher"
+    let iconName: String = "magnifyingglass"
+    let placeholder: String = "Search applications or type / for commands..."
+    let modeDescription: String? = nil
+    
+    // 2. 核心逻辑 (单一输入入口)
+    
+    /// 【最终版】处理输入的核心方法。
+    /// 对于 LaunchModeController，这是它的主要工作：根据输入文本过滤应用列表。
+    /// - Parameter arguments: 用户的完整输入文本。
+    func handleInput(arguments: String) {
+        filterApps(searchText: arguments)
     }
     
-    // 2. 进入模式
-    func enterMode(with text: String) {
-        let items = getMostUsedApps(from: allApps, limit: 6)
-        self.displayableItems = items.map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    
-    // 3. 处理输入
-    func handleInput(_ text: String) {
-        filterApps(searchText: text)
-    }
-    
-    // 4. 执行动作
+    /// 执行选中项的动作：启动应用
     func executeAction(at index: Int) -> Bool {
-        print("Executing action at index \(index)")
         guard index < self.displayableItems.count else { return false }
         guard let app = self.displayableItems[index] as? AppInfo else { return false }
+        
         let success = NSWorkspace.shared.open(app.url)
         if success {
             incrementUsage(for: app.name)
@@ -107,31 +86,70 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         return success
     }
     
-    // 5. 退出条件
-    func shouldExit(for text: String) -> Bool {
-        // 以/开头的命令或切换到其他模式时退出
-        return text.hasPrefix("/")
-    }
+    // 3. 生命周期与UI
     
-    // 6. 清理操作
+    /// 清理操作：清空显示列表
     func cleanup() {
         self.displayableItems = []
     }
     
-    // --- 其他辅助方法 ---
+    /// 用于 UI 绑定的可显示项目
+    @Published var displayableItems: [any DisplayableItem] = []
+
+    /// 创建 SwiftUI 视图
+    func makeContentView() -> AnyView {
+        if !self.displayableItems.isEmpty {
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
+        } else {
+            // 当没有搜索结果时，显示空状态视图
+            return AnyView(EmptyStateView(mode: .launch, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
+        }
+    }
+    
+    /// 获取帮助文本
+    func getHelpText() -> [String] {
+        return [
+            "Type to search applications",
+            "Press ↑↓ arrows or numbers 1-6 to select",
+            "Type / to see all commands",
+            "Press Esc to close"
+        ]
+    }
+    
+    // ❌ --- 已移除的旧方法 --- ❌
+    // func shouldActivate(for text: String) -> Bool
+    // func enterMode(with text: String)
+    // func shouldExit(for text: String) -> Bool
+    //   -> 原因：所有这些模式切换的决策逻辑，现在都已上移到 LauncherViewModel.processInput 集中处理。
+
+    // MARK: - Private Properties & Methods
+    
+    private(set) var allApps: [AppInfo] = []
+    private var appUsageCount: [String: Int] = [:]
+    private let appScanner = AppScanner.shared
+    private let userDefaults = UserDefaults.standard
+    private var cancellables = Set<AnyCancellable>()
+    
+    private override init() {
+        super.init()
+        loadUsageData()
+        setupObservers()
+        // 初始的应用扫描可以在这里触发
+        // appScanner.scanForApplications()
+    }
+    
     private func setupObservers() {
         appScanner.$applications
             .receive(on: DispatchQueue.main)
             .sink { [weak self] apps in
                 guard let self = self else { return }
                 self.allApps = apps
-                // 这里只能在外部调用 handleInput，不能假定有 shared 单例
+                // 当应用列表更新时，如果当前是 launch 模式，可以刷新一下显示
+                if LauncherViewModel.shared.mode == .launch {
+                    self.handleInput(arguments: LauncherViewModel.shared.searchText)
+                }
             }
             .store(in: &cancellables)
-    }
-    
-    func bindSearchTextProvider(_ provider: @escaping () -> String) {
-        self.searchTextProvider = provider
     }
     
     private func loadUsageData() {
@@ -139,13 +157,16 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             self.appUsageCount = data
         }
     }
+    
     private func saveUsageData() {
         userDefaults.set(appUsageCount, forKey: "appUsageCount")
     }
+    
     private func incrementUsage(for appName: String) {
         appUsageCount[appName, default: 0] += 1
         saveUsageData()
     }
+    
     private func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
         apps.sorted { app1, app2 in
             let usage1 = appUsageCount[app1.name, default: 0]
@@ -159,23 +180,28 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         .map { $0 }
     }
 
-    func filterApps(searchText: String) {
+    /// 核心过滤逻辑，现在由 handleInput 调用
+    private func filterApps(searchText: String) {
         if searchText.isEmpty {
+            // 如果输入为空，显示最常用的应用
             let items = getMostUsedApps(from: allApps, limit: 6)
             self.displayableItems = items.map { $0 as any DisplayableItem }
         } else {
+            // 如果有输入，则进行模糊匹配搜索
             let matches = allApps.compactMap { app in
                 calculateMatch(for: app, query: searchText)
             }
-            // 按评分排序并取前6个
             let items = matches
                 .sorted { $0.score > $1.score }
                 .prefix(6)
                 .map { $0.app }
             self.displayableItems = items.map { $0 as any DisplayableItem }
         }
-        // 每当列表更新时，重置选择
-        LauncherViewModel.shared.selectedIndex = 0
+        
+        // 每当列表更新时，重置 ViewModel 中的选择索引
+        if LauncherViewModel.shared.selectedIndex != 0 {
+            LauncherViewModel.shared.selectedIndex = 0
+        }
     }
 
     private func calculateMatch(for app: AppInfo, query: String) -> AppMatch? {
@@ -188,33 +214,11 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         )
     }
 
-    func launchSelectedApp(index: Int) -> Bool {
-        return self.executeAction(at: index)
-    }
-    func getMostUsedDisplayApps(limit: Int) -> [AppInfo] {
-        displayableItems.compactMap { $0 as? AppInfo }.prefix(limit).map { $0 }
-    }
+    // --- 其他特定于此控制器的公共方法 ---
+    
     func selectAppByNumber(_ number: Int) -> Bool {
         let idx = number - 1
         guard idx >= 0 && idx < self.displayableItems.count && idx < 6 else { return false }
         return self.executeAction(at: idx)
-    }
-
-    // 生成内容视图
-    func makeContentView() -> AnyView {
-        if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        } else {
-            return AnyView(EmptyStateView(mode: .launch, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
-        }
-    }
-
-    func getHelpText() -> [String] {
-        return [
-            "Type to search applications",
-            "Press ↑↓ arrows or numbers 1-6 to select",
-            "Type / to see all commands",
-            "Press Esc to close"
-        ]
     }
 }

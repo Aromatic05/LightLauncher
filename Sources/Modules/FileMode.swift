@@ -192,70 +192,105 @@ class FileManager_LightLauncher {
 }
 
 // MARK: - 文件模式控制器
+import SwiftUI
+
 @MainActor
 final class FileModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = FileModeController()
     private override init() {}
-    var displayableItems: [any DisplayableItem] = []
-    @Published var showStartPaths: Bool = true
-    @Published var currentPath: String = NSHomeDirectory()
-    var prefix: String? { "/o" }
-    // 元信息属性
-    var displayName: String { "File Browser" }
-    var iconName: String { "folder" }
-    var placeholder: String { "Browse files and folders..." }
-    var modeDescription: String? { "Browse files and folders starting from home directory" }
-    // 1. 触发条件
-    func shouldActivate(for text: String) -> Bool {
-        return text.hasPrefix("/o")
-    }
-    // 2. 进入模式
-    func enterMode(with text: String) {
-        showStartPaths = true
-        self.displayableItems = getStartPathItems(query: "").map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    // 3. 处理输入
-    func handleInput(_ text: String) {
+
+    // MARK: - ModeStateController Protocol Implementation
+    
+    // 1. 身份与元数据
+    let mode: LauncherMode = .file
+    let prefix: String? = "/o"
+    let displayName: String = "File Browser"
+    let iconName: String = "folder"
+    let placeholder: String = "Browse files or folders..."
+    let modeDescription: String? = "Browse your file system"
+
+    @Published var displayableItems: [any DisplayableItem] = []
+    
+    // 2. 核心逻辑
+    func handleInput(arguments: String) {
         if showStartPaths {
-            self.displayableItems = getStartPathItems(query: text).map { $0 as any DisplayableItem }
+            let items = getStartPathItems(query: arguments)
+            self.displayableItems = items.map { $0 as any DisplayableItem }
         } else {
-            self.displayableItems = getFileItems(path: currentPath, query: text).map { $0 as any DisplayableItem }
+            let items = getFileItems(path: currentPath, query: arguments)
+            self.displayableItems = items.map { $0 as any DisplayableItem }
         }
-        LauncherViewModel.shared.selectedIndex = 0
+        if LauncherViewModel.shared.selectedIndex != 0 {
+            LauncherViewModel.shared.selectedIndex = 0
+        }
     }
-    // 4. 执行动作
+
     func executeAction(at index: Int) -> Bool {
+        guard index >= 0 && index < self.displayableItems.count else { return false }
+        
         if showStartPaths {
-            guard index >= 0 && index < self.displayableItems.count else { return false }
             guard let startPath = self.displayableItems[index] as? FileBrowserStartPath else { return false }
             navigateToDirectory(URL(fileURLWithPath: startPath.path))
-            return true
+            return true // Navigation is an action, but doesn't exit the app
         } else {
-            guard index >= 0 && index < self.displayableItems.count else { return false }
             guard let fileItem = self.displayableItems[index] as? FileItem else { return false }
             if fileItem.isDirectory {
                 navigateToDirectory(fileItem.url)
-                return true
+                return true // Navigation is an action
             } else {
                 let success = NSWorkspace.shared.open(fileItem.url)
                 if success {
-                    enterMode(with: "") // 返回起始界面
+                    // After opening a file, reset to the initial screen
+                    resetToStartScreen()
                 }
                 return success
             }
         }
     }
-    // 5. 退出条件
-    func shouldExit(for text: String) -> Bool {
-        // 删除 /o 前缀或切换到其他模式时退出
-        return !text.hasPrefix("/o")
-    }
-    // 6. 清理操作
+
+    // 3. 生命周期与UI
     func cleanup() {
         self.displayableItems = []
+        // Crucially, reset the internal state to its default
+        self.showStartPaths = true
+        self.currentPath = NSHomeDirectory()
     }
-    // 获取起始路径项
+    
+    func makeContentView() -> AnyView {
+        // This view logic remains the same
+        if !displayableItems.isEmpty {
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
+        } else {
+            return AnyView(FileCommandInputView(currentPath: currentPath))
+        }
+    }
+
+    func getHelpText() -> [String] {
+        return [
+            "Browse files and folders",
+            "Enter to open files or navigate into folders",
+            "Type to filter the current list"
+        ]
+    }
+
+    // MARK: - Internal State & Helper Methods
+    
+    @Published private var showStartPaths: Bool = true
+    @Published private var currentPath: String = NSHomeDirectory()
+    
+    func navigateToDirectory(_ url: URL) {
+        self.showStartPaths = false
+        self.currentPath = url.path
+        // Use the main input handler to load the new directory's contents
+        self.handleInput(arguments: "")
+    }
+
+    func resetToStartScreen() {
+        self.showStartPaths = true
+        self.currentPath = NSHomeDirectory()
+        self.handleInput(arguments: "")
+    }
+
     private func getStartPathItems(query: String) -> [FileBrowserStartPath] {
         let allPaths = ConfigManager.shared.getFileBrowserStartPaths().map { path in
             FileBrowserStartPath(name: URL(fileURLWithPath: path).lastPathComponent, path: path)
@@ -263,70 +298,16 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         if query.isEmpty {
             return allPaths
         }
-        return allPaths.filter { startPath in
-            startPath.title.localizedCaseInsensitiveContains(query) ||
-            startPath.path.localizedCaseInsensitiveContains(query)
-        }
+        return allPaths.filter { $0.title.localizedCaseInsensitiveContains(query) }
     }
-    // 获取文件项
+
     private func getFileItems(path: String, query: String) -> [FileItem] {
         let allFiles = FileManager_LightLauncher.shared.getFiles(at: path)
         return FileManager_LightLauncher.shared.filterFiles(allFiles, query: query)
     }
-    // 跳转目录
-    func navigateToDirectory(_ url: URL) {
-        showStartPaths = false
-        currentPath = url.path
-        self.displayableItems = getFileItems(path: url.path, query: "").map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-    func openInFinder(_ url: URL) {
-        if url.hasDirectoryPath {
-            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
-        } else {
-            NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
-        }
-    }
-    // 其它便捷属性和方法
-    var currentFiles: [FileItem] {
-        displayableItems.compactMap { $0 as? FileItem }
-    }
-    var fileBrowserStartPaths: [FileBrowserStartPath] {
-        displayableItems.compactMap { $0 as? FileBrowserStartPath }
-    }
-    func getFileItem(at index: Int) -> FileItem? {
-        currentFiles.indices.contains(index) ? currentFiles[index] : nil
-    }
-    func getStartPath(at index: Int) -> FileBrowserStartPath? {
-        fileBrowserStartPaths.indices.contains(index) ? fileBrowserStartPaths[index] : nil
-    }
-    // 直接跳转目录
-    func jumpToDirectory(_ url: URL) {
-        showStartPaths = false
-        currentPath = url.path
-        self.displayableItems = getFileItems(path: url.path, query: "").map { $0 as any DisplayableItem }
-    }
-    func showStartPathsList() {
-        showStartPaths = true
-        self.displayableItems = getStartPathItems(query: "").map { $0 as any DisplayableItem }
-    }
-    func updateFileResults(path: String) {
-        jumpToDirectory(URL(fileURLWithPath: path))
-    }
-    func makeContentView() -> AnyView {
-        if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        } else {
-            return AnyView(FileCommandInputView(currentPath: NSHomeDirectory()))
-        }
-    }
-    func getHelpText() -> [String] {
-        return [
-            "Browse files and folders starting from home directory",
-            "Press Enter to open files or navigate folders",
-            "Press Space to open current folder in Finder",
-            "Delete /o prefix to return to launch mode",
-            "Press Esc to close"
-        ]
+
+    func openInFinder() {
+        let url = URL(fileURLWithPath: currentPath)
+        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
     }
 }

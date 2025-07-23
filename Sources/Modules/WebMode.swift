@@ -3,166 +3,124 @@ import AppKit
 import SwiftUI
 
 // MARK: - 网页模式控制器
+import SwiftUI
+
 @MainActor
-final class WebModeController: NSObject, ModeStateController, ObservableObject  {
+final class WebModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = WebModeController()
-    private override init() {}
-    var prefix: String? { "/w" }
-    var displayableItems: [any DisplayableItem] = []
-       // 元信息属性
-    var displayName: String { "Web Open" }
-    var iconName: String { "safari" }
-    var placeholder: String { "Enter URL or website name..." }
-    var modeDescription: String? { "Open a website or URL in your default browser" }
-    // 1. 触发条件
-    func shouldActivate(for text: String) -> Bool {
-        return text.hasPrefix("/w")
+    private override init() {
+        // Pre-load browser data if needed
+        BrowserDataManager.shared.loadBrowserData()
     }
 
-    // 工具方法：生成“当前输入项+历史项”
-    private func makeWebItems(for text: String) -> [BrowserItem] {
-        let cleanSearchText = text.hasPrefix("/w ") ?
-            String(text.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines) :
-            text.trimmingCharacters(in: .whitespacesAndNewlines)
-        var items: [BrowserItem] = []
-        let searchItem = BrowserItem(
-            title: cleanSearchText.isEmpty ? "请输入网址或关键词" : cleanSearchText,
-            url: cleanSearchText,
-            type: .input,
-            source: .safari,
-            lastVisited: nil,
-            visitCount: 0,
-            subtitle: cleanSearchText.isEmpty ? nil : "打开网页或搜索：\(cleanSearchText)",
-            iconName: "globe",
-            actionHint: "按回车打开网页"
+    // MARK: - ModeStateController Protocol Implementation
+
+    // 1. 身份与元数据
+    let mode: LauncherMode = .web
+    let prefix: String? = "/w"
+    let displayName: String = "Open Web Page"
+    let iconName: String = "safari"
+    let placeholder: String = "Enter URL or website to open..."
+    let modeDescription: String? = "Open a URL or search for a site"
+
+    @Published var displayableItems: [any DisplayableItem] = []
+    
+    // 2. 核心逻辑
+    func handleInput(arguments: String) {
+        let query = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
+        var items: [any DisplayableItem] = []
+        
+        // Always add the current input as the first item
+        let inputItem = BrowserItem(
+            title: query.isEmpty ? "Enter a URL or search term" : query,
+            url: query, type: .input, source: .safari,
+            subtitle: query.isEmpty ? nil : "Open or search for: \(query)",
+            iconName: "globe"
         )
-        items.append(searchItem)
-        if cleanSearchText.isEmpty {
+        items.append(inputItem)
+        
+        // Add history or search results
+        if query.isEmpty {
             items += BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
         } else {
-            items += BrowserDataManager.shared.searchBrowserData(query: cleanSearchText)
+            items += BrowserDataManager.shared.searchBrowserData(query: query)
         }
-        return items
+        
+        self.displayableItems = items
+        if LauncherViewModel.shared.selectedIndex != 0 {
+            LauncherViewModel.shared.selectedIndex = 0
+        }
     }
 
-    // 2. 进入模式
-    func enterMode(with text: String) {
-        BrowserDataManager.shared.loadBrowserData()
-        let items = makeWebItems(for: text)
-        self.displayableItems = items.map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-
-    // 3. 处理输入
-    func handleInput(_ text: String) {
-        let items = makeWebItems(for: text)
-        self.displayableItems = items.map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
-    }
-
-    // 4. 执行动作
     func executeAction(at index: Int) -> Bool {
-        let cleanWebText = extractCleanWebText(LauncherViewModel.shared.searchText)
-        if index == 0 {
-            if !cleanWebText.isEmpty {
-                return openWebURL(cleanWebText)
-            }
+        guard index >= 0 && index < displayableItems.count,
+              let item = displayableItems[index] as? BrowserItem else {
             return false
-        } else if index > 0 && index < self.displayableItems.count {
-            return openBrowserItem(at: index - 1)
         }
-        return false
+        
+        // The URL to open is always stored in the item's `url` property
+        return openWebURL(item.url)
     }
 
-    // 5. 退出条件
-    func shouldExit(for text: String) -> Bool {
-        return !text.hasPrefix("/w")
-    }
-
-    // 6. 清理操作
+    // 3. 生命周期与UI
     func cleanup() {
         self.displayableItems = []
     }
 
-    // --- 辅助方法 ---
-    func openWebURL(_ url: String) -> Bool {
-        let cleanText = url.trimmingCharacters(in: .whitespacesAndNewlines)
+    func makeContentView() -> AnyView {
+        return AnyView(WebCommandInputView(searchText: LauncherViewModel.shared.searchText))
+    }
+
+    func getHelpText() -> [String] {
+        return [
+            "Type a URL or search term to open",
+            "Press Enter to open in your default browser",
+            "Press Esc to exit"
+        ]
+    }
+
+    // MARK: - Private Helper Methods
+
+    private func openWebURL(_ text: String) -> Bool {
+        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanText.isEmpty else { return false }
+        
+        // Try to form a URL directly
         if let url = URL(string: cleanText), url.scheme != nil {
             NSWorkspace.shared.open(url)
             return true
         }
+        
+        // Try to treat it as a domain name (e.g., "apple.com")
         if isDomainName(cleanText) {
             if let url = URL(string: "https://\(cleanText)") {
                 NSWorkspace.shared.open(url)
                 return true
             }
         }
+        
+        // Fallback to searching with the default search engine
         let encodedQuery = cleanText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cleanText
-        let searchURL = getDefaultSearchEngine().replacingOccurrences(of: "{query}", with: encodedQuery)
-        if let url = URL(string: searchURL) {
+        let searchURLString = getDefaultSearchEngineURL().replacingOccurrences(of: "{query}", with: encodedQuery)
+        
+        if let url = URL(string: searchURLString) {
             NSWorkspace.shared.open(url)
             return true
         }
+        
         return false
-    }
-
-    func openBrowserItem(at index: Int) -> Bool {
-        guard index >= 0 && index < self.displayableItems.count else { return false }
-        guard let item = self.displayableItems[index] as? BrowserItem else { return false }
-        if let url = URL(string: item.url) {
-            NSWorkspace.shared.open(url)
-            return true
-        }
-        return false
-    }
-
-    func extractCleanWebText(_ searchText: String) -> String {
-        let prefix = "/w "
-        if searchText.hasPrefix(prefix) {
-            return String(searchText.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private func getDefaultSearchEngine() -> String {
-        let configManager = ConfigManager.shared
-        let engine = configManager.config.modes.defaultSearchEngine
-        switch engine {
-        case "baidu":
-            return "https://www.baidu.com/s?wd={query}"
-        case "bing":
-            return "https://www.bing.com/search?q={query}"
-        case "google":
-            fallthrough
-        default:
-            return "https://www.google.com/search?q={query}"
-        }
     }
 
     private func isDomainName(_ text: String) -> Bool {
         return text.contains(".") && !text.contains(" ") && !text.hasPrefix(".")
     }
-
-    func getHelpText() -> [String] {
-        return [
-            "Type after /w to open website or URL",
-            "Press Enter to open in browser",
-            "Delete /w prefix to return to launch mode", 
-            "Press Esc to close"
-        ]
-    }
-
-    func updateWebResults(query: String) {
-        self.handleInput(query)
-    }
-    func filterBrowserItems(searchText: String) {
-        self.handleInput(searchText)
-    }
-    func makeContentView() -> AnyView {
-        if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        } else {
-            return AnyView(WebCommandInputView(searchText: LauncherViewModel.shared.searchText))
+    
+    private func getDefaultSearchEngineURL() -> String {
+        let engine = ConfigManager.shared.config.modes.defaultSearchEngine
+        switch engine {
+        case "baidu": return "https://www.baidu.com/s?wd={query}"
+        case "bing": return "https://www.bing.com/search?q={query}"
+        default: return "https://www.google.com/search?q={query}"
         }
     }
 }
