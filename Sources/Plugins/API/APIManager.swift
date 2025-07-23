@@ -81,11 +81,11 @@ class APIManager {
         }
         lightlauncher?.setObject(getConfigBlock, forKeyedSubscript: "getConfig" as NSString)
 
-                // 刷新视图
+        // 刷新视图
         let refreshBlock: @convention(block) () -> Void = {
             pluginInstance.onItemsUpdated?()
-            PluginModeController.shared.updateDisplayableItems(from: pluginInstance)
-            LauncherViewModel.shared.forceRefresh = !LauncherViewModel.shared.forceRefresh
+            // PluginModeController.shared.updateDisplayableItems(from: pluginInstance)
+            // LauncherViewModel.shared.forceRefresh = !LauncherViewModel.shared.forceRefresh
         }
         lightlauncher?.setObject(refreshBlock, forKeyedSubscript: "refresh" as NSString)
     }

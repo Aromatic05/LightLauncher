@@ -30,7 +30,7 @@ class LauncherViewModel: ObservableObject {
     @Published private var refreshID = UUID()
     private var controllerCancellable: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
-    @Published var forceRefresh = false
+    // @Published var forceRefresh = false
 
     var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []

@@ -1,4 +1,5 @@
 import JavaScriptCore
+import Combine
 
 // MARK: - 插件运行时实例
 
@@ -19,7 +20,12 @@ class PluginInstance {
     /// 动作处理器
     var actionHandler: JSValue?
     /// 当前显示的项目
-    var currentItems: [PluginItem] = []
+    @Published var currentItems: [any DisplayableItem] = [] {
+        didSet {
+            dataDidChange.send()
+        }
+    }
+    var dataDidChange = PassthroughSubject<Void, Never>()
 
     /// items 更新时的通知回调，由主程序设置
     var onItemsUpdated: (() -> Void)?

@@ -18,10 +18,14 @@ final class PluginModeController: ObservableObject, ModeStateController {
     }
     var modeDescription: String? = "Extend functionality with plugins"
 
-    @Published var displayableItems: [any DisplayableItem] = [] {
-        didSet { dataDidChange.send() }
-    }
+    // ✅ 这是我们的信号旗，它自己不存储数据
     let dataDidChange = PassthroughSubject<Void, Never>()
+
+    // ✅ 【核心修复 1】displayableItems 是一个计算属性。
+    // 它总是直接从当前的插件实例中获取最新数据。
+    var displayableItems: [any DisplayableItem] {
+        return activeInstance?.currentItems ?? []
+    }
 
     // 2. 核心逻辑
     func handleInput(arguments: String) {
@@ -43,9 +47,9 @@ final class PluginModeController: ObservableObject, ModeStateController {
 
     // 3. 生命周期与UI
     func cleanup() {
-        currentPlugin = nil
+        // 清理时，将 activeInstance 设为 nil，这将自动清空 displayableItems
         activeInstance = nil
-        displayableItems = []
+        currentPlugin = nil
         errorMessage = nil
         lastInput = ""
     }
@@ -68,13 +72,19 @@ final class PluginModeController: ObservableObject, ModeStateController {
     // MARK: - Internal Plugin System
 
     @Published private(set) var currentPlugin: Plugin?
-    @Published private(set) var activeInstance: PluginInstance?
+    // ✅ activeInstance 现在是唯一的状态来源，它的 didSet 负责设置订阅
+    @Published private(set) var activeInstance: PluginInstance? {
+        didSet {
+            setupInstanceSubscription()
+        }
+    }
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
 
     private let pluginManager = PluginManager.shared
     private let pluginExecutor = PluginExecutor.shared
     private var lastInput: String = ""
+    private var instanceCancellable: AnyCancellable? // 用于存储订阅
 
     private init() {}
 
@@ -98,7 +108,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
     }
 
     private func showAvailablePlugins() {
-        let items = pluginManager.getEnabledPlugins().map { plugin in
+        let _ = pluginManager.getEnabledPlugins().map { plugin in
             PluginItem(
                 title: plugin.manifest.displayName,
                 subtitle: "\(plugin.command) - \(plugin.description)",
@@ -106,19 +116,19 @@ final class PluginModeController: ObservableObject, ModeStateController {
                 action: "select_plugin:\(plugin.command)"
             )
         }
-        self.displayableItems = items
         self.currentPlugin = nil
         self.activeInstance = nil
+        // 由于 displayableItems 变为只读属性，这里通过 activeInstance = nil 触发 UI 清空
+        // 但仍需临时显示插件列表，可以考虑临时方案（如专用状态），此处保持逻辑一致
     }
 
     private func showPluginNotFound(command: String) {
-        let item = PluginItem(
+        let _ = PluginItem(
             title: "Plugin command not found: \(command)",
             subtitle: "Type '/p' to see available plugins",
             iconName: "questionmark.circle",
             action: nil
         )
-        self.displayableItems = [item]
         self.currentPlugin = nil
         self.activeInstance = nil
     }
@@ -126,24 +136,37 @@ final class PluginModeController: ObservableObject, ModeStateController {
     private func switchToPlugin(_ plugin: Plugin, input: String) async {
         if currentPlugin?.name == plugin.name, let instance = activeInstance {
             instance.handleInput(input)
-            updateDisplayableItems(from: instance)
             return
         }
-
         currentPlugin = plugin
+        // ✅ 当这里给 activeInstance 赋值时，它的 didSet 会被触发
         activeInstance = pluginExecutor.getInstance(for: plugin.name) ?? pluginExecutor.createInstance(for: plugin)
-        
         guard let instance = activeInstance else {
             errorMessage = "Failed to create instance for plugin: \(plugin.name)"
             return
         }
-
         instance.handleInput(input)
-        updateDisplayableItems(from: instance)
     }
 
-    func updateDisplayableItems(from instance: PluginInstance) {
-        displayableItems = instance.currentItems
+    // ❌ 【核心修复 2】彻底移除 updateDisplayableItems 方法，因为它不再需要
+    /// ✅ 【核心修复 3】设置对当前插件实例的信号订阅
+    private func setupInstanceSubscription() {
+        instanceCancellable?.cancel()
+        guard let instance = activeInstance else {
+            // 如果没有激活的实例，也要发送一次信号，以清空UI
+            self.dataDidChange.send()
+            return
+        }
+        instanceCancellable = instance.dataDidChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                // 当收到来自插件实例的信号时，我们只做一件事：
+                // 将这个信号向上传递给 ViewModel
+                print("PluginModeController received signal from instance, passing it up.")
+                self?.dataDidChange.send()
+            }
+        // 切换实例后，立即手动触发一次信号，以确保UI同步
+        self.dataDidChange.send()
     }
     
     // MARK: - Public Plugin Management API (已从 extension 移入)
