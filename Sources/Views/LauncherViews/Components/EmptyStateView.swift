@@ -28,8 +28,9 @@ struct EmptyStateView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 60)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 32)
     }
     
     private var emptyStateIcon: String {
