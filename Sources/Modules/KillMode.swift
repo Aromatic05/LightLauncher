@@ -95,11 +95,6 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     var iconName: String { "xmark.circle" }
     var placeholder: String { "Search running apps to close..." }
     var modeDescription: String? { "Enter kill mode to close running applications" }
-    // 可显示项插槽
-    // var displayableItems: [any DisplayableItem] {
-    //     runningApps.map { $0 as any DisplayableItem }
-    // }
-    // 工具方法：生成“当前可关闭应用项”
     private func makeKillItems(for text: String) -> [RunningAppInfo] {
         let all = RunningAppsManager.shared.loadRunningApps()
         let prefix = "/k"

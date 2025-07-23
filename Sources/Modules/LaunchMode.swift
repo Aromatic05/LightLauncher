@@ -3,6 +3,52 @@ import AppKit
 import Combine
 import SwiftUI
 
+// MARK: - 应用信息结构
+struct AppInfo: Identifiable, Hashable, DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
+    }
+    let name: String
+    let url: URL
+    
+    // 使用 URL 路径作为唯一标识符，避免重复应用
+    var id: String {
+        url.path
+    }
+    
+    var icon: NSImage? {
+        NSWorkspace.shared.icon(forFile: url.path)
+    }
+    // DisplayableItem 协议实现
+    var displayName: String { name }
+    var title: String { name }
+    var subtitle: String? { url.path }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(url.path)
+    }
+    
+    static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
+        lhs.url.path == rhs.url.path
+    }
+}
+
+// MARK: - 应用匹配结果结构
+struct AppMatch {
+    let app: AppInfo
+    let score: Double
+    let matchType: MatchType
+    
+    enum MatchType {
+        case exactStart      // 完全匹配开头
+        case wordStart       // 单词开头匹配
+        case subsequence     // 子序列匹配
+        case fuzzy          // 模糊匹配
+        case contains       // 包含匹配
+    }
+}
+
 // MARK: - 启动模式控制器
 @MainActor
 final class LaunchModeController: NSObject, ModeStateController, ObservableObject {
@@ -27,13 +73,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     private let userDefaults = UserDefaults.standard
     private var cancellables = Set<AnyCancellable>()
     private var searchTextProvider: (() -> String)?
-    
-    // 移除 filteredApps，统一用 viewModel.displayableItems
-    
-    // 可显示项插槽
-    // var displayableItems: [any DisplayableItem] {
-    //     filteredApps.map { $0 as any DisplayableItem }
-    // }
     
     // --- ModeStateController 协议实现 ---
     var prefix: String? { "" } // 启动模式无前缀
@@ -177,51 +216,5 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             "Type / to see all commands",
             "Press Esc to close"
         ]
-    }
-}
-
-// MARK: - 应用信息结构
-struct AppInfo: Identifiable, Hashable, DisplayableItem {
-    @ViewBuilder
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
-    }
-    let name: String
-    let url: URL
-    
-    // 使用 URL 路径作为唯一标识符，避免重复应用
-    var id: String {
-        url.path
-    }
-    
-    var icon: NSImage? {
-        NSWorkspace.shared.icon(forFile: url.path)
-    }
-    // DisplayableItem 协议实现
-    var displayName: String { name }
-    var title: String { name }
-    var subtitle: String? { url.path }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(url.path)
-    }
-    
-    static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
-        lhs.url.path == rhs.url.path
-    }
-}
-
-// MARK: - 应用匹配结果结构
-struct AppMatch {
-    let app: AppInfo
-    let score: Double
-    let matchType: MatchType
-    
-    enum MatchType {
-        case exactStart      // 完全匹配开头
-        case wordStart       // 单词开头匹配
-        case subsequence     // 子序列匹配
-        case fuzzy          // 模糊匹配
-        case contains       // 包含匹配
     }
 }
