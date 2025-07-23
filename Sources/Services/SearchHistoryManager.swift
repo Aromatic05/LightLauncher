@@ -3,11 +3,19 @@ import AppKit
 import SwiftUI
 
 // MARK: - 搜索历史项
-struct SearchHistoryItem: Codable, Identifiable, Hashable {
+struct SearchHistoryItem: Codable, Identifiable, Hashable, @preconcurrency DisplayableItem {
     let id: UUID
     let query: String
     let timestamp: Date
     let searchEngine: String
+    var title: String { query }
+    var subtitle: String? { searchEngine }
+    var icon: NSImage? { nil }
+
+    @ViewBuilder @MainActor
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(SearchHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {}))
+    }
     
     init(query: String, searchEngine: String = "google") {
         self.id = UUID()
@@ -106,17 +114,5 @@ class SearchHistoryManager: ObservableObject {
         } catch {
             print("Failed to save search history: \(error)")
         }
-    }
-}
-
-// MARK: - DisplayableItem 协议实现
-extension SearchHistoryItem: @preconcurrency DisplayableItem {
-    var title: String { query }
-    var subtitle: String? { searchEngine }
-    var icon: NSImage? { nil }
-
-    @MainActor @ViewBuilder
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(SearchHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {}))
     }
 }
