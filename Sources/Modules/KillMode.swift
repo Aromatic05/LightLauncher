@@ -102,7 +102,11 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     let placeholder: String = "Search running apps to kill..."
     let modeDescription: String? = "Force quit a running application"
 
-    @Published var displayableItems: [any DisplayableItem] = []
+    @Published var displayableItems: [any DisplayableItem] = [] {
+        didSet {
+            dataDidChange.send()
+        }
+    }
     let dataDidChange = PassthroughSubject<Void, Never>()
     
     // 2. 核心逻辑

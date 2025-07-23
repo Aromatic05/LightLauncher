@@ -30,8 +30,17 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
     let placeholder: String = "Enter search query..."
     let modeDescription: String? = "Search the web with your default engine"
 
-    @Published var searchHistory: [SearchHistoryItem] = []
-    @Published var currentQuery: String = ""
+    @Published var currentQuery: String = "" {
+        didSet {
+            dataDidChange.send()
+        }
+    }
+    
+    @Published var searchHistory: [SearchHistoryItem] = [] {
+        didSet {
+            dataDidChange.send()
+        }
+    }
 
     var displayableItems: [any DisplayableItem] {
         var items: [any DisplayableItem] = []

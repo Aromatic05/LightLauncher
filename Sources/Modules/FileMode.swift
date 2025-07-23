@@ -210,7 +210,11 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     let placeholder: String = "Browse files or folders..."
     let modeDescription: String? = "Browse your file system"
 
-    @Published var displayableItems: [any DisplayableItem] = []
+    @Published var displayableItems: [any DisplayableItem] = [] {
+        didSet {
+            dataDidChange.send()
+        }
+    }
     let dataDidChange = PassthroughSubject<Void, Never>()
     
     // 2. 核心逻辑

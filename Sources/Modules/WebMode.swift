@@ -23,7 +23,11 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
     let placeholder: String = "Enter URL or website to open..."
     let modeDescription: String? = "Open a URL or search for a site"
 
-    @Published var displayableItems: [any DisplayableItem] = []
+    @Published var displayableItems: [any DisplayableItem] = [] {
+        didSet {
+            dataDidChange.send()
+        }
+    }
     let dataDidChange = PassthroughSubject<Void, Never>()
     
     // 2. 核心逻辑

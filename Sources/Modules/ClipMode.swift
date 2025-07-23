@@ -21,7 +21,11 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     let placeholder: String = "Search clipboard history..."
     let modeDescription: String? = "Browse and paste clipboard history (text/files)"
 
-    @Published var displayableItems: [any DisplayableItem] = []
+    @Published var displayableItems: [any DisplayableItem] = [] {
+        didSet {
+            dataDidChange.send()
+        }
+    }
     let dataDidChange = PassthroughSubject<Void, Never>()
 
     // 2. 核心逻辑

@@ -18,7 +18,11 @@ final class PluginModeController: ObservableObject, ModeStateController {
     }
     var modeDescription: String? = "Extend functionality with plugins"
 
-    @Published private(set) var displayableItems: [any DisplayableItem] = []
+    @Published var displayableItems: [any DisplayableItem] = [] {
+        didSet {
+            dataDidChange.send()
+        }
+    }
     let dataDidChange = PassthroughSubject<Void, Never>()
 
     // 2. 核心逻辑
