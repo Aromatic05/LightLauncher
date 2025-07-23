@@ -50,6 +50,9 @@ struct LauncherCommand {
             return []
         }
         let allCommands = CommandRegistry.shared.getCommandSuggestions()
+        if text.count == 1 && firstChar == "/" {
+            return allCommands
+        }
         return allCommands.filter { $0.prefix.hasPrefix(text) }
     }
 }
