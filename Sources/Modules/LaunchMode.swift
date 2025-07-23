@@ -217,8 +217,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             commonAbbreviations: commonAbbreviations
         )
     }
-
-    // --- 其他特定于此控制器的公共方法 ---
     
     func selectAppByNumber(_ number: Int) -> Bool {
         let idx = number - 1

@@ -16,13 +16,11 @@ class LauncherViewModel: ObservableObject {
     @Published var showCommandSuggestions = false
     @Published var shouldHideWindowAfterAction = true
 
-    // MARK: - Core State & Data Source
     private(set) var controllers: [LauncherMode: any ModeStateController] = [:]
     @Published private(set) var activeController: (any ModeStateController)? {
         didSet { setupControllerSubscription() }
     }
 
-    // MARK: - Refresh Signal System & Subscriptions
     @Published private var refreshID = UUID()
     private var controllerCancellable: AnyCancellable?
     private var cancellables = Set<AnyCancellable>()
@@ -62,16 +60,13 @@ class LauncherViewModel: ObservableObject {
             .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
             .sink { [weak self] newText in
                 guard let self = self else { return }
-                // 将新旧文本都传入处理函数
                 self.handleSearchTextChange(newText: newText, oldText: self.previousSearchText)
-                // 更新上一次的文本
                 self.previousSearchText = newText
             }
             .store(in: &cancellables)
     }
 
     private func handleSearchTextChange(newText: String, oldText: String) {
-        // 将新旧文本继续传递给建议更新函数
         updateCommandSuggestions(for: newText, oldText: oldText)
         processInput(newText)
     }
@@ -115,7 +110,6 @@ class LauncherViewModel: ObservableObject {
     }
 
     func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
-        // 【修复】安全地解包可选的 oldMode
         if let mode = oldMode, let oldController = controllers[mode] {
             oldController.cleanup()
         }
@@ -162,11 +156,8 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Command Suggestions
     private func updateCommandSuggestions(for text: String, oldText: String) {
-        // 检查是否应该显示命令建议
         if SettingsManager.shared.showCommandSuggestions && (text.first != nil && !text.first!.isLetter) {
             let newSuggestions = LauncherCommand.getSuggestions(for: text)
-
-            // 更新建议列表
             if self.commandSuggestions.map({ $0.prefix }) != newSuggestions.map({ $0.prefix }) {
                 self.commandSuggestions = newSuggestions
             }
@@ -175,17 +166,10 @@ class LauncherViewModel: ObservableObject {
                 self.showCommandSuggestions = shouldShow
             }
 
-            // --- 开始：自动补全逻辑 ---
-            // 1. 检查是否只有一个建议
             if newSuggestions.count == 1, let suggestion = newSuggestions.first {
-                // 2. 检查用户是否正在输入 (而不是删除)
                 let isTypingForward = text.count > oldText.count
-                // 3. 检查当前文本是否已经是补全后的命令 (防止重复补全)
                 let isAlreadyCompleted = text == (suggestion.prefix + " ")
-
-                // 4. 如果满足所有条件，则执行自动补全
                 if isTypingForward && !isAlreadyCompleted {
-                    // 使用 DispatchQueue.main.async 安全地更新 searchText
                     DispatchQueue.main.async {
                         self.searchText = suggestion.prefix + " "
                         self.showCommandSuggestions = false
@@ -193,10 +177,7 @@ class LauncherViewModel: ObservableObject {
                     }
                 }
             }
-            // --- 结束：自动补全逻辑 ---
-
         } else {
-            // 如果文本不是以 "/" 开头，则清空建议
             if showCommandSuggestions { showCommandSuggestions = false }
             if !commandSuggestions.isEmpty { commandSuggestions = [] }
         }

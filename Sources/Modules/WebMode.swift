@@ -24,12 +24,11 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
     }
     let dataDidChange = PassthroughSubject<Void, Never>()
 
-    // ✅ 新增这个属性来保存纯净的查询
     @Published private var currentQuery: String = ""
 
     func handleInput(arguments: String) {
         let query = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.currentQuery = query // 保存纯净的查询
+        self.currentQuery = query 
 
         var items: [any DisplayableItem] = []
         let inputItem = BrowserItem(

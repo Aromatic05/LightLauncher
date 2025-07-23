@@ -19,9 +19,6 @@ struct CurrentQueryItem: DisplayableItem {
 final class SearchModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = SearchModeController()
     private override init() {}
-
-    // MARK: - ModeStateController Protocol Implementation
-
     // 1. 身份与元数据
     let mode: LauncherMode = .search
     let prefix: String? = "/s"

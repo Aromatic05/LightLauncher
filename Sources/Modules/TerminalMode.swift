@@ -12,7 +12,6 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     /// 唯一的依赖项：终端执行服务
     private let terminalExecutor = TerminalExecutorService.shared
 
-    // MARK: - ModeStateController Protocol Implementation
     let mode: LauncherMode = .terminal
     let prefix: String? = ">"
     let displayName: String = "Terminal"

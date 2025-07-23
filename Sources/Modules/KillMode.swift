@@ -12,7 +12,6 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     private override init() {}
 
     // MARK: - ModeStateController Protocol Implementation
-
     // 1. 身份与元数据
     let mode: LauncherMode = .kill
     let prefix: String? = "/k"
@@ -76,8 +75,6 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
             "Press Esc to exit"
         ]
     }
-
-    // MARK: - Private Helper Methods
     
     private func filterRunningApps(with query: String) -> [RunningAppInfo] {
         let allApps = RunningAppsManager.shared.loadRunningApps()
@@ -86,8 +83,6 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
         }
         return RunningAppsManager.shared.filterRunningApps(allApps, with: query)
     }
-
-    // MARK: - Public Helper Methods (Optional)
 
     func selectKillAppByNumber(_ number: Int) -> Bool {
         let index = number - 1
