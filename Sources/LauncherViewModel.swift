@@ -88,9 +88,12 @@ class LauncherViewModel: ObservableObject {
             modeSwitchIfNeeded(to: record.mode)
 
             if record.mode == .plugin {
-                let fullPluginCommand = (record.prefix + " " + arguments).trimmingCharacters(
-                    in: .whitespaces)
+                if record.prefix == "/p" {
+                record.controller.handleInput(arguments: arguments)
+            } else {
+                let fullPluginCommand = (record.prefix + " " + arguments).trimmingCharacters(in: .whitespaces)
                 record.controller.handleInput(arguments: fullPluginCommand)
+            }
             } else {
                 record.controller.handleInput(arguments: arguments)
             }
