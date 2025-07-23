@@ -1,8 +1,13 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 插件返回的结果项
 struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(PluginItemRowView(item: self, isSelected: isSelected, index: index))
+    }
     let id = UUID()
     let title: String
     let subtitle: String?

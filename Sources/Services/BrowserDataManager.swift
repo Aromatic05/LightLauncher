@@ -1,9 +1,14 @@
 import Foundation
 import SQLite3
 import AppKit
+import SwiftUI
 
 // MARK: - 浏览器数据项
 struct BrowserItem: Identifiable, Hashable, DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(BrowserItemRowView(item: self, isSelected: isSelected, index: index))
+    }
     let id = UUID()
     let title: String
     let url: String

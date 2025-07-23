@@ -3,6 +3,10 @@ import AppKit
 import SwiftUI
 
 struct CurrentCommandItem: DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(TerminalCommandInputView(searchText: title))
+    }
     let id = UUID()
     let title: String
     var subtitle: String? { "将要执行的命令: \(title)" }

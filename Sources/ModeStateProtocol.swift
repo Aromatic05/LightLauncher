@@ -8,6 +8,8 @@ protocol DisplayableItem: Hashable, Identifiable {
     var title: String { get }
     var subtitle: String? { get }
     var icon: NSImage? { get }
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView
 }
 
 // MARK: - 模式状态控制器协议（清晰版）
@@ -45,7 +47,7 @@ protocol ModeStateController: AnyObject {
     func cleanup()
 
     /// 生成结果列表的行视图（由每个模式控制器实现，统一遍历 displayableItems）
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView
+    // func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView
 
     func makeContentView() -> AnyView
 

@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 // MARK: - 搜索历史项
 struct SearchHistoryItem: Codable, Identifiable, Hashable {
@@ -109,8 +110,13 @@ class SearchHistoryManager: ObservableObject {
 }
 
 // MARK: - DisplayableItem 协议实现
-extension SearchHistoryItem: DisplayableItem {
+extension SearchHistoryItem: @preconcurrency DisplayableItem {
     var title: String { query }
     var subtitle: String? { searchEngine }
     var icon: NSImage? { nil }
+
+    @MainActor @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(SearchHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {}))
+    }
 }

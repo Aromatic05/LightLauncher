@@ -31,6 +31,11 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
         guard let size = size, !isDirectory else { return "" }
         return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
     }
+
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(FileRowView(file: self, isSelected: isSelected, index: index))
+    }
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -84,6 +89,11 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
     var title: String { displayName }
     var subtitle: String? { displayPath }
     // 如有其它协议要求属性/方法，请在此补充
+
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(StartPathRowView(startPath: self, isSelected: isSelected, index: index))
+    }
     
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
@@ -310,23 +320,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(FileCommandInputView(currentPath: NSHomeDirectory()))
         }
     }
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        if let file = item as? FileItem {
-            return AnyView(
-                FileRowView(file: file, isSelected: isSelected, index: index)
-                    .id(index)
-                    .onTapGesture { handleItemSelection(index) }
-            )
-        } else if let startPath = item as? FileBrowserStartPath {
-            return AnyView(
-                StartPathRowView(startPath: startPath, isSelected: isSelected, index: index)
-                    .id(index)
-                    .onTapGesture { handleItemSelection(index) }
-            )
-        } else {
-            return AnyView(EmptyView())
-        }
-    }
+    // makeRowView 已由各 item 自行实现，无需在控制器中实现
     static func getHelpText() -> [String] {
         return [
             "Browse files and folders starting from home directory",

@@ -4,6 +4,10 @@ import SwiftUI
 
 // MARK: - 运行中应用信息结构
 struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(RunningAppRowView(app: self, isSelected: isSelected, index: index))
+    }
     let id = UUID()
     let name: String
     let bundleIdentifier: String
@@ -179,15 +183,5 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(EmptyStateView(mode: .kill, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        if let runningApp = item as? RunningAppInfo {
-            return AnyView(
-                RunningAppRowView(app: runningApp, isSelected: isSelected, index: index)
-                    .id(index)
-                    .onTapGesture { handleItemSelection(index) }
-            )
-        } else {
-            return AnyView(EmptyView())
-        }
-    }
+    // makeRowView 已由 RunningAppInfo 实现，无需在控制器中实现
 }

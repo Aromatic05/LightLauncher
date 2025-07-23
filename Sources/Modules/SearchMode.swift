@@ -4,6 +4,10 @@ import SwiftUI
 
 // MARK: - 当前搜索项结构体（文件级）
 struct CurrentQueryItem: DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(SearchCurrentQueryView(query: title, isSelected: isSelected))
+    }
     let id = UUID()
     let title: String
     var subtitle: String? { "当前搜索" }

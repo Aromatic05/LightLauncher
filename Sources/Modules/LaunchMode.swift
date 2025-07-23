@@ -169,17 +169,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             return AnyView(EmptyStateView(mode: .launch, hasSearchText: !LauncherViewModel.shared.searchText.isEmpty))
         }
     }
-    func makeRowView(for item: any DisplayableItem, isSelected: Bool, index: Int, handleItemSelection: @escaping (Int) -> Void) -> AnyView {
-        if let app = item as? AppInfo {
-            return AnyView(
-                AppRowView(app: app, isSelected: isSelected, index: index, mode: .launch)
-                    .id(index)
-                    .onTapGesture { handleItemSelection(index) }
-            )
-        } else {
-            return AnyView(EmptyView())
-        }
-    }
+    // makeRowView 已由 AppInfo 实现，无需在控制器中实现
 
     static func getHelpText() -> [String] {
         return [
@@ -193,6 +183,10 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
 
 // MARK: - 应用信息结构
 struct AppInfo: Identifiable, Hashable, DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
+    }
     let name: String
     let url: URL
     

@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 /// 剪切板历史记录项
 enum ClipboardItem: Codable, Equatable {
@@ -40,6 +41,10 @@ enum ClipboardItem: Codable, Equatable {
 }
 
 extension ClipboardItem: DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(ClipItemRowView(item: self, isSelected: isSelected, index: index))
+    }
     var id: UUID {
         switch self {
         case .text(let str):

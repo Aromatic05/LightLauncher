@@ -2,15 +2,21 @@ import SwiftUI
 
 @MainActor
 struct ResultsListView: View {
+    // 依然观察 ViewModel 来获取 displayableItems 和 selectedIndex
     @ObservedObject var viewModel: LauncherViewModel
     
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    // --- 关键改动 ---
-                    self.resultsListContent { index in
-                        handleItemSelection(at: index)
+                    // --- 终极简化 ---
+                    // 直接遍历 items，让 item 自己创建视图
+                    ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
+                        item.makeRowView(isSelected: index == viewModel.selectedIndex, index: index)
+                            .id(index)
+                            .onTapGesture {
+                                handleItemSelection(at: index)
+                            }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -27,28 +33,9 @@ struct ResultsListView: View {
     private func handleItemSelection(at index: Int) {
         viewModel.selectedIndex = index
         if viewModel.executeSelectedAction() {
-            // --- 关键改动 ---
             if viewModel.shouldHideWindowAfterAction {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
-        }
-    }
-
-    @ViewBuilder
-    func resultsListContent(handleItemSelection: @escaping (Int) -> Void) -> some View {
-        if let controller = viewModel.controllers[viewModel.mode] {
-            ForEach(Array(viewModel.displayableItems.enumerated()), id: \ .offset) { index, item in
-                controller.makeRowView(
-                    for: item,
-                    isSelected: index == viewModel.selectedIndex,
-                    index: index,
-                    handleItemSelection: { _ in handleItemSelection(index) }
-                )
-                .id(index)
-                .onTapGesture { handleItemSelection(index) }
-            }
-        } else {
-            EmptyView()
         }
     }
 }
