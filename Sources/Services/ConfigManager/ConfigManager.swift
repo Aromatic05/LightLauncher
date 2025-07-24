@@ -48,40 +48,8 @@ class ConfigManager: ObservableObject {
     private static func createDefaultConfig() -> AppConfig {
         return AppConfig(
             hotKey: AppConfig.HotKeyConfig(),
-            searchDirectories: [
-                SearchDirectory(path: "/Applications"),
-                SearchDirectory(path: "/Applications/Utilities"),
-                SearchDirectory(path: "/System/Applications"),
-                SearchDirectory(path: "/System/Applications/Utilities"),
-                SearchDirectory(path: "~/Applications")
-            ],
-            commonAbbreviations: [
-                "ps": ["photoshop"],
-                "ai": ["illustrator"],
-                "pr": ["premiere"],
-                "ae": ["after effects"],
-                "id": ["indesign"],
-                "lr": ["lightroom"],
-                "dw": ["dreamweaver"],
-                "xd": ["adobe xd"],
-                "vs": ["visual studio", "code"],
-                "vsc": ["visual studio code", "code"],
-                "code": ["visual studio code", "code"],
-                "chrome": ["google chrome"],
-                "ff": ["firefox"],
-                "safari": ["safari"],
-                "edge": ["microsoft edge"],
-                "word": ["microsoft word"],
-                "excel": ["microsoft excel"],
-                "ppt": ["powerpoint"],
-                "outlook": ["microsoft outlook"],
-                "teams": ["microsoft teams"],
-                "qq": ["qq"],
-                "wx": ["wechat", "微信"],
-                "wechat": ["微信"],
-                "git": ["github desktop", "sourcetree"],
-                "vm": ["vmware", "parallels"],
-            ],
+            searchDirectories: AppConfigDefaults.searchDirectories,
+            commonAbbreviations: AppConfigDefaults.commonAbbreviations,
             modes: AppConfig.ModesConfig()
         )
     }
@@ -163,5 +131,15 @@ class ConfigManager: ObservableObject {
             self.config = loadedConfig
             print("配置已重新加载")
         }
+    }
+
+    // 重置为默认配置
+    func resetToDefaults() {
+        config = Self.createDefaultConfig()
+        saveConfig()
+        // 同步模式设置
+        loadModeSettings()
+        // 通知热键变化
+        NotificationCenter.default.post(name: .hotKeyChanged, object: nil)
     }
 }

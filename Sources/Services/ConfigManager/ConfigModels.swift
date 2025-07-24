@@ -1,3 +1,40 @@
+// 默认配置常量
+enum AppConfigDefaults {
+    static let searchDirectories: [SearchDirectory] = [
+        SearchDirectory(path: "/Applications"),
+        SearchDirectory(path: "/Applications/Utilities"),
+        SearchDirectory(path: "/System/Applications"),
+        SearchDirectory(path: "/System/Applications/Utilities"),
+        SearchDirectory(path: "~/Applications")
+    ]
+    static let commonAbbreviations: [String: [String]] = [
+        "ps": ["photoshop"],
+        "ai": ["illustrator"],
+        "pr": ["premiere"],
+        "ae": ["after effects"],
+        "id": ["indesign"],
+        "lr": ["lightroom"],
+        "dw": ["dreamweaver"],
+        "xd": ["adobe xd"],
+        "vs": ["visual studio", "code"],
+        "vsc": ["visual studio code", "code"],
+        "code": ["visual studio code", "code"],
+        "chrome": ["google chrome"],
+        "ff": ["firefox"],
+        "safari": ["safari"],
+        "edge": ["microsoft edge"],
+        "word": ["microsoft word"],
+        "excel": ["microsoft excel"],
+        "ppt": ["powerpoint"],
+        "outlook": ["microsoft outlook"],
+        "teams": ["microsoft teams"],
+        "qq": ["qq"],
+        "wx": ["wechat", "微信"],
+        "wechat": ["微信"],
+        "git": ["github desktop", "sourcetree"],
+        "vm": ["vmware", "parallels"],
+    ]
+}
 import Foundation
 import Carbon
 
