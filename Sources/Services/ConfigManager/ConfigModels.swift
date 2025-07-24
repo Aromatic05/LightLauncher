@@ -93,7 +93,8 @@ struct AppConfig: Codable {
                 NSHomeDirectory(),
                 NSHomeDirectory() + "/Desktop",
                 NSHomeDirectory() + "/Downloads",
-                NSHomeDirectory() + "/Documents"
+                NSHomeDirectory() + "/Documents",
+                "/"
             ]
         }
         
