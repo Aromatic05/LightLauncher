@@ -14,7 +14,9 @@ struct SearchHistoryItem: Codable, Identifiable, Hashable, @preconcurrency Displ
 
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(SearchHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {}))
+        AnyView(SearchHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {
+            SearchModeController.shared.removeSearchHistoryItem(self)
+        }))
     }
     
     init(query: String, searchEngine: String = "google") {

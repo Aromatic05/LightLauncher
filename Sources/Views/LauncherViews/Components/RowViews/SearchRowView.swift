@@ -95,7 +95,9 @@ struct SearchHistoryRowView: View {
             
             // 删除按钮
             if isHovered {
-                Button(action: onDelete) {
+                Button(action: {
+                    onDelete()
+                }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))
                         .foregroundColor(.red)
