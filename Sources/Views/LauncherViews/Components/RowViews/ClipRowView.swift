@@ -6,7 +6,7 @@ struct ClipItemRowView: View {
     let index: Int
     
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 16) {
             switch item {
             case .text(let str):
                 Image(systemName: "doc.on.clipboard")
