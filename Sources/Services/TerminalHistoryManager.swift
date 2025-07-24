@@ -17,7 +17,7 @@ struct TerminalHistoryItem: Codable, Identifiable, Hashable, @preconcurrency Dis
             return AnyView(TerminalCurrentCommandRowView(command: command, isSelected: isSelected))
         } else {
             return AnyView(TerminalHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {
-                TerminalHistoryManager.shared.removeCommand(item: self)
+                TerminalModeController.shared.deleteHistoryItem(self)
             }))
         }
     }

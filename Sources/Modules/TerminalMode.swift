@@ -69,4 +69,12 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
             "Press Esc to exit"
         ]
     }
+
+    /// 删除历史项并刷新视图
+    func deleteHistoryItem(_ item: TerminalHistoryItem) {
+        historyManager.removeCommand(item: item)
+        // 触发 displayableItems 重新计算
+        self.currentQuery = self.currentQuery
+        dataDidChange.send()
+    }
 }
