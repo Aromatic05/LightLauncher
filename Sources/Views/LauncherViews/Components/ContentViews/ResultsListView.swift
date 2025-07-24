@@ -1,16 +1,14 @@
 import SwiftUI
 
+/// 默认视图，用于显示搜索结果列表，无额外组件，可以按需求进行修改
 @MainActor
 struct ResultsListView: View {
-    // 依然观察 ViewModel 来获取 displayableItems 和 selectedIndex
     @ObservedObject var viewModel: LauncherViewModel
     
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    // --- 终极简化 ---
-                    // 直接遍历 items，让 item 自己创建视图
                     ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) { index, item in
                         item.makeRowView(isSelected: index == viewModel.selectedIndex, index: index)
                             .id(index)
