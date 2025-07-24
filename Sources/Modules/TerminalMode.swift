@@ -59,7 +59,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     }
 
     func makeContentView() -> AnyView {
-        return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
+        return AnyView(TerminalModeView(viewModel: LauncherViewModel.shared))
     }
 
     func getHelpText() -> [String] {
@@ -70,10 +70,15 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         ]
     }
 
+    // MARK: - 历史记录管理操作
     /// 删除历史项并刷新视图
     func deleteHistoryItem(_ item: TerminalHistoryItem) {
         historyManager.removeCommand(item: item)
-        // 触发 displayableItems 重新计算
+        self.currentQuery = self.currentQuery
+        dataDidChange.send()
+    }
+    func clearHistory() {
+        historyManager.clearHistory()
         self.currentQuery = self.currentQuery
         dataDidChange.send()
     }
