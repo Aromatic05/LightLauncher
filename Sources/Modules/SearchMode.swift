@@ -41,9 +41,7 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
 
     var displayableItems: [any DisplayableItem] {
         var items: [any DisplayableItem] = []
-        if !currentQuery.isEmpty {
-            items.append(CurrentQueryItem(title: currentQuery))
-        }
+        items.append(CurrentQueryItem(title: currentQuery))
         items.append(contentsOf: searchHistory)
         return items
     }
