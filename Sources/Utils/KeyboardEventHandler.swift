@@ -164,7 +164,7 @@ extension KeyboardEventHandler {
 
     // 让决策函数变为纯函数，依赖传入的参数而不是外部 Actor 状态
     private func shouldPassThroughNumericKey(for mode: LauncherMode) -> Bool {
-        return mode == .web || mode == .search || mode == .terminal || mode == .plugin
+        return mode == .web || mode == .search || mode == .terminal || mode == .plugin || mode == .clip || mode == .keyword
     }
 
     private func shouldConsumeEvent(keyCode: UInt16, isNumericKey: Bool, for mode: LauncherMode) -> Bool {
