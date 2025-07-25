@@ -10,12 +10,15 @@ import SwiftUI
 final class KillModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = KillModeController()
     private override init() {}
+    @Published var forceKillEnabled: Bool = false
 
     // MARK: - ModeStateController Protocol Implementation
     // 1. 身份与元数据
     let mode: LauncherMode = .kill
     let prefix: String? = "/k"
-    let displayName: String = "Kill Process"
+    var displayName: String {
+        forceKillEnabled ? "Force Kill" : "Kill Process"
+    }
     let iconName: String = "xmark.circle"
     let placeholder: String = "Search running apps to kill..."
     let modeDescription: String? = "Force quit a running application"
@@ -41,7 +44,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
               let app = self.displayableItems[index] as? RunningAppInfo else {
             return false
         }
-        let result = RunningAppsManager.shared.killApp(app)
+        let result = RunningAppsManager.shared.killApp(app, force: forceKillEnabled)
         if result {
             self.displayableItems.remove(at: index)
         }
@@ -55,7 +58,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
 
     func makeContentView() -> AnyView {
         if !displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
+            return AnyView(KillModeView(viewModel: LauncherViewModel.shared))
         } else {
             let hasSearchText = !LauncherViewModel.shared.searchText.isEmpty
             return AnyView(EmptyStateView(

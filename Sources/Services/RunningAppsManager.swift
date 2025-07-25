@@ -73,19 +73,17 @@ class RunningAppsManager: @unchecked Sendable {
         }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
     
-    /// 结束应用，优先普通退出，失败则强制 kill
-    func killApp(_ app: RunningAppInfo) -> Bool {
+    /// 结束应用，支持强制 kill
+    func killApp(_ app: RunningAppInfo, force: Bool = false) -> Bool {
         guard let runningApp = NSWorkspace.shared.runningApplications.first(where: {
             $0.processIdentifier == app.processIdentifier
         }) else {
             return false
         }
-        // 先尝试正常退出
-        if runningApp.terminate() {
-            return true
+        if force {
+            return runningApp.forceTerminate()
+        } else {
+            return runningApp.terminate()
         }
-        // 如果未能正常退出，则强制 kill
-        let result = runningApp.forceTerminate()
-        return result
     }
 }
