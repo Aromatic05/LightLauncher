@@ -54,8 +54,12 @@ struct KeywordRowView: View {
                 .fill(isSelected ? Color.accentColor.opacity(0.1) : Color.blue.opacity(0.05))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSelected ? Color.accentColor : Color.blue.opacity(0.3), lineWidth: 1)
+            Group {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.accentColor, lineWidth: 1)
+                }
+            }
         )
     }
 }

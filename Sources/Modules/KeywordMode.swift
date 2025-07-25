@@ -68,7 +68,6 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
 
     // 2. 状态属性
     @Published private(set) var displayableItems: [any DisplayableItem] = []
-    // currentQuery 现在存储的是 ". " 之后的内容
     @Published var currentQuery: String = "" {
         didSet { updateResults(for: currentQuery) }
     }
@@ -92,8 +91,7 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
             return performKeywordSearch(item: item.item, query: item.query)
             
         } else if let item = selectedItem as? KeywordSuggestionItem {
-            // (已修改) 补全时，只更新控制器管理的内容部分
-            LauncherViewModel.shared.updateQuery(newQuery: " . \(item.item.keyword) ")
+            LauncherViewModel.shared.updateQuery(newQuery: ". \(item.item.keyword) ")
             return false
         }
         
@@ -149,14 +147,12 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         dataDidChange.send()
     }
     
-    /// (新) 当没有匹配的关键字时，显示默认的搜索引擎。
     private func showFallbackSearch(for fullQuery: String) {
-        // (已修改) 使用一个临时的、硬编码的Google搜索项作为后备
         let googleSearchItem = KeywordSearchItem(
-            title: "在 Google 中搜索 '{query}'",
+            title: "Google",
             url: "https://www.google.com/search?q={query}",
             keyword: "google",
-            icon: "google.png", // 假设你有一个google的图标
+            icon: "google.png",
             spaceEncoding: "+"
         )
         
