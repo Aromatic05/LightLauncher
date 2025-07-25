@@ -119,7 +119,7 @@ class FileManager_LightLauncher {
             let contents = try FileManager.default.contentsOfDirectory(
                 at: url,
                 includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
-                options: [.skipsHiddenFiles]
+                options: []
             )
             
             var files: [FileItem] = []
