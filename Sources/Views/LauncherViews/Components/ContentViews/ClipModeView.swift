@@ -57,10 +57,12 @@ struct ClipModeView: View {
                 if let item = itemToShow {
                     switch item {
                     case .text(let str):
-                        ScrollView {
-                            Text(str)
-                                .padding()
-                        }
+                        TextEditor(text: .constant(str))
+                            .font(.system(size: 15))
+                            .padding(8)
+                            .background(Color(.textBackgroundColor))
+                            .cornerRadius(6)
+                            .frame(minHeight: 200)
                     case .file(let url):
                         QuickLookPreview(url: url)
                     }
