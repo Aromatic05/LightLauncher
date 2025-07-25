@@ -40,7 +40,7 @@ enum AppConfigDefaults {
     static let modeEnabled: [String: Bool] = Dictionary(
         uniqueKeysWithValues: AppConfig.ModesConfig.allModes.map { ($0, true) })
     static let showCommandSuggestions: Bool = true
-    static let defaultSearchEngine: String = "google"
+    static let defaultSearchEngine: String = "Google"
     static let preferredTerminal: String = "auto"
     static let enabledBrowsers: [String] = ["safari"]
     static let fileBrowserStartPaths: [String] = [

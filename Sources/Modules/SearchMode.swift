@@ -50,7 +50,8 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
     // 2. 核心逻辑
     func handleInput(arguments: String) {
         self.currentQuery = arguments
-        self.searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: arguments, limit: 10)
+        let engine = ConfigManager.shared.config.modes.defaultSearchEngine
+        self.searchHistory = SearchHistoryManager.shared.getMatchingHistory(for: arguments, category: String(engine), limit: 10)
         if LauncherViewModel.shared.selectedIndex != 0 {
             LauncherViewModel.shared.selectedIndex = 0
         }
@@ -97,14 +98,14 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
         
         var urlString: String
         switch engine {
-        case "baidu": urlString = "https://www.baidu.com/s?wd=\(encodedQuery)"
-        case "bing": urlString = "https://www.bing.com/search?q=\(encodedQuery)"
+        case "Baidu": urlString = "https://www.baidu.com/s?wd=\(encodedQuery)"
+        case "Bing": urlString = "https://www.bing.com/search?q=\(encodedQuery)"
         default: urlString = "https://www.google.com/search?q=\(encodedQuery)"
         }
         
         guard let url = URL(string: urlString) else { return false }
-        
-        SearchHistoryManager.shared.addSearch(query: query, searchEngine: engine)
+
+        SearchHistoryManager.shared.addSearch(query: query, category: String(engine))
         NSWorkspace.shared.open(url)
         return true
     }
@@ -119,7 +120,7 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
     /// 【新增】清空搜索历史记录的方法
     func clearSearchHistory() {
         // 1. 清除持久化存储
-        SearchHistoryManager.shared.clearHistory()
+        SearchHistoryManager.shared.clearHistory(for: ConfigManager.shared.config.modes.defaultSearchEngine)
         // 2. 清除当前会话的显示列表
         self.searchHistory.removeAll()
     }

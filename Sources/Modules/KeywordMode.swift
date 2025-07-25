@@ -45,7 +45,7 @@ struct ActionableSearchItem: DisplayableItem {
     let query: String
     var id: String { item.keyword + query }
     var title: String { query.isEmpty ? item.title : item.title.replacingOccurrences(of: "{query}", with: query) }
-    var subtitle: String? { "使用 \(item.keyword) 搜索: \(query)" }
+    var subtitle: String? { "使用 \(item.title) 搜索: \(query)" }
     var icon: NSImage? { loadIcon(named: item.icon) }
     @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView { AnyView(KeywordRowView(keyword: title, title: subtitle ?? "", icon: icon, isSelected: isSelected)) }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
@@ -72,7 +72,9 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
     let modeDescription: String? = "通过自定义关键字或直接搜索"
 
     // 2. 状态属性
-    @Published private(set) var displayableItems: [any DisplayableItem] = []
+    @Published var displayableItems: [any DisplayableItem] = [] {
+        didSet { dataDidChange.send() }
+    }
     @Published var currentQuery: String = "" {
         didSet { updateResults(for: currentQuery) }
     }
@@ -141,8 +143,10 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         else {
             let allCustomKeywords = ConfigManager.shared.keywordSearchItems
             if let matchedItem = allCustomKeywords.first(where: { $0.keyword.lowercased() == keyword.lowercased() }) {
-                // 精确匹配到自定义关键字
-                self.displayableItems = [ActionableSearchItem(item: matchedItem, query: query)]
+                // 精确匹配到自定义关键字，显示历史记录
+                let historyItems = SearchHistoryManager.shared.getMatchingHistory(for: query, category: matchedItem.title)
+                let historyDisplayItems: [ActionableSearchItem] = historyItems.map { ActionableSearchItem(item: matchedItem, query: $0.query) }
+                self.displayableItems = [ActionableSearchItem(item: matchedItem, query: query)] + historyDisplayItems
             } else {
                 // 未匹配到，使用后备搜索
                 showFallbackSearch(for: text)
@@ -179,7 +183,7 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
     private func performKeywordSearch(item: KeywordSearchItem, query: String) -> Bool {
         let encoding = item.spaceEncoding ?? "+"
         let encodedQuery: String
-        
+
         switch encoding {
         case "%20":
             encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)?.replacingOccurrences(of: "+", with: "%20") ?? query
@@ -187,14 +191,17 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         default:
             encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)?.replacingOccurrences(of: "%20", with: "+") ?? query
         }
-        
+
         let urlString = item.url.replacingOccurrences(of: "{query}", with: encodedQuery)
-        
+
         guard let url = URL(string: urlString) else {
             print("Error: Could not create URL from string: \(urlString)")
             return false
         }
-        
+
+        // 记录历史（category使用item.title）
+        SearchHistoryManager.shared.addSearch(query: query, category: item.title)
+
         NSWorkspace.shared.open(url)
         return true
     }

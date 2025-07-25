@@ -81,7 +81,7 @@ struct SearchHistoryRowView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text(item.searchEngine.capitalized)
+                    Text(item.category.capitalized)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .padding(.horizontal, 6)
@@ -124,7 +124,7 @@ struct SearchHistoryRowView: View {
     }
     
     private var searchEngineIcon: String {
-        switch item.searchEngine.lowercased() {
+        switch item.category.lowercased() {
         case "google":
             return "globe"
         case "baidu":
@@ -137,7 +137,7 @@ struct SearchHistoryRowView: View {
     }
     
     private var searchEngineColor: Color {
-        switch item.searchEngine.lowercased() {
+        switch item.category.lowercased() {
         case "google":
             return .blue
         case "baidu":
