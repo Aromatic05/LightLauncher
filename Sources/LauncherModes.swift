@@ -4,7 +4,7 @@ import Foundation
 
 // MARK: - 启动器模式枚举（已简化）
 enum LauncherMode: String, CaseIterable {
-    case launch, kill, search, web, terminal, file, clip, plugin
+    case launch, kill, search, web, terminal, file, clip, plugin, keyword
     @MainActor
     var displayName: String {
         LauncherViewModel.shared.controllers[self]?.displayName ?? self.rawValue

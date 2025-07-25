@@ -3,7 +3,7 @@ import AppKit
 import SwiftUI
 
 // MARK: - 搜索历史项
-struct SearchHistoryItem: Codable, Identifiable, Hashable, @preconcurrency DisplayableItem {
+struct SearchHistoryItem: Codable, Identifiable, Hashable, DisplayableItem {
     let id: UUID
     let query: String
     let timestamp: Date

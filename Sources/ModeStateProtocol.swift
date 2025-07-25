@@ -8,7 +8,7 @@ protocol DisplayableItem: Hashable, Identifiable {
     var title: String { get }
     var subtitle: String? { get }
     var icon: NSImage? { get }
-    @ViewBuilder
+    @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView
 }
 

@@ -47,6 +47,7 @@ class LauncherViewModel: ObservableObject {
             FileModeController.shared, PluginModeController.shared,
             SearchModeController.shared, WebModeController.shared,
             ClipModeController.shared, TerminalModeController.shared,
+            KeywordModeController.shared
         ]
         allControllers.forEach { controller in
             controllers[controller.mode] = controller
@@ -156,7 +157,9 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Command Suggestions
     private func updateCommandSuggestions(for text: String, oldText: String) {
-        if SettingsManager.shared.showCommandSuggestions && (text.first != nil && !text.first!.isLetter) {
+        if SettingsManager.shared.showCommandSuggestions
+            && (text.first != nil && !text.first!.isLetter)
+        {
             let newSuggestions = LauncherCommand.getSuggestions(for: text)
             if self.commandSuggestions.map({ $0.prefix }) != newSuggestions.map({ $0.prefix }) {
                 self.commandSuggestions = newSuggestions

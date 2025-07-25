@@ -3,7 +3,7 @@ import AppKit
 import SwiftUI
 
 // MARK: - 终端命令历史项
-struct TerminalHistoryItem: Codable, Identifiable, Hashable, @preconcurrency DisplayableItem {
+struct TerminalHistoryItem: Codable, Identifiable, Hashable, DisplayableItem {
     let id: UUID
     let command: String
     let timestamp: Date
