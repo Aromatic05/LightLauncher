@@ -50,7 +50,7 @@ class ConfigManager: ObservableObject {
             hotKey: AppConfig.HotKeyConfig(),
             searchDirectories: AppConfigDefaults.searchDirectories,
             commonAbbreviations: AppConfigDefaults.commonAbbreviations,
-            modes: AppConfig.ModesConfig()
+            modes: AppConfigDefaults.modes
         )
     }
     

@@ -129,6 +129,15 @@ class LauncherViewModel: ObservableObject {
         refreshID = UUID()
     }
 
+
+    func updateQuery(newQuery text: String) {
+        DispatchQueue.main.async {
+            self.searchText = text
+            self.showCommandSuggestions = false
+            self.commandSuggestions = []
+        }
+    }
+
     // MARK: - UI Interaction
     func executeSelectedAction() -> Bool {
         guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count
@@ -173,11 +182,7 @@ class LauncherViewModel: ObservableObject {
                 let isTypingForward = text.count > oldText.count
                 let isAlreadyCompleted = text == (suggestion.prefix + " ")
                 if isTypingForward && !isAlreadyCompleted {
-                    DispatchQueue.main.async {
-                        self.searchText = suggestion.prefix + " "
-                        self.showCommandSuggestions = false
-                        self.commandSuggestions = []
-                    }
+                    self.updateQuery(newQuery: suggestion.prefix + " ")
                 }
             }
         } else {

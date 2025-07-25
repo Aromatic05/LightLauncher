@@ -3,67 +3,78 @@ import AppKit
 import SwiftUI
 import Combine
 
-// 用于展示keyword池（可用前缀列表）
-struct KeywordPoolItem: DisplayableItem {
-    let keyword: String
-    let title: String
-    let iconPath: String?
-    var id: String { keyword }
-    var subtitle: String? { title }
-    var icon: NSImage? {
-        if let iconPath = iconPath {
-            let home = FileManager.default.homeDirectoryForCurrentUser
-            let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/").appendingPathComponent(iconPath).path
-            if let img = NSImage(contentsOfFile: iconFullPath) {
-                return img
-            }
+// =================================================================================
+// MARK: - Helper: Icon Loader
+// =================================================================================
+
+/// 一个可复用的辅助函数，用于从配置文件中加载图标。
+fileprivate func loadIcon(named iconPath: String?) -> NSImage? {
+    if let iconPath = iconPath, !iconPath.isEmpty {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/").appendingPathComponent(iconPath).path
+        if let img = NSImage(contentsOfFile: iconFullPath) {
+            return img
         }
-        // fallback: macOS系统自带的放大镜图标
-        return NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
     }
-    
-    @ViewBuilder @MainActor
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(KeywordRowView(keyword: keyword, title: title, icon: icon, isSelected: isSelected))
-    }
+    return NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
 }
+
+// =================================================================================
+// MARK: - Displayable Items (View Models)
+// =================================================================================
+// 这部分结构体定义了UI上显示的内容，它们是视图模型，无需修改。
+
+struct KeywordSuggestionItem: DisplayableItem {
+    let item: KeywordSearchItem
+    var id: String { item.keyword }
+    var title: String { item.keyword }
+    var subtitle: String? { item.title }
+    var icon: NSImage? { loadIcon(named: item.icon) }
+    @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView { AnyView(KeywordRowView(keyword: title, title: subtitle ?? "", icon: icon, isSelected: isSelected)) }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    static func == (lhs: KeywordSuggestionItem, rhs: KeywordSuggestionItem) -> Bool { lhs.id == rhs.id }
+}
+
+struct ActionableSearchItem: DisplayableItem {
+    let item: KeywordSearchItem
+    let query: String
+    var id: String { item.keyword + query }
+    var title: String { query.isEmpty ? item.title : item.title.replacingOccurrences(of: "{query}", with: query) }
+    var subtitle: String? { "使用 \(item.keyword) 搜索: \(query)" }
+    var icon: NSImage? { loadIcon(named: item.icon) }
+    @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView { AnyView(KeywordRowView(keyword: title, title: subtitle ?? "", icon: icon, isSelected: isSelected)) }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    static func == (lhs: ActionableSearchItem, rhs: ActionableSearchItem) -> Bool { lhs.id == rhs.id }
+}
+
+
+// =================================================================================
+// MARK: - Keyword Mode Controller
+// =================================================================================
 
 @MainActor
 final class KeywordModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = KeywordModeController()
-    private override init() {}
+    private override init() { super.init() }
 
     // 1. 身份与元数据
+    // prefix 现在是给框架看的元数据，控制器内部逻辑不再依赖它
     let mode: LauncherMode = .keyword
     let prefix: String? = "."
     let displayName: String = "Keyword Search"
     let iconName: String = "magnifyingglass"
-    let placeholder: String = "输入 .keyword 搜索内容..."
-    let modeDescription: String? = "通过自定义关键字快速搜索"
+    let placeholder: String = "输入关键字或直接搜索..." // 占位符可以更通用
+    let modeDescription: String? = "通过自定义关键字或直接搜索"
 
+    // 2. 状态属性
+    @Published private(set) var displayableItems: [any DisplayableItem] = []
+    // currentQuery 现在存储的是 ". " 之后的内容
     @Published var currentQuery: String = "" {
-        didSet {
-            dataDidChange.send()
-        }
-    }
-    @Published var matchedItem: KeywordSearchItem?
-
-    /// 展示所有可用keyword池（前缀池）和当前匹配项
-    var displayableItems: [any DisplayableItem] {
-        let (keyword, _) = extractKeywordAndQuery(from: currentQuery)
-        if keyword.isEmpty {
-            return ConfigManager.shared.keywordSearchItems.map {
-                KeywordPoolItem(keyword: $0.keyword, title: $0.title, iconPath: $0.icon)
-            }
-        } else if let item = ConfigManager.shared.searchItem(for: keyword) {
-            return [KeywordPoolItem(keyword: item.keyword, title: item.title, iconPath: item.icon)]
-        } else {
-            return [KeywordPoolItem(keyword: keyword, title: "无匹配自定义关键字", iconPath: nil)]
-        }
+        didSet { updateResults(for: currentQuery) }
     }
     let dataDidChange = PassthroughSubject<Void, Never>()
 
-    // 2. 核心逻辑
+    // 3. 核心逻辑
     func handleInput(arguments: String) {
         self.currentQuery = arguments
         if LauncherViewModel.shared.selectedIndex != 0 {
@@ -72,14 +83,27 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
     }
 
     func executeAction(at index: Int) -> Bool {
-        let (keyword, query) = extractKeywordAndQuery(from: currentQuery)
-        guard let item = ConfigManager.shared.searchItem(for: keyword), !query.isEmpty else { return false }
-        return performKeywordSearch(item: item, query: query)
+        guard index >= 0, index < displayableItems.count else { return false }
+        
+        let selectedItem = displayableItems[index]
+        
+        if let item = selectedItem as? ActionableSearchItem {
+            guard !item.query.isEmpty else { return false }
+            return performKeywordSearch(item: item.item, query: item.query)
+            
+        } else if let item = selectedItem as? KeywordSuggestionItem {
+            // (已修改) 补全时，只更新控制器管理的内容部分
+            LauncherViewModel.shared.updateQuery(newQuery: " . \(item.item.keyword) ")
+            return false
+        }
+        
+        return false
     }
 
-    // 3. 生命周期与UI
+    // 4. 生命周期与UI
     func cleanup() {
         currentQuery = ""
+        displayableItems = []
     }
 
     func makeContentView() -> AnyView {
@@ -87,32 +111,74 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
     }
 
     func getHelpText() -> [String] {
-        [
-            "以 .keyword 搜索，如 .g hello",
-            "按回车执行自定义搜索",
-            "Esc 退出"
-        ]
+        ["输入关键字 (如 g) 或直接搜索 (如 githb repos)", "按回车执行搜索"]
     }
 
     // MARK: - Private Helper Methods
+    private func updateResults(for text: String) {
+        let (keyword, query) = parse(content: text)
 
-    private func extractKeywordAndQuery(from text: String) -> (String, String) {
-        let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard trimmed.hasPrefix(".") else { return ("", trimmed) }
-        let noPrefix = trimmed.dropFirst()
-        let parts = noPrefix.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
-        if parts.count == 2 {
-            return (String(parts[0]), String(parts[1]))
-        } else if parts.count == 1 {
-            return (String(parts[0]), "")
+        // 状态A: 正在输入关键字 (内容中没有空格)
+        if !text.contains(" ") {
+            let allCustomKeywords = ConfigManager.shared.keywordSearchItems
+            if text.isEmpty { // 对应刚进入模式，输入为空
+                self.displayableItems = allCustomKeywords.map { KeywordSuggestionItem(item: $0) }
+            } else {
+                let filtered = allCustomKeywords.filter { $0.keyword.lowercased().hasPrefix(text.lowercased()) }
+                // 如果过滤后有结果，显示建议；否则，走后备逻辑
+                if !filtered.isEmpty {
+                    self.displayableItems = filtered.map { KeywordSuggestionItem(item: $0) }
+                } else {
+                    // 用户可能还在输入一个不存在的关键字，直接提供后备搜索
+                    showFallbackSearch(for: text)
+                }
+            }
+        }
+        // 状态B: 关键字输入完成，正在输入查询
+        else {
+            let allCustomKeywords = ConfigManager.shared.keywordSearchItems
+            if let matchedItem = allCustomKeywords.first(where: { $0.keyword.lowercased() == keyword.lowercased() }) {
+                // 精确匹配到自定义关键字
+                self.displayableItems = [ActionableSearchItem(item: matchedItem, query: query)]
+            } else {
+                // 未匹配到，使用后备搜索
+                showFallbackSearch(for: text)
+            }
+        }
+        
+        dataDidChange.send()
+    }
+    
+    /// (新) 当没有匹配的关键字时，显示默认的搜索引擎。
+    private func showFallbackSearch(for fullQuery: String) {
+        // (已修改) 使用一个临时的、硬编码的Google搜索项作为后备
+        let googleSearchItem = KeywordSearchItem(
+            title: "在 Google 中搜索 '{query}'",
+            url: "https://www.google.com/search?q={query}",
+            keyword: "google",
+            icon: "google.png", // 假设你有一个google的图标
+            spaceEncoding: "+"
+        )
+        
+        self.displayableItems = [ActionableSearchItem(item: googleSearchItem, query: fullQuery)]
+    }
+    
+    /// 辅助函数：解析内容，分离出关键字和查询词。
+    private func parse(content: String) -> (keyword: String, query: String) {
+        if let firstSpaceIndex = content.firstIndex(of: " ") {
+            let keyword = String(content[..<firstSpaceIndex])
+            let query = String(content[content.index(after: firstSpaceIndex)...])
+            return (keyword, query)
         } else {
-            return ("", "")
+            return (content, "")
         }
     }
 
+    /// 执行最终的URL搜索 (无需修改)。
     private func performKeywordSearch(item: KeywordSearchItem, query: String) -> Bool {
         let encoding = item.spaceEncoding ?? "+"
         let encodedQuery: String
+        
         switch encoding {
         case "%20":
             encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)?.replacingOccurrences(of: "+", with: "%20") ?? query
@@ -120,8 +186,14 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         default:
             encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)?.replacingOccurrences(of: "%20", with: "+") ?? query
         }
+        
         let urlString = item.url.replacingOccurrences(of: "{query}", with: encodedQuery)
-        guard let url = URL(string: urlString) else { return false }
+        
+        guard let url = URL(string: urlString) else {
+            print("Error: Could not create URL from string: \(urlString)")
+            return false
+        }
+        
         NSWorkspace.shared.open(url)
         return true
     }
