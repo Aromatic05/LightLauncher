@@ -18,7 +18,7 @@ let package = Package(
             dependencies: ["Yams"],
             path: "Sources",
             resources: [
-                .process("Resources/AppIcon.icns")
+                .process("Resources")
             ]
         )
     ]

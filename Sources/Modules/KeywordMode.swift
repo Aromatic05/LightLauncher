@@ -8,13 +8,18 @@ import Combine
 // =================================================================================
 
 /// 一个可复用的辅助函数，用于从配置文件中加载图标。
-fileprivate func loadIcon(named iconPath: String?) -> NSImage? {
-    if let iconPath = iconPath, !iconPath.isEmpty {
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/").appendingPathComponent(iconPath).path
-        if let img = NSImage(contentsOfFile: iconFullPath) {
-            return img
-        }
+fileprivate func loadIcon(named iconName: String?) -> NSImage? {
+    guard let iconName = iconName, !iconName.isEmpty else {
+        return NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
+    }
+    if let resourceURL = Bundle.module.url(forResource: (iconName as NSString).deletingPathExtension, withExtension: (iconName as NSString).pathExtension),
+       let bundleIcon = NSImage(contentsOf: resourceURL) {
+        return bundleIcon
+    }
+    let home = FileManager.default.homeDirectoryForCurrentUser
+    let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/").appendingPathComponent(iconName).path
+    if let userIcon = NSImage(contentsOfFile: iconFullPath) {
+        return userIcon
     }
     return NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
 }
