@@ -39,7 +39,7 @@ struct LauncherView: View {
                 EmptyView()
             }
         }
-        .frame(width: 700, height: 500)
+        .frame(width: 700, height: 550)
         .background(Color(NSColor.windowBackgroundColor))
         .opacity(0.95)
         .cornerRadius(16)
