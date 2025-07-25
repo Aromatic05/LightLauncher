@@ -31,6 +31,9 @@ else
     echo "未找到应用图标，请运行 ./set_icon.sh 来设置图标"
 fi
 
+cp Sources/Resources/*.png LightLauncher.app/Contents/Resources/
+echo "复制资源文件..."
+
 # 创建 Info.plist
 cat > LightLauncher.app/Contents/Info.plist << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
