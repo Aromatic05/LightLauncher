@@ -129,31 +129,43 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     // MARK: - Private Properties & Methods
     
     private(set) var allApps: [AppInfo] = []
+    private(set) var allPanes: [PreferencePaneItem] = []
     private var appUsageCount: [String: Int] = [:]
     private let appScanner = AppScanner.shared
+    private let paneScanner = PreferencePaneScanner()
     private let userDefaults = UserDefaults.standard
     private var cancellables = Set<AnyCancellable>()
-    
+
     private override init() {
         super.init()
         loadUsageData()
         setupObservers()
-        // 初始的应用扫描可以在这里触发
-        // appScanner.scanForApplications()
     }
-    
+
     private func setupObservers() {
         appScanner.$applications
             .receive(on: DispatchQueue.main)
             .sink { [weak self] apps in
                 guard let self = self else { return }
                 self.allApps = apps
-                // 当应用列表更新时，如果当前是 launch 模式，可以刷新一下显示
                 if LauncherViewModel.shared.mode == .launch {
                     self.handleInput(arguments: LauncherViewModel.shared.searchText)
                 }
             }
             .store(in: &cancellables)
+        paneScanner.$panes
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] panes in
+                guard let self = self else { return }
+                self.allPanes = panes
+                if LauncherViewModel.shared.mode == .launch {
+                    self.handleInput(arguments: LauncherViewModel.shared.searchText)
+                }
+            }
+            .store(in: &cancellables)
+        // 启动扫描
+        appScanner.scanForApplications()
+        paneScanner.scanForPreferencePanes()
     }
     
     private func loadUsageData() {
@@ -171,14 +183,15 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         saveUsageData()
     }
     
-    private func getMostUsedApps(from apps: [AppInfo], limit: Int) -> [AppInfo] {
-        apps.sorted { app1, app2 in
-            let usage1 = appUsageCount[app1.name, default: 0]
-            let usage2 = appUsageCount[app2.name, default: 0]
+    private func getMostUsedItems(limit: Int) -> [any DisplayableItem] {
+        let allItems: [any DisplayableItem] = allApps + allPanes
+        return allItems.sorted { item1, item2 in
+            let usage1 = appUsageCount[item1.title, default: 0]
+            let usage2 = appUsageCount[item2.title, default: 0]
             if usage1 != usage2 {
                 return usage1 > usage2
             }
-            return app1.name.localizedCaseInsensitiveCompare(app2.name) == .orderedAscending
+            return item1.title.localizedCaseInsensitiveCompare(item2.title) == .orderedAscending
         }
         .prefix(limit)
         .map { $0 }
@@ -187,21 +200,25 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     /// 核心过滤逻辑，现在由 handleInput 调用
     private func filterApps(searchText: String) {
         if searchText.isEmpty {
-            // 如果输入为空，显示最常用的应用
-            let items = getMostUsedApps(from: allApps, limit: 6)
-            self.displayableItems = items.map { $0 as any DisplayableItem }
+            // 显示最常用的应用和设置项
+            let items = getMostUsedItems(limit: 6)
+            self.displayableItems = items
         } else {
-            // 如果有输入，则进行模糊匹配搜索
-            let matches = allApps.compactMap { app in
+            // 应用模糊匹配
+            let appMatches = allApps.compactMap { app in
                 calculateMatch(for: app, query: searchText)
             }
-            let items = matches
+            let matchedApps = appMatches
                 .sorted { $0.score > $1.score }
-                .prefix(6)
                 .map { $0.app }
-            self.displayableItems = items.map { $0 as any DisplayableItem }
+            // 设置项简单名称匹配
+            let matchedPanes = allPanes.filter { pane in
+                pane.title.localizedCaseInsensitiveContains(searchText)
+            }
+            // 合并结果，优先应用，再设置项
+            let items: [any DisplayableItem] = (matchedApps + matchedPanes).prefix(6).map { $0 }
+            self.displayableItems = items
         }
-        
         // 每当列表更新时，重置 ViewModel 中的选择索引
         if LauncherViewModel.shared.selectedIndex != 0 {
             LauncherViewModel.shared.selectedIndex = 0

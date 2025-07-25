@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppScanner.shared.scanForApplications()
+        PreferencePaneScanner.shared.scanForPreferencePanes()
         NSApp.setActivationPolicy(.accessory) // No dock icon
         _ = ClipboardManager.shared
 
