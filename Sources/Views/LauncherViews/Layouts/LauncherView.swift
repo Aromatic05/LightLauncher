@@ -25,11 +25,9 @@ struct LauncherView: View {
             
             if viewModel.showCommandSuggestions {
                 CommandSuggestionsView(
-                    // `commands` 现在是 [CommandRecord]
                     commands: viewModel.commandSuggestions,
                     selectedIndex: $viewModel.selectedIndex,
                     onCommandSelected: { command in
-                        // `command` 现在是 CommandRecord
                         viewModel.applySelectedCommand(command)
                     }
                 )

@@ -10,7 +10,7 @@ struct CommandSuggestionsView: View {
     let onCommandSelected: (CommandRecord) -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Image(systemName: "command")
                     .foregroundColor(.blue)
@@ -25,7 +25,7 @@ struct CommandSuggestionsView: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.top, 8)
+            .padding(.top, 0)
             
             if commands.isEmpty {
                 Text("没有匹配的命令")
@@ -51,9 +51,9 @@ struct CommandSuggestionsView: View {
                             }
                         }
                         .padding(.horizontal, 24)
-                        .padding(.bottom, 16)
+                        .padding(.bottom, 0)
                     }
-                    .frame(maxHeight: 320)
+                    .frame(maxHeight: 400)
                     .onChange(of: selectedIndex) { newIndex in
                         proxy.scrollTo(newIndex, anchor: .center)
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
