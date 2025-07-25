@@ -37,7 +37,6 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func executeAction(at index: Int) -> Bool {
-        LauncherViewModel.shared.shouldHideWindowAfterAction = false
         guard index < self.displayableItems.count,
               let app = self.displayableItems[index] as? RunningAppInfo else {
             return false
@@ -46,13 +45,12 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
         if result {
             self.displayableItems.remove(at: index)
         }
-        return result
+        return false // 返回 false 以避免自动隐藏窗口
     }
 
     // 3. 生命周期与UI
     func cleanup() {
         self.displayableItems = []
-        LauncherViewModel.shared.shouldHideWindowAfterAction = false
     }
 
     func makeContentView() -> AnyView {
