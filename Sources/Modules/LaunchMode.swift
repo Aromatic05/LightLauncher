@@ -67,16 +67,22 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         filterApps(searchText: arguments)
     }
     
-    /// 执行选中项的动作：启动应用
+    /// 执行选中项的动作：启动应用或打开设置
     func executeAction(at index: Int) -> Bool {
         guard index < self.displayableItems.count else { return false }
-        guard let app = self.displayableItems[index] as? AppInfo else { return false }
-        
-        let success = NSWorkspace.shared.open(app.url)
-        if success {
-            incrementUsage(for: app.name)
+        let item = self.displayableItems[index]
+        if let app = item as? AppInfo {
+            let success = NSWorkspace.shared.open(app.url)
+            if success {
+                incrementUsage(for: app.name)
+            }
+            return success
+        } else if let pane = item as? PreferencePaneItem {
+            // 打开设置面板
+            let success = NSWorkspace.shared.open(pane.url)
+            return success
         }
-        return success
+        return false
     }
     
     // 3. 生命周期与UI
@@ -199,24 +205,33 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
 
     /// 核心过滤逻辑，现在由 handleInput 调用
     private func filterApps(searchText: String) {
+        let allItems: [any DisplayableItem] = allApps + allPanes
+        let commonAbbreviations = ConfigManager.shared.config.commonAbbreviations
         if searchText.isEmpty {
             // 显示最常用的应用和设置项
-            let items = getMostUsedItems(limit: 6)
+            let items = allItems.sorted { item1, item2 in
+                let usage1 = appUsageCount[item1.title, default: 0]
+                let usage2 = appUsageCount[item2.title, default: 0]
+                if usage1 != usage2 {
+                    return usage1 > usage2
+                }
+                return item1.title.localizedCaseInsensitiveCompare(item2.title) == .orderedAscending
+            }
+            .prefix(6)
+            .map { $0 }
             self.displayableItems = items
         } else {
-            // 应用模糊匹配
-            let appMatches = allApps.compactMap { app in
-                calculateMatch(for: app, query: searchText)
+            // 统一评分与排序
+            let matches = allItems.compactMap { item in
+                AppSearchMatcher.calculateMatch(
+                    for: item,
+                    query: searchText,
+                    usageCount: appUsageCount,
+                    commonAbbreviations: commonAbbreviations
+                )
             }
-            let matchedApps = appMatches
-                .sorted { $0.score > $1.score }
-                .map { $0.app }
-            // 设置项简单名称匹配
-            let matchedPanes = allPanes.filter { pane in
-                pane.title.localizedCaseInsensitiveContains(searchText)
-            }
-            // 合并结果，优先应用，再设置项
-            let items: [any DisplayableItem] = (matchedApps + matchedPanes).prefix(6).map { $0 }
+            let sorted = matches.sorted { $0.score > $1.score }
+            let items: [any DisplayableItem] = sorted.prefix(6).map { $0.item }
             self.displayableItems = items
         }
         // 每当列表更新时，重置 ViewModel 中的选择索引
@@ -225,15 +240,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         }
     }
 
-    private func calculateMatch(for app: AppInfo, query: String) -> AppMatch? {
-        let commonAbbreviations = ConfigManager.shared.config.commonAbbreviations
-        return AppSearchMatcher.calculateMatch(
-            for: app,
-            query: query,
-            usageCount: appUsageCount,
-            commonAbbreviations: commonAbbreviations
-        )
-    }
+    // 已统一到 AppSearchMatcher.calculateMatch(for: item, ...)
     
     func selectAppByNumber(_ number: Int) -> Bool {
         let idx = number - 1

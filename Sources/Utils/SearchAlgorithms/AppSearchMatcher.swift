@@ -3,68 +3,90 @@ import Foundation
 /// 应用搜索匹配器 - 负责计算应用与查询字符串的匹配分数
 struct AppSearchMatcher {
     
-    /// 计算应用与查询字符串的匹配结果
+    /// 通用搜索匹配结果结构
+    struct ItemMatch {
+        let item: any DisplayableItem
+        let score: Double
+        let matchType: AppMatch.MatchType
+    }
+
+    /// 计算 DisplayableItem 与查询字符串的匹配结果
     /// - Parameters:
-    ///   - app: 应用信息
+    ///   - item: 可显示项目（应用或设置项）
     ///   - query: 查询字符串
-    ///   - usageCount: 应用使用次数统计
+    ///   - usageCount: 使用次数统计
     ///   - commonAbbreviations: 常用缩写配置 [缩写: [完整词汇列表]]
     /// - Returns: 匹配结果，如果不匹配则返回 nil
     static func calculateMatch(
-        for app: AppInfo,
+        for item: any DisplayableItem,
         query: String,
         usageCount: [String: Int],
         commonAbbreviations: [String: [String]]
-    ) -> AppMatch? {
-        let appName = app.name.lowercased()
+    ) -> ItemMatch? {
+        let name = item.title.lowercased()
         let searchQuery = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // 空查询不匹配
         guard !searchQuery.isEmpty else { return nil }
-        
-        // 检查自定义缩写配置
-        if let abbreviationWords = commonAbbreviations[searchQuery] {
-            var bestAbbrevMatch: (score: Double, matchType: AppMatch.MatchType)?
-            
-            // 尝试匹配每个缩写对应的完整词汇
-            for word in abbreviationWords {
-                if let match = calculateDirectMatch(appName: appName, query: word.lowercased()) {
-                    if bestAbbrevMatch == nil || match.score > bestAbbrevMatch!.score {
-                        bestAbbrevMatch = match
+
+        // AppInfo 专用匹配
+        if let app = item as? AppInfo {
+            // 检查自定义缩写配置
+            if let abbreviationWords = commonAbbreviations[searchQuery] {
+                var bestAbbrevMatch: (score: Double, matchType: AppMatch.MatchType)?
+                for word in abbreviationWords {
+                    if let match = calculateDirectMatch(appName: name, query: word.lowercased()) {
+                        if bestAbbrevMatch == nil || match.score > bestAbbrevMatch!.score {
+                            bestAbbrevMatch = match
+                        }
+                    }
+                    if name.contains(word.lowercased()) {
+                        let containsScore = 150.0 + (1.0 - Double(word.count) / Double(name.count)) * 50.0
+                        if bestAbbrevMatch == nil || containsScore > bestAbbrevMatch!.score {
+                            bestAbbrevMatch = (score: containsScore, matchType: .contains)
+                        }
                     }
                 }
-                
-                // 也检查是否应用名包含这个词汇
-                if appName.contains(word.lowercased()) {
-                    let containsScore = 150.0 + (1.0 - Double(word.count) / Double(appName.count)) * 50.0
-                    if bestAbbrevMatch == nil || containsScore > bestAbbrevMatch!.score {
-                        bestAbbrevMatch = (score: containsScore, matchType: .contains)
-                    }
+                if let match = bestAbbrevMatch {
+                    let boostedScore = match.score + 500.0
+                    let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                    return ItemMatch(item: item, score: boostedScore + usageBonus, matchType: match.matchType)
                 }
             }
-            
-            if let match = bestAbbrevMatch {
-                // 缩写匹配给予额外分数加成
-                let boostedScore = match.score + 500.0 // 给缩写匹配很高的优先级
+            // 直接匹配
+            if let match = calculateDirectMatch(appName: name, query: searchQuery) {
                 let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                return AppMatch(app: app, score: boostedScore + usageBonus, matchType: match.matchType)
+                let finalScore = match.score + usageBonus
+                return ItemMatch(item: item, score: finalScore, matchType: match.matchType)
             }
+            // 拼音匹配
+            if let pinyinMatch = PinyinMatcher.calculatePinyinMatch(appName: name, query: searchQuery) {
+                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                let finalScore = pinyinMatch.score + usageBonus
+                return ItemMatch(item: item, score: finalScore, matchType: pinyinMatch.matchType)
+            }
+            return nil
         }
-        
-        // 直接匹配
-        if let match = calculateDirectMatch(appName: appName, query: searchQuery) {
-            let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-            let finalScore = match.score + usageBonus
-            return AppMatch(app: app, score: finalScore, matchType: match.matchType)
+
+        // PreferencePaneItem 或其他 DisplayableItem
+        // 1. 完全匹配开头
+        if name.hasPrefix(searchQuery) {
+            let completeness = Double(searchQuery.count) / Double(name.count)
+            let score = 1000.0 + completeness * 200.0
+            return ItemMatch(item: item, score: score, matchType: .exactStart)
         }
-        
-        // 拼音匹配
-        if let pinyinMatch = PinyinMatcher.calculatePinyinMatch(appName: appName, query: searchQuery) {
-            let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-            let finalScore = pinyinMatch.score + usageBonus
-            return AppMatch(app: app, score: finalScore, matchType: pinyinMatch.matchType)
+        // 2. 包含匹配
+        if name.contains(searchQuery) {
+            let position = Double(name.distance(from: name.startIndex, to: name.range(of: searchQuery)!.lowerBound))
+            let positionScore = max(0, 100.0 - position * 2.0)
+            return ItemMatch(item: item, score: positionScore + 200.0, matchType: .contains)
         }
-        
+        // 3. 子序列匹配（简单实现）
+        if StringMatcher.calculateSubsequenceMatch(text: name, query: searchQuery) != nil {
+            return ItemMatch(item: item, score: 300.0, matchType: .subsequence)
+        }
+        // 4. 模糊匹配（简单实现）
+        if StringMatcher.calculateFuzzyMatch(text: name, query: searchQuery) != nil {
+            return ItemMatch(item: item, score: 200.0, matchType: .fuzzy)
+        }
         return nil
     }
     
