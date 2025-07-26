@@ -55,22 +55,29 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func executeAction(at index: Int) -> Bool {
-        guard index >= 0 && index < self.displayableItems.count,
-              let item = self.displayableItems[index] as? ClipboardItem else {
+        guard index >= 0 && index < self.displayableItems.count else {
             return false
         }
-        if let historyIndex = ClipboardManager.shared.getHistory().firstIndex(of: item) {
-            ClipboardManager.shared.removeItem(at: historyIndex)
-        }
-        switch item {
-        case .text(let str):
+        let item = self.displayableItems[index]
+        if let clipItem = item as? ClipboardItem {
+            if let historyIndex = ClipboardManager.shared.getHistory().firstIndex(of: clipItem) {
+                ClipboardManager.shared.removeItem(at: historyIndex)
+            }
+            switch clipItem {
+            case .text(let str):
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(str, forType: .string)
+            case .file(let url):
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.writeObjects([url as NSURL])
+            }
+            return true
+        } else if let snippet = item as? SnippetItem {
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(str, forType: .string)
-        case .file(let url):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.writeObjects([url as NSURL])
+            NSPasteboard.general.setString(snippet.snippet, forType: .string)
+            return true
         }
-        return true
+        return false
     }
 
     // 3. 生命周期与UI
