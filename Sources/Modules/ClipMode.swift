@@ -9,14 +9,13 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     /// 是否为片段模式
     @Published var isSnippetMode: Bool = false {
         didSet {
-            handleInput(arguments: LauncherViewModel.shared.searchText)
+            handleInput(arguments: "")
         }
     }
     static let shared = ClipModeController()
     private override init() {}
 
     // MARK: - ModeStateController Protocol Implementation
-    
     // 1. 身份与元数据
     let mode: LauncherMode = .clip
     let prefix: String? = "/v"
