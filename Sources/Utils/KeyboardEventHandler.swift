@@ -6,7 +6,8 @@ import Combine
 final class KeyboardEventHandler: @unchecked Sendable {
     static let shared = KeyboardEventHandler()
     weak var viewModel: LauncherViewModel?
-    private var eventMonitor: Any?
+    private var keyDownMonitor: Any?
+    private var flagsChangedMonitor: Any?
     private var currentMode: LauncherMode = .launch
     
     private init() {}
@@ -16,7 +17,7 @@ final class KeyboardEventHandler: @unchecked Sendable {
     }
     
     func startMonitoring() {
-        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
             let keyCode = event.keyCode
             let modifierFlags = event.modifierFlags
@@ -33,6 +34,11 @@ final class KeyboardEventHandler: @unchecked Sendable {
                 return event
             }
         }
+        flagsChangedMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            guard let self = self else { return event }
+            self.handleFlagsChange(event: event)
+            return event
+        }
     }
     
     private func isNumericShortcut(characters: String?, modifierFlags: NSEvent.ModifierFlags) -> Bool {
@@ -46,9 +52,13 @@ final class KeyboardEventHandler: @unchecked Sendable {
     }
     
     func stopMonitoring() {
-        if let monitor = eventMonitor {
+        if let monitor = keyDownMonitor {
             NSEvent.removeMonitor(monitor)
-            eventMonitor = nil
+            keyDownMonitor = nil
+        }
+        if let monitor = flagsChangedMonitor {
+            NSEvent.removeMonitor(monitor)
+            flagsChangedMonitor = nil
         }
     }
 }
@@ -177,6 +187,20 @@ extension KeyboardEventHandler {
             // 消费数字键的条件是：它是一个数字键，并且不应该被“透传”
             return isNumericKey && !self.shouldPassThroughNumericKey(for: mode)
         }
+    }
+
+    // 处理修饰键变化
+    func handleFlagsChange(event: NSEvent) {
+        let isCommand = event.modifierFlags.contains(.command)
+        if isCommand && (event.keyCode == 0x37 || event.keyCode == 0x36) {
+            handleCommandKey()
+        }
+    }
+
+    // 只处理 command 键按下事件
+    func handleCommandKey() {
+        // 这里实现 command 键按下时的逻辑
+        print("[KeyboardEventHandler] handleCommandKey: Command 键被按下")
     }
 }
 

@@ -7,9 +7,7 @@ import SwiftUI
 /// 通过将窗口管理逻辑集中于此，极大地简化了 AppDelegate 的职责。
 @MainActor
 final class WindowManager: NSObject, NSWindowDelegate {
-
     // MARK: - 属性
-    
     private var launcherWindow: LauncherWindow?
     private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
