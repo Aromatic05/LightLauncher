@@ -25,7 +25,6 @@ final class KeyboardEventHandler: @unchecked Sendable {
             let isNumericKey = self.isNumericShortcut(characters: characters, modifierFlags: modifierFlags)
             let shouldConsume = self.shouldConsumeEvent(keyCode: keyCode, isNumericKey: isNumericKey, for: self.currentMode)
             if shouldConsume {
-                // 【异步副作用】
                 Task { @MainActor in
                     self.handleKeyPress(keyCode: keyCode, characters: characters)
                 }
@@ -36,7 +35,10 @@ final class KeyboardEventHandler: @unchecked Sendable {
         }
         flagsChangedMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             guard let self = self else { return event }
-            self.handleFlagsChange(event: event)
+            let modifierFlags = event.modifierFlags
+            Task { @MainActor in
+                self.handleFlagsChange(flags: modifierFlags)
+            }
             return event
         }
     }
@@ -190,16 +192,21 @@ extension KeyboardEventHandler {
     }
 
     // 处理修饰键变化
-    func handleFlagsChange(event: NSEvent) {
-        let isCommand = event.modifierFlags.contains(.command)
-        if isCommand && (event.keyCode == 0x37 || event.keyCode == 0x36) {
+    @MainActor
+    func handleFlagsChange(flags: NSEvent.ModifierFlags) {
+        let isCommand = flags.contains(.command)
+        if isCommand {
             handleCommandKey()
         }
     }
 
     // 只处理 command 键按下事件
+    @MainActor
     func handleCommandKey() {
-        // 这里实现 command 键按下时的逻辑
+        let viewModel = LauncherViewModel.shared
+        if viewModel.mode == .kill {
+            KillModeController.shared.forceKillEnabled = !KillModeController.shared.forceKillEnabled
+        }
         print("[KeyboardEventHandler] handleCommandKey: Command 键被按下")
     }
 }
