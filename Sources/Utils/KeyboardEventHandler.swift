@@ -205,9 +205,10 @@ extension KeyboardEventHandler {
     func handleCommandKey() {
         let viewModel = LauncherViewModel.shared
         if viewModel.mode == .kill {
-            KillModeController.shared.forceKillEnabled = !KillModeController.shared.forceKillEnabled
-        }
-        print("[KeyboardEventHandler] handleCommandKey: Command 键被按下")
+            KillModeController.shared.forceKillEnabled.toggle()
+        } else if viewModel.mode == .clip {
+            ClipModeController.shared.isSnippetMode.toggle()
+        } 
     }
 }
 
