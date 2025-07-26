@@ -1,5 +1,37 @@
 import Foundation
 import AppKit
+import SwiftUI
+
+// MARK: - 应用信息结构
+struct AppInfo: Identifiable, Hashable, DisplayableItem {
+    @ViewBuilder
+    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
+        AnyView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
+    }
+    let name: String
+    let url: URL
+    
+    // 使用 URL 路径作为唯一标识符，避免重复应用
+    var id: String {
+        url.path
+    }
+    
+    var icon: NSImage? {
+        NSWorkspace.shared.icon(forFile: url.path)
+    }
+    // DisplayableItem 协议实现
+    var displayName: String { name }
+    var title: String { name }
+    var subtitle: String? { url.path }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(url.path)
+    }
+    
+    static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
+        lhs.url.path == rhs.url.path
+    }
+}
 
 @MainActor
 class AppScanner: ObservableObject {

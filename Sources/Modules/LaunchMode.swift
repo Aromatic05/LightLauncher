@@ -3,37 +3,6 @@ import AppKit
 import Combine
 import SwiftUI
 
-// MARK: - 应用信息结构
-struct AppInfo: Identifiable, Hashable, DisplayableItem {
-    @ViewBuilder
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
-    }
-    let name: String
-    let url: URL
-    
-    // 使用 URL 路径作为唯一标识符，避免重复应用
-    var id: String {
-        url.path
-    }
-    
-    var icon: NSImage? {
-        NSWorkspace.shared.icon(forFile: url.path)
-    }
-    // DisplayableItem 协议实现
-    var displayName: String { name }
-    var title: String { name }
-    var subtitle: String? { url.path }
-    
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(url.path)
-    }
-    
-    static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
-        lhs.url.path == rhs.url.path
-    }
-}
-
 // MARK: - 应用匹配结果结构
 struct AppMatch {
     let app: AppInfo
@@ -53,6 +22,7 @@ struct AppMatch {
 @MainActor
 final class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = LaunchModeController()
+    private let systemCommandManager = SystemCommandManager.shared
     
     // 1. 身份与元数据
     let mode: LauncherMode = .launch
@@ -67,7 +37,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         filterApps(searchText: arguments)
     }
     
-    /// 执行选中项的动作：启动应用或打开设置
+    /// 执行选中项的动作：启动应用、打开设置或执行系统命令
     func executeAction(at index: Int) -> Bool {
         guard index < self.displayableItems.count else { return false }
         let item = self.displayableItems[index]
@@ -81,6 +51,9 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             // 打开设置面板
             let success = NSWorkspace.shared.open(pane.url)
             return success
+        } else if let cmd = item as? SystemCommandItem {
+            cmd.action()
+            return true
         }
         return false
     }
@@ -190,7 +163,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     }
     
     private func getMostUsedItems(limit: Int) -> [any DisplayableItem] {
-        let allItems: [any DisplayableItem] = allApps + allPanes
+        let allItems: [any DisplayableItem] = allApps + allPanes + systemCommandManager.commands
         return allItems.sorted { item1, item2 in
             let usage1 = appUsageCount[item1.title, default: 0]
             let usage2 = appUsageCount[item2.title, default: 0]
@@ -205,10 +178,10 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
 
     /// 核心过滤逻辑，现在由 handleInput 调用
     private func filterApps(searchText: String) {
-        let allItems: [any DisplayableItem] = allApps + allPanes
+        let allItems: [any DisplayableItem] = allApps + allPanes + systemCommandManager.commands
         let commonAbbreviations = ConfigManager.shared.config.commonAbbreviations
         if searchText.isEmpty {
-            // 显示最常用的应用和设置项
+            // 显示最常用的应用、设置项和系统命令
             let items = allItems.sorted { item1, item2 in
                 let usage1 = appUsageCount[item1.title, default: 0]
                 let usage2 = appUsageCount[item2.title, default: 0]
