@@ -6,6 +6,12 @@ import Combine
 // MARK: - 剪切板模式控制器
 @MainActor
 final class ClipModeController: NSObject, ModeStateController, ObservableObject {
+    /// 是否为片段模式
+    @Published var isSnippetMode: Bool = false {
+        didSet {
+            handleInput(arguments: LauncherViewModel.shared.searchText)
+        }
+    }
     static let shared = ClipModeController()
     private override init() {}
 
@@ -28,11 +34,25 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
 
     // 2. 核心逻辑
     func handleInput(arguments: String) {
-        let items = filterHistory(with: arguments)
-        self.displayableItems = items.map { $0 as any DisplayableItem }
+        if isSnippetMode {
+            let items = filterSnippets(with: arguments)
+            self.displayableItems = items.map { $0 as any DisplayableItem }
+        } else {
+            let items = filterHistory(with: arguments)
+            self.displayableItems = items.map { $0 as any DisplayableItem }
+        }
         if LauncherViewModel.shared.selectedIndex != 0 {
             LauncherViewModel.shared.selectedIndex = 0
         }
+    }
+
+    private func filterSnippets(with query: String) -> [SnippetItem] {
+        let allItems = SnippetManager.shared.getSnippets()
+        if query.isEmpty {
+            return allItems
+        }
+        // 简单模糊匹配，可根据需要扩展
+        return SnippetManager.shared.searchSnippets(query: query)
     }
 
     func executeAction(at index: Int) -> Bool {
@@ -60,7 +80,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func makeContentView() -> AnyView {
-        if !displayableItems.isEmpty {
+        if !displayableItems.isEmpty || isSnippetMode {
             return AnyView(ClipModeView(viewModel: LauncherViewModel.shared))
         } else {
             let hasSearchText = !LauncherViewModel.shared.searchText.isEmpty
