@@ -29,9 +29,12 @@ protocol ModeStateController: AnyObject {
     /// 模式的触发前缀（如 /k），可选
     var prefix: String? { get }
     var mode: LauncherMode { get }
+    var interceptedKeys: Set<KeyEvent> { get }
 
     // 处理输入：模式激活后每次输入的处理（如搜索、过滤等）
     func handleInput(arguments: String)
+
+    func handle(keyEvent: KeyEvent) -> Bool
 
     // 执行动作：用户确认选择时的操作
     func executeAction(at index: Int) -> Bool
@@ -45,6 +48,9 @@ protocol ModeStateController: AnyObject {
 }
 
 extension ModeStateController {
+    var interceptedKeys: Set<KeyEvent> {
+        return []
+    }
     func handle(keyEvent: KeyEvent) -> Bool {
         let viewModel = LauncherViewModel.shared
         switch keyEvent {

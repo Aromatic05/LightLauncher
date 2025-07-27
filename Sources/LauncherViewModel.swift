@@ -18,7 +18,11 @@ class LauncherViewModel: ObservableObject {
 
     private(set) var controllers: [LauncherMode: any ModeStateController] = [:]
     @Published private(set) var activeController: (any ModeStateController)? {
-        didSet { setupControllerSubscription() }
+        didSet {
+            setupControllerSubscription()
+            let rules = activeController?.interceptedKeys ?? []
+            KeyboardEventHandler.shared.updateInterceptionRules(for: rules)
+        }
     }
 
     @Published private var refreshID = UUID()
@@ -45,6 +49,8 @@ class LauncherViewModel: ObservableObject {
         bindSearchText()
         // 新增：启动时开始订阅键盘事件
         setupKeyboardSubscription()
+        let initialRules = self.activeController?.interceptedKeys ?? []
+        KeyboardEventHandler.shared.updateInterceptionRules(for: initialRules)
     }
 
     private func setupControllersAndRegisterCommands() {
