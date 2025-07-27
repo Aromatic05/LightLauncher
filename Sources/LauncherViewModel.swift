@@ -67,6 +67,65 @@ class LauncherViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Keyboard Handling
+    func setupKeyboardSubscription() {
+        KeyboardEventHandler.shared.keyEventPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                self?.handle(keyEvent: event)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handle(keyEvent: KeyEvent) {
+        switch keyEvent {
+        case .arrowUp:
+            if showCommandSuggestions {
+                guard !commandSuggestions.isEmpty else { return }
+                selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : commandSuggestions.count - 1
+            } else {
+                guard !displayableItems.isEmpty else { return }
+                selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : displayableItems.count - 1
+            }
+            return
+        case .arrowDown:
+            if showCommandSuggestions {
+                guard !commandSuggestions.isEmpty else { return }
+                selectedIndex = selectedIndex < commandSuggestions.count - 1 ? selectedIndex + 1 : 0
+            } else {
+                guard !displayableItems.isEmpty else { return }
+                selectedIndex = selectedIndex < displayableItems.count - 1 ? selectedIndex + 1 : 0
+            }
+            return
+        case .enter:
+            if showCommandSuggestions {
+                guard !commandSuggestions.isEmpty else { return }
+                let selectedCommand = commandSuggestions[selectedIndex]
+                applySelectedCommand(selectedCommand)
+            } else {
+                if executeSelectedAction() {
+                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                }
+            }
+            return
+        case .escape:
+            NotificationCenter.default.post(name: .hideWindowWithoutActivating, object: nil)
+            return
+        default: break
+        }
+
+        switch keyEvent {
+            case .commandFlagChanged(let isPressed): isCommandPressed = isPressed
+            case .optionFlagChanged(let isPressed): isOptionPressed = isPressed
+            case .controlFlagChanged(let isPressed): isControlPressed = isPressed
+            default: break
+        }
+
+        if activeController?.handle(keyEvent: keyEvent) == true {
+            return
+        }
+    }
+
     // MARK: - Input Handling
     private func bindSearchText() {
         $searchText
@@ -149,30 +208,10 @@ class LauncherViewModel: ObservableObject {
         }
     }
 
-    // MARK: - UI Interaction (UNCHANGED)
     func executeSelectedAction() -> Bool {
         guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count
         else { return false }
         return activeController?.executeAction(at: selectedIndex) ?? false
-    }
-
-    func moveSelectionUp() {
-        guard !displayableItems.isEmpty else { return }
-        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : displayableItems.count - 1
-    }
-
-    func moveSelectionDown() {
-        guard !displayableItems.isEmpty else { return }
-        selectedIndex = selectedIndex < displayableItems.count - 1 ? selectedIndex + 1 : 0
-    }
-
-    func clearSearch() {
-        searchText = ""
-        selectedIndex = 0
-    }
-
-    func hideLauncher() {
-        NotificationCenter.default.post(name: .hideWindow, object: nil)
     }
 
     // MARK: - Command Suggestions (UNCHANGED)
@@ -206,15 +245,5 @@ class LauncherViewModel: ObservableObject {
         searchText = command.prefix + " "
         showCommandSuggestions = false
         commandSuggestions = []
-    }
-
-    func moveCommandSuggestionUp() {
-        guard showCommandSuggestions && !commandSuggestions.isEmpty else { return }
-        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : commandSuggestions.count - 1
-    }
-
-    func moveCommandSuggestionDown() {
-        guard showCommandSuggestions && !commandSuggestions.isEmpty else { return }
-        selectedIndex = selectedIndex < commandSuggestions.count - 1 ? selectedIndex + 1 : 0
     }
 }
