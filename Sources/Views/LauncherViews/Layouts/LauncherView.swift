@@ -33,6 +33,7 @@ struct LauncherView: View {
                 )
             } else if let controller = viewModel.activeController {
                 controller.makeContentView()
+                .padding(.bottom, 12)
             } else {
                 EmptyView()
             }

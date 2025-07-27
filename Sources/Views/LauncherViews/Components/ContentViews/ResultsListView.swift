@@ -22,9 +22,7 @@ struct ResultsListView: View {
                 .padding(.vertical, 12)
             }
             .onChange(of: viewModel.selectedIndex) { newIndex in
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    proxy.scrollTo(newIndex, anchor: .center)
-                }
+                proxy.scrollTo(newIndex)
                 onSelectionChanged?(newIndex)
             }
         }
