@@ -41,9 +41,20 @@ class SystemCommandManager: ObservableObject {
                 subtitle: "立即锁定屏幕",
                 icon: NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil),
                 action: {
-                    let script =
-                        "tell application \"System Events\" to keystroke \"q\" using {control down, command down}"
-                    runAppleScript(script)
+                    PermissionManager.shared.withAccessibilityPermission {
+                        runShell("osascript -e 'tell application \"System Events\" to keystroke \"q\" using {control down, command down}'")
+                    }
+                }
+            ),
+            SystemCommandItem(
+                title: "hidewindow",
+                displayName: "隐藏当前窗口",
+                subtitle: "隐藏当前激活的应用窗口",
+                icon: NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil),
+                action: {
+                    PermissionManager.shared.withAccessibilityPermission {
+                        runShell("osascript -e 'tell application \"System Events\" to set frontApp to name of first application process whose frontmost is true\ntell application frontApp\nset miniaturized of windows to true\nend tell'")
+                    }
                 }
             ),
             SystemCommandItem(

@@ -15,6 +15,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         PreferencePaneScanner.shared.scanForPreferencePanes()
         NSApp.setActivationPolicy(.accessory)
         _ = ClipboardManager.shared
+        _ = PermissionManager.shared
 
         viewModel = LauncherViewModel.shared
         LauncherViewModel.shared.switchController(from: nil, to: .launch)
