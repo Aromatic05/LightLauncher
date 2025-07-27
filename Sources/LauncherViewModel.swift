@@ -208,6 +208,10 @@ class LauncherViewModel: ObservableObject {
         }
     }
 
+    func clearSearch() {
+        updateQuery(newQuery: "")
+    }
+
     func executeSelectedAction() -> Bool {
         guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count
         else { return false }
