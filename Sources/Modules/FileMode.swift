@@ -23,6 +23,27 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         }
     }
     let dataDidChange = PassthroughSubject<Void, Never>()
+
+    var interceptedKeys: Set<KeyEvent> {
+        return [.space]
+    }
+
+    func handle(keyEvent: KeyEvent) -> Bool {
+        let viewModel = LauncherViewModel.shared
+        // 处理空格键打开 Finder
+        switch keyEvent {
+        case .space:
+            openInFinder()
+            return true // 空格键被消费
+        case .enter:
+            if viewModel.executeSelectedAction() {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+            return true // 回车事件被消费
+        default:
+            return false
+        }
+    }
     
     // 2. 核心逻辑
     func handleInput(arguments: String) {
@@ -44,12 +65,12 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         if showStartPaths {
             guard let startPath = self.displayableItems[index] as? FileBrowserStartPath else { return false }
             navigateToDirectory(URL(fileURLWithPath: startPath.path))
-            return true // Navigation is an action, but doesn't exit the app
+            return false
         } else {
             guard let fileItem = self.displayableItems[index] as? FileItem else { return false }
             if fileItem.isDirectory {
                 navigateToDirectory(fileItem.url)
-                return true // Navigation is an action
+                return false
             } else {
                 let success = NSWorkspace.shared.open(fileItem.url)
                 if success {
