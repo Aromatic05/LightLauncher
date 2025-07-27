@@ -13,16 +13,6 @@ enum KeyEvent: Hashable {
     case commandFlagChanged(isPressed: Bool)
     case optionFlagChanged(isPressed: Bool)
     case controlFlagChanged(isPressed: Bool)
-
-    /// 返回一个无关联值的“原型”版本，用于规则匹配
-    var prototype: KeyEvent {
-        switch self {
-        case .numeric:
-            return .numeric(0)
-        default:
-            return self
-        }
-    }
 }
 
 // MARK: - KeyboardEventHandler
@@ -88,8 +78,7 @@ final class KeyboardEventHandler {
     /// **新增：决策辅助函数**
     private func shouldIntercept(_ keyEvent: KeyEvent) -> Bool {
         // 创建一个无关联值的“原型”版本用于查询规则
-        let keyPrototype = keyEvent.prototype
-        
+        let keyPrototype = keyEvent
         // 如果“原型”在全局列表或当前模式列表中，则拦截
         return KeyboardEventHandler.alwaysInterceptedKeys.contains(keyPrototype) ||
                self.currentModeInterceptedKeys.contains(keyPrototype)
