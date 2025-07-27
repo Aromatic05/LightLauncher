@@ -115,10 +115,10 @@ class LauncherViewModel: ObservableObject {
         }
 
         switch keyEvent {
-            case .commandFlagChanged(let isPressed): isCommandPressed = isPressed
-            case .optionFlagChanged(let isPressed): isOptionPressed = isPressed
-            case .controlFlagChanged(let isPressed): isControlPressed = isPressed
-            default: break
+        case .commandFlagChanged(let isPressed): isCommandPressed = isPressed
+        case .optionFlagChanged(let isPressed): isOptionPressed = isPressed
+        case .controlFlagChanged(let isPressed): isControlPressed = isPressed
+        default: break
         }
 
         if activeController?.handle(keyEvent: keyEvent) == true {

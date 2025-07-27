@@ -29,17 +29,10 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func handle(keyEvent: KeyEvent) -> Bool {
-        let viewModel = LauncherViewModel.shared
-        // 处理空格键打开 Finder
         switch keyEvent {
         case .space:
             openInFinder()
             return true // 空格键被消费
-        case .enter:
-            if viewModel.executeSelectedAction() {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
-            }
-            return true // 回车事件被消费
         default:
             return false
         }

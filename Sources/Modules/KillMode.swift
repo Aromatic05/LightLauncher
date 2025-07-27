@@ -38,14 +38,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func handle(keyEvent: KeyEvent) -> Bool {
-        let viewModel = LauncherViewModel.shared
-        // 处理数字键选择
         switch keyEvent {
-        case .enter:
-            if viewModel.executeSelectedAction() {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
-            }
-            return true // 回车事件被消费
         case .numeric(let number) where number >= 1 && number <= 6:
             if executeAction(at: Int(number) - 1) {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)

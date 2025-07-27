@@ -46,14 +46,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func handle(keyEvent: KeyEvent) -> Bool {
-        let viewModel = LauncherViewModel.shared
-        // 处理数字键选择
         switch keyEvent {
-        case .enter:
-            if viewModel.executeSelectedAction() {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
-            }
-            return true // 回车事件被消费
         case .commandFlagChanged:
             if .commandFlagChanged(isPressed: true) == keyEvent {
                 isSnippetMode.toggle()
