@@ -29,6 +29,37 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
         }
     }
     let dataDidChange = PassthroughSubject<Void, Never>()
+
+    var interceptedKeys: Set<KeyEvent> {
+        return [
+            .numeric(1), .numeric(2), .numeric(3),
+            .numeric(4), .numeric(5), .numeric(6),
+        ]
+    }
+
+    func handle(keyEvent: KeyEvent) -> Bool {
+        let viewModel = LauncherViewModel.shared
+        // 处理数字键选择
+        switch keyEvent {
+        case .enter:
+            if viewModel.executeSelectedAction() {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+            return true // 回车事件被消费
+        case .numeric(let number) where number >= 1 && number <= 6:
+            if executeAction(at: Int(number) - 1) {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+            return true
+        case .commandFlagChanged:
+            if .commandFlagChanged(isPressed: true) == keyEvent {
+                forceKillEnabled.toggle()
+            }
+            return true
+        default:
+            return false
+        }
+    }
     
     // 2. 核心逻辑
     func handleInput(arguments: String) {
