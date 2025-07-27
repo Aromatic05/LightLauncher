@@ -51,7 +51,20 @@ extension ModeStateController {
     var interceptedKeys: Set<KeyEvent> {
         return []
     }
+
     func handle(keyEvent: KeyEvent) -> Bool {
         return false
+    }
+
+    func makeContentView() -> AnyView {
+        if !displayableItems.isEmpty {
+            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
+        } else {
+            return AnyView(EmptyView())
+        }
+    }
+
+    func getHelpText() -> [String] {
+        return []
     }
 }
