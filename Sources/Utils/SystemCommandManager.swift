@@ -47,17 +47,6 @@ class SystemCommandManager: ObservableObject {
                 }
             ),
             SystemCommandItem(
-                title: "hidewindow",
-                displayName: "隐藏当前窗口",
-                subtitle: "隐藏当前激活的应用窗口",
-                icon: NSImage(systemSymbolName: "eye.slash", accessibilityDescription: nil),
-                action: {
-                    PermissionManager.shared.withAccessibilityPermission {
-                        runShell("osascript -e 'tell application \"System Events\" to set frontApp to name of first application process whose frontmost is true\ntell application frontApp\nset miniaturized of windows to true\nend tell'")
-                    }
-                }
-            ),
-            SystemCommandItem(
                 title: "shutdown",
                 displayName: "关机",
                 subtitle: "关闭 Mac 并断电",
