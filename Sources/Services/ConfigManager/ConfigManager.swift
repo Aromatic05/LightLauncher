@@ -48,6 +48,7 @@ class ConfigManager: ObservableObject {
     private static func createDefaultConfig() -> AppConfig {
         return AppConfig(
             hotKey: AppConfig.HotKeyConfig(),
+            customHotKeys: AppConfigDefaults.customHotKeys,
             searchDirectories: AppConfigDefaults.searchDirectories,
             commonAbbreviations: AppConfigDefaults.commonAbbreviations,
             modes: AppConfigDefaults.modes
@@ -75,6 +76,7 @@ class ConfigManager: ObservableObject {
     private static func tryMigrateOldConfig(from url: URL) -> AppConfig? {
         struct OldAppConfig: Codable {
             var hotKey: AppConfig.HotKeyConfig
+            var customHotKeys: [CustomHotKeyConfig] = AppConfigDefaults.customHotKeys
             var searchDirectories: [String]
             var commonAbbreviations: [String: [String]]
         }
@@ -84,6 +86,7 @@ class ConfigManager: ObservableObject {
             let oldConfig = try decoder.decode(OldAppConfig.self, from: yamlString)
             return AppConfig(
                 hotKey: oldConfig.hotKey,
+                customHotKeys: oldConfig.customHotKeys,
                 searchDirectories: oldConfig.searchDirectories.map { SearchDirectory(path: $0) },
                 commonAbbreviations: oldConfig.commonAbbreviations,
                 modes: AppConfig.ModesConfig()

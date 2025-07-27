@@ -4,6 +4,7 @@ import Foundation
 // 配置数据结构
 struct AppConfig: Codable {
     var hotKey: HotKeyConfig
+    var customHotKeys: [CustomHotKeyConfig]  // 新增自定义快捷键数组
     var searchDirectories: [SearchDirectory]
     var commonAbbreviations: [String: [String]]
     var modes: ModesConfig
@@ -147,4 +148,20 @@ struct KeywordSearchItem: Codable, Identifiable, Hashable {
 }
 struct KeywordModeConfig: Codable {
     var items: [KeywordSearchItem]
+}
+
+// 自定义快捷键配置结构体
+struct CustomHotKeyConfig: Codable, Identifiable {
+    var id: String { name }
+    var name: String  // 快捷键名称
+    var modifiers: UInt32  // 修饰键
+    var keyCode: UInt32  // 键码
+    var text: String  // 唤起时自动填充的内容
+
+    init(name: String, modifiers: UInt32, keyCode: UInt32, text: String) {
+        self.name = name
+        self.modifiers = modifiers
+        self.keyCode = keyCode
+        self.text = text
+    }
 }
