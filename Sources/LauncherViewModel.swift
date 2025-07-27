@@ -39,6 +39,8 @@ class LauncherViewModel: ObservableObject {
         self.activeController = controllers[.launch]
         setupControllerSubscription()
         bindSearchText()
+        // 新增：启动时开始订阅键盘事件
+        setupKeyboardSubscription()
     }
 
     private func setupControllersAndRegisterCommands() {
@@ -47,11 +49,148 @@ class LauncherViewModel: ObservableObject {
             FileModeController.shared, PluginModeController.shared,
             SearchModeController.shared, WebModeController.shared,
             ClipModeController.shared, TerminalModeController.shared,
-            KeywordModeController.shared
+            KeywordModeController.shared,
         ]
         allControllers.forEach { controller in
             controllers[controller.mode] = controller
             CommandRegistry.shared.register(controller)
+        }
+    }
+
+    // MARK: - Keyboard Handling (NEW)
+
+    /// 订阅 KeyboardEventHandler 发布的事件
+    private func setupKeyboardSubscription() {
+        KeyboardEventHandler.shared.keyEventPublisher
+            .receive(on: DispatchQueue.main)  // 确保在主线程处理
+            .sink { [weak self] event in
+                self?.handle(keyEvent: event)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// 根据接收到的键盘事件和当前 ViewModel 的状态，分发任务
+    private func handle(keyEvent: KeyEvent) {
+        switch keyEvent {
+        case .arrowUp:
+            if showCommandSuggestions {
+                moveCommandSuggestionUp()
+            } else {
+                moveSelectionUp()
+            }
+        case .arrowDown:
+            if showCommandSuggestions {
+                moveCommandSuggestionDown()
+            } else {
+                moveSelectionDown()
+            }
+        case .enter:
+            handleEnterKeyPress()
+        case .space:
+            // 业务逻辑判断移到此处
+            if mode == .file || showCommandSuggestions {
+                handleSpaceKeyPress()
+            }
+        case .escape:
+            NotificationCenter.default.post(name: .hideWindowWithoutActivating, object: nil)
+        case .numeric(let number):
+            handleNumericKeyPress(number)
+        case .commandFlagChanged(let isPressed):
+            if isPressed {
+                handleCommandKeyPress()
+            }
+        case .optionFlagChanged(let isPressed):
+            // 处理 Option 键的逻辑（如果需要）
+            break
+        case .controlFlagChanged(let isPressed):
+            // 处理 Control 键的逻辑（如果需要）
+            break
+        }
+    }
+
+    // MARK: - Migrated Key Press Logic (NEW)
+
+    private func handleEnterKeyPress() {
+        if showCommandSuggestions {
+            if !commandSuggestions.isEmpty && selectedIndex >= 0
+                && selectedIndex < commandSuggestions.count
+            {
+                let selectedCommand = commandSuggestions[selectedIndex]
+                applySelectedCommand(selectedCommand)
+                return
+            }
+            showCommandSuggestions = false
+            commandSuggestions = []
+            return
+        }
+        guard executeSelectedAction() else { return }
+        switch self.mode {
+        case .kill:
+            break
+        case .file:
+            if selectedIndex >= 0,
+                selectedIndex < displayableItems.count,
+                let fileItem = displayableItems[selectedIndex] as? FileItem,
+                !fileItem.isDirectory
+            {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+        case .plugin:
+            break
+        default:
+            NotificationCenter.default.post(name: .hideWindow, object: nil)
+        }
+    }
+
+    private func handleSpaceKeyPress() {
+        if showCommandSuggestions {
+            if !commandSuggestions.isEmpty && selectedIndex >= 0
+                && selectedIndex < commandSuggestions.count
+            {
+                let selectedCommand = commandSuggestions[selectedIndex]
+                applySelectedCommand(selectedCommand)
+                return
+            }
+            showCommandSuggestions = false
+            commandSuggestions = []
+            return
+        }
+
+        if self.mode == .file,
+            selectedIndex >= 0,
+            selectedIndex < displayableItems.count,
+            let fileItem = displayableItems[selectedIndex] as? FileItem
+        {
+            // 注意：这里可能需要你提供 FileManager_LightLauncher 的实现或调整
+            FileManager_LightLauncher.shared.openInFinder(fileItem.url)
+        }
+    }
+
+    private func handleNumericKeyPress(_ number: Int) {
+        let passThroughModes: [LauncherMode] = [.web, .search, .terminal, .plugin, .clip, .keyword]
+        if passThroughModes.contains(self.mode) {
+            return  // 在这些模式下，数字键应被忽略
+        }
+
+        guard (1...6).contains(number) else { return }
+
+        switch self.mode {
+        case .launch:
+            if let controller = controllers[.launch] as? LaunchModeController,
+                controller.selectAppByNumber(number)
+            {
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
+            }
+        default:
+            break
+        }
+    }
+
+    private func handleCommandKeyPress() {
+        if self.mode == .kill {
+            (controllers[.kill] as? KillModeController)?.forceKillEnabled.toggle()
+        } else if self.mode == .clip {
+            (controllers[.clip] as? ClipModeController)?.isSnippetMode.toggle()
         }
     }
 
@@ -129,7 +268,6 @@ class LauncherViewModel: ObservableObject {
         refreshID = UUID()
     }
 
-
     func updateQuery(newQuery text: String) {
         DispatchQueue.main.async {
             self.searchText = text
@@ -138,7 +276,7 @@ class LauncherViewModel: ObservableObject {
         }
     }
 
-    // MARK: - UI Interaction
+    // MARK: - UI Interaction (UNCHANGED)
     func executeSelectedAction() -> Bool {
         guard !displayableItems.isEmpty, selectedIndex >= 0, selectedIndex < displayableItems.count
         else { return false }
@@ -164,7 +302,7 @@ class LauncherViewModel: ObservableObject {
         NotificationCenter.default.post(name: .hideWindow, object: nil)
     }
 
-    // MARK: - Command Suggestions
+    // MARK: - Command Suggestions (UNCHANGED)
     private func updateCommandSuggestions(for text: String, oldText: String) {
         if SettingsManager.shared.showCommandSuggestions
             && (text.first != nil && !text.first!.isLetter)

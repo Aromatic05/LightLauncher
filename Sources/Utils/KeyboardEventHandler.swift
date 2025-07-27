@@ -2,57 +2,93 @@ import SwiftUI
 import AppKit
 import Combine
 
+// 1. 定义键盘事件的抽象契约（保持不变）
+enum KeyEvent {
+    case arrowUp
+    case arrowDown
+    case enter
+    case space
+    case escape
+    case numeric(Int)
+    case commandFlagChanged(isPressed: Bool)
+    case optionFlagChanged(isPressed: Bool)
+    case controlFlagChanged(isPressed: Bool)
+}
+
 // MARK: - KeyboardEventHandler
 final class KeyboardEventHandler: @unchecked Sendable {
     static let shared = KeyboardEventHandler()
-    weak var viewModel: LauncherViewModel?
+    let keyEventPublisher = PassthroughSubject<KeyEvent, Never>()
+
     private var keyDownMonitor: Any?
     private var flagsChangedMonitor: Any?
-    private var currentMode: LauncherMode = .launch
-    
+    private var lastFlags: NSEvent.ModifierFlags = []
+
     private init() {}
-    
-    func updateMode(_ mode: LauncherMode) {
-        currentMode = mode
-    }
-    
+
     func startMonitoring() {
+        stopMonitoring()
+
         keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
-            let keyCode = event.keyCode
-            let modifierFlags = event.modifierFlags
-            let characters = event.characters
-            let isNumericKey = self.isNumericShortcut(characters: characters, modifierFlags: modifierFlags)
-            let shouldConsume = self.shouldConsumeEvent(keyCode: keyCode, isNumericKey: isNumericKey, for: self.currentMode)
-            if shouldConsume {
-                Task { @MainActor in
-                    self.handleKeyPress(keyCode: keyCode, characters: characters)
-                }
+            self.checkFlags(eventFlags: event.modifierFlags)
+            if let keyEvent = self.translateToKeyEvent(event) {
+                self.keyEventPublisher.send(keyEvent)
                 return nil
-            } else {
-                return event
-            }
-        }
-        flagsChangedMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            guard let self = self else { return event }
-            let modifierFlags = event.modifierFlags
-            Task { @MainActor in
-                self.handleFlagsChange(flags: modifierFlags)
             }
             return event
         }
-    }
-    
-    private func isNumericShortcut(characters: String?, modifierFlags: NSEvent.ModifierFlags) -> Bool {
-        guard modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
-              let chars = characters,
-              let number = Int(chars),
-              (0...9).contains(number) else {
-            return false
+
+        flagsChangedMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            guard let self = self else { return event }
+            self.checkFlags(eventFlags: event.modifierFlags)
+            return event
         }
-        return true
     }
-    
+
+    /// 统一处理修饰键状态变化的辅助函数 (***这里是主要修改点***)
+    private func checkFlags(eventFlags: NSEvent.ModifierFlags) {
+        // 检查 Command 键
+        if eventFlags.contains(.command) != self.lastFlags.contains(.command) {
+            let isPressed = eventFlags.contains(.command)
+            self.keyEventPublisher.send(.commandFlagChanged(isPressed: isPressed))
+        }
+
+        // 新增：检查 Option 键
+        if eventFlags.contains(.option) != self.lastFlags.contains(.option) {
+            let isPressed = eventFlags.contains(.option)
+            self.keyEventPublisher.send(.optionFlagChanged(isPressed: isPressed))
+        }
+
+        // 新增：检查 Control 键
+        if eventFlags.contains(.control) != self.lastFlags.contains(.control) {
+            let isPressed = eventFlags.contains(.control)
+            self.keyEventPublisher.send(.controlFlagChanged(isPressed: isPressed))
+        }
+
+        // 更新最后的状态记录
+        self.lastFlags = eventFlags
+    }
+
+    private func translateToKeyEvent(_ event: NSEvent) -> KeyEvent? {
+        // 这个函数保持不变，它只负责翻译非修饰键
+        switch event.keyCode {
+        case 126: return .arrowUp
+        case 125: return .arrowDown
+        case 36, 76: return .enter
+        case 49: return .space
+        case 53: return .escape
+        default:
+            if let chars = event.characters,
+               let number = Int(chars),
+               (0...9).contains(number),
+               event.modifierFlags.intersection([.command, .shift, .control, .option]).isEmpty {
+                return .numeric(number)
+            }
+        }
+        return nil
+    }
+
     func stopMonitoring() {
         if let monitor = keyDownMonitor {
             NSEvent.removeMonitor(monitor)
@@ -64,151 +100,3 @@ final class KeyboardEventHandler: @unchecked Sendable {
         }
     }
 }
-
-// MARK: - 键盘事件处理逻辑（从 LauncherFacade.swift 移动过来）
-extension KeyboardEventHandler {
-    @MainActor
-    func handleKeyPress(keyCode: UInt16, characters: String?) {
-        let viewModel = LauncherViewModel.shared
-        switch keyCode {
-        case 126: // Up Arrow
-            if viewModel.showCommandSuggestions {
-                viewModel.moveCommandSuggestionUp()
-            } else {
-                viewModel.moveSelectionUp()
-            }
-        case 125: // Down Arrow
-            if viewModel.showCommandSuggestions {
-                viewModel.moveCommandSuggestionDown()
-            } else {
-                viewModel.moveSelectionDown()
-            }
-        case 36, 76: // Enter, Numpad Enter
-            handleEnterKey()
-        case 49: // Space
-            handleSpaceKey()
-        case 53: // Escape
-            NotificationCenter.default.post(name: .hideWindowWithoutActivating, object: nil)
-        default:
-            handleNumericShortcut(characters: characters)
-        }
-    }
-
-    @MainActor
-    func handleEnterKey() {
-        let viewModel = LauncherViewModel.shared
-        if viewModel.showCommandSuggestions {
-            if !viewModel.commandSuggestions.isEmpty &&
-               viewModel.selectedIndex >= 0 &&
-               viewModel.selectedIndex < viewModel.commandSuggestions.count {
-                let selectedCommand = viewModel.commandSuggestions[viewModel.selectedIndex]
-                viewModel.applySelectedCommand(selectedCommand)
-                return
-            }
-            viewModel.showCommandSuggestions = false
-            viewModel.commandSuggestions = []
-            return
-        }
-        guard viewModel.executeSelectedAction() else { return }
-        switch viewModel.mode {
-        case .kill:
-            break
-        case .file:
-            if viewModel.selectedIndex >= 0,
-               viewModel.selectedIndex < viewModel.displayableItems.count,
-               let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem,
-               !fileItem.isDirectory {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
-            }
-        case .plugin:
-            break
-        default:
-            NotificationCenter.default.post(name: .hideWindow, object: nil)
-        }
-    }
-
-    @MainActor
-    func handleSpaceKey() {
-        let viewModel = LauncherViewModel.shared
-        if viewModel.showCommandSuggestions {
-            if !viewModel.commandSuggestions.isEmpty &&
-               viewModel.selectedIndex >= 0 &&
-               viewModel.selectedIndex < viewModel.commandSuggestions.count {
-                let selectedCommand = viewModel.commandSuggestions[viewModel.selectedIndex]
-                viewModel.applySelectedCommand(selectedCommand)
-                return
-            }
-            viewModel.showCommandSuggestions = false
-            viewModel.commandSuggestions = []
-            return
-        }
-        if viewModel.mode == .file,
-           viewModel.selectedIndex >= 0,
-           viewModel.selectedIndex < viewModel.displayableItems.count,
-           let fileItem = viewModel.displayableItems[viewModel.selectedIndex] as? FileItem {
-            FileManager_LightLauncher.shared.openInFinder(fileItem.url)
-        }
-    }
-
-    @MainActor
-    func handleNumericShortcut(characters: String?) {
-        let viewModel = LauncherViewModel.shared
-        guard let chars = characters,
-              let number = Int(chars),
-              (1...6).contains(number) else {
-            return
-        }
-        switch viewModel.mode {
-        case .launch:
-            if let controller = viewModel.controllers[.launch] as? LaunchModeController,
-               controller.selectAppByNumber(number) {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
-            }
-        case .kill:
-            // 可按需实现 kill 模式数字快捷键
-            break
-        case .plugin:
-            break
-        default:
-            NotificationCenter.default.post(name: .hideWindow, object: nil)
-        }
-    }
-
-    // 让决策函数变为纯函数，依赖传入的参数而不是外部 Actor 状态
-    private func shouldPassThroughNumericKey(for mode: LauncherMode) -> Bool {
-        return mode == .web || mode == .search || mode == .terminal || mode == .plugin || mode == .clip || mode == .keyword
-    }
-
-    private func shouldConsumeEvent(keyCode: UInt16, isNumericKey: Bool, for mode: LauncherMode) -> Bool {
-        switch keyCode {
-        case 126, 125, 36, 76, 53: // Up, Down, Enter, Numpad Enter, Esc
-            return true
-        case 49: // Space
-            return mode == .file
-        default:
-            // 消费数字键的条件是：它是一个数字键，并且不应该被“透传”
-            return isNumericKey && !self.shouldPassThroughNumericKey(for: mode)
-        }
-    }
-
-    // 处理修饰键变化
-    @MainActor
-    func handleFlagsChange(flags: NSEvent.ModifierFlags) {
-        let isCommand = flags.contains(.command)
-        if isCommand {
-            handleCommandKey()
-        }
-    }
-
-    // 只处理 command 键按下事件
-    @MainActor
-    func handleCommandKey() {
-        let viewModel = LauncherViewModel.shared
-        if viewModel.mode == .kill {
-            KillModeController.shared.forceKillEnabled.toggle()
-        } else if viewModel.mode == .clip {
-            ClipModeController.shared.isSnippetMode.toggle()
-        } 
-    }
-}
-

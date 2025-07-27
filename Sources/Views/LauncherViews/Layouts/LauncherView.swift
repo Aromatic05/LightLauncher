@@ -43,22 +43,17 @@ struct LauncherView: View {
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
         .onAppear {
-            KeyboardEventHandler.shared.viewModel = viewModel
-            KeyboardEventHandler.shared.updateMode(viewModel.mode)
             KeyboardEventHandler.shared.startMonitoring()
         }
         .onDisappear {
             KeyboardEventHandler.shared.stopMonitoring()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
-            KeyboardEventHandler.shared.viewModel = viewModel
-            KeyboardEventHandler.shared.updateMode(viewModel.mode)
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
-            KeyboardEventHandler.shared.viewModel = nil
+            KeyboardEventHandler.shared.stopMonitoring()
         }
-        .onChange(of: viewModel.mode) { newMode in
-            KeyboardEventHandler.shared.updateMode(newMode)
-        }
+        // .onChange(of: viewModel.mode) { newMode in
+        // }
     }
 }
