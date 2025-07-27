@@ -150,15 +150,16 @@ struct KeywordModeConfig: Codable {
     var items: [KeywordSearchItem]
 }
 
-// 自定义快捷键配置结构体
-struct CustomHotKeyConfig: Codable, Identifiable {
-    var id: String { name }
-    var name: String  // 快捷键名称
-    var modifiers: UInt32  // 修饰键
-    var keyCode: UInt32  // 键码
-    var text: String  // 唤起时自动填充的内容
+struct CustomHotKeyConfig: Codable, Identifiable, Sendable {
+    let id: String // 将 id 也声明为存储属性，如果 name 是唯一且不变的
+    let name: String
+    let modifiers: UInt32
+    let keyCode: UInt32
+    let text: String
 
+    // 如果 name 是唯一标识符，可以这样初始化
     init(name: String, modifiers: UInt32, keyCode: UInt32, text: String) {
+        self.id = name // 在初始化时赋值
         self.name = name
         self.modifiers = modifiers
         self.keyCode = keyCode
