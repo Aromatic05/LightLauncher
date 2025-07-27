@@ -43,3 +43,21 @@ protocol ModeStateController: AnyObject {
 
     func getHelpText() -> [String]
 }
+
+extension ModeStateController {
+    func handle(keyEvent: KeyEvent) -> Bool {
+        let viewModel = LauncherViewModel.shared
+        switch keyEvent {
+        case .enter:
+            if viewModel.executeSelectedAction() {
+                if viewModel.shouldHideWindowAfterAction {
+                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                }
+            }
+            return true // 回车事件被消费
+
+        default:
+            return false
+        }
+    }
+}

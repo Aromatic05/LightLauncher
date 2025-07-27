@@ -49,11 +49,13 @@ struct LauncherView: View {
             KeyboardEventHandler.shared.stopMonitoring()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            KeyboardEventHandler.shared.startMonitoring()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
             KeyboardEventHandler.shared.stopMonitoring()
         }
         // .onChange(of: viewModel.mode) { newMode in
+        //     KeyboardEventHandler.shared.startMonitoring()
         // }
     }
 }
