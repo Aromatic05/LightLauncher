@@ -109,7 +109,7 @@ class LauncherViewModel: ObservableObject {
             }
             return
         case .escape:
-            NotificationCenter.default.post(name: .hideWindowWithoutActivating, object: nil)
+            NotificationCenter.default.post(name: .hideWindow, object: nil)
             return
         default: break
         }

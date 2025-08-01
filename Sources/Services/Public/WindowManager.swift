@@ -11,6 +11,8 @@ final class WindowManager: NSObject, NSWindowDelegate {
     private var launcherWindow: LauncherWindow?
     private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
+    /// 记录显示主窗口前的前台应用
+    private var previousFrontmostApp: NSRunningApplication?
     /// 显示关于窗口
     public func showAboutWindow() {
         if aboutWindow != nil {
@@ -74,13 +76,14 @@ final class WindowManager: NSObject, NSWindowDelegate {
     /// 显示主启动器窗口。
     public func showMainWindow() {
         guard let window = launcherWindow, let viewModel = viewModel else { return }
-        
+        // 记录显示主窗口前的前台应用
+        previousFrontmostApp = NSWorkspace.shared.frontmostApplication
+
         isHidingWindow = false
         centerWindow(window)
         viewModel.clearSearch()
-        
         inputMethodManager.switchToEnglish()
-        
+
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
@@ -163,14 +166,17 @@ final class WindowManager: NSObject, NSWindowDelegate {
             return
         }
         
-        // 激活前一个应用的逻辑
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            if let frontmostApp = NSWorkspace.shared.frontmostApplication,
-               frontmostApp.bundleIdentifier != Bundle.main.bundleIdentifier {
-                frontmostApp.activate(options: [])
+        // 激活记录的前一个应用
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            if let previousApp = self?.previousFrontmostApp,
+               previousApp.bundleIdentifier != Bundle.main.bundleIdentifier {
+                previousApp.activate(options: [])
             }
-            Task { @MainActor in self.isHidingWindow = false }
+            // 清空记录，避免下次误用
+            self?.previousFrontmostApp = nil
+            Task { @MainActor in self?.isHidingWindow = false }
         }
+
     }
     
     // MARK: - 通知处理
