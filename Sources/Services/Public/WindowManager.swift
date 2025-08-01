@@ -135,7 +135,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
         settingsWindow?.title = "LightLauncher 设置"
         settingsWindow?.contentView = NSHostingView(rootView: settingsView)
         settingsWindow?.isReleasedWhenClosed = false // 避免关闭后被销毁
-        settingsWindow?.level = .floating
+        settingsWindow?.level = .normal
         centerWindow(settingsWindow!)
     }
     
