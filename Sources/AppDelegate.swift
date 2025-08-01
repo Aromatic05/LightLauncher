@@ -28,10 +28,27 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupPluginSystem()
         
         setupHotkeyObservers()
+        
+        // 启动权限检查
+        Task { @MainActor in
+            PermissionManager.shared.performStartupPermissionCheck()
+        }
     }
     
     /// 统一设置所有热键。
     private func setupAllHotkeys() {
+        // 检查全局快捷键权限
+        guard PermissionManager.shared.checkGlobalHotKeyPermissions() else {
+            // 如果没有权限，延迟设置并提示用户
+            Task { @MainActor in
+                PermissionManager.shared.withGlobalHotKeyPermission {
+                    // 权限获得后重新设置热键
+                    self.setupAllHotkeys()
+                }
+            }
+            return
+        }
+        
         // 1. 获取所有热键配置
         let mainHotkeyConfig = configManager.config.hotKey
         let mainHotkey = HotKey(keyCode: mainHotkeyConfig.keyCode, modifiers: mainHotkeyConfig.modifiers)

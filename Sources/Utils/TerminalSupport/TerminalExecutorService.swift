@@ -21,6 +21,17 @@ final class TerminalExecutorService {
 
     /// 公共的执行入口点
     func execute(command: String) -> Bool {
+        // 检查终端执行权限
+        guard PermissionManager.shared.checkTerminalPermissions() else {
+            Task { @MainActor in
+                PermissionManager.shared.withPermission(.automation) {
+                    // 权限获得后重新执行
+                    _ = self.execute(command: command)
+                }
+            }
+            return false
+        }
+
         let cleanCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanCommand.isEmpty else { return false }
         

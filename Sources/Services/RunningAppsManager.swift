@@ -75,6 +75,17 @@ class RunningAppsManager: @unchecked Sendable {
     
     /// 结束应用，支持强制 kill
     func killApp(_ app: RunningAppInfo, force: Bool = false) -> Bool {
+        // 检查进程管理权限
+        guard PermissionManager.shared.checkProcessManagementPermissions() else {
+            Task { @MainActor in
+                PermissionManager.shared.withProcessManagementPermission {
+                    // 权限获得后重新执行
+                    _ = self.killApp(app, force: force)
+                }
+            }
+            return false
+        }
+
         guard let runningApp = NSWorkspace.shared.runningApplications.first(where: {
             $0.processIdentifier == app.processIdentifier
         }) else {

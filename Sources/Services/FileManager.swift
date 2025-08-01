@@ -113,6 +113,15 @@ class FileManager_LightLauncher {
     private init() {}
     
     func getFiles(at path: String) -> [FileItem] {
+        // 检查文件访问权限
+        guard PermissionManager.shared.checkFileBrowsingPermissions() else {
+            // 如果没有权限，返回空数组并显示权限请求
+            Task { @MainActor in
+                PermissionManager.shared.promptPermissionGuide(for: .fileAccess)
+            }
+            return []
+        }
+        
         let url = URL(fileURLWithPath: path)
         
         do {
@@ -166,6 +175,22 @@ class FileManager_LightLauncher {
             
         } catch {
             print("Error reading directory: \(error)")
+            
+            // 如果读取失败，可能是权限问题，显示更具体的错误信息
+            Task { @MainActor in
+                let alert = NSAlert()
+                alert.alertStyle = .warning
+                alert.messageText = "无法访问目录"
+                alert.informativeText = "访问 '\(path)' 时出现错误。这可能是权限问题或目录不存在。\n\n错误详情：\(error.localizedDescription)"
+                alert.addButton(withTitle: "检查权限")
+                alert.addButton(withTitle: "确定")
+                
+                let response = alert.runModal()
+                if response == .alertFirstButtonReturn {
+                    PermissionManager.shared.promptPermissionGuide(for: .fileAccess)
+                }
+            }
+            
             return []
         }
     }
@@ -182,6 +207,17 @@ class FileManager_LightLauncher {
     }
     
     func openInFinder(_ url: URL) {
+        // 检查文件访问权限
+        guard PermissionManager.shared.checkFileBrowsingPermissions() else {
+            Task { @MainActor in
+                PermissionManager.shared.withPermission(.fileAccess) {
+                    // 权限获得后重新执行
+                    self.openInFinder(url)
+                }
+            }
+            return
+        }
+        
         if url.hasDirectoryPath {
             // 如果是目录，在 Finder 中显示该目录
             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)

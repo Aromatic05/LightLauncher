@@ -113,6 +113,19 @@ class ClipboardManager {
     
     /// 开始监听剪切板变化
     func startMonitoring() {
+        // 检查剪切板权限（虽然通常不需要特殊权限，但保持一致性）
+        guard PermissionManager.shared.checkClipboardPermissions() else {
+            Task { @MainActor in
+                let alert = NSAlert()
+                alert.alertStyle = .informational
+                alert.messageText = "剪切板功能"
+                alert.informativeText = "剪切板历史记录功能已启用。如果遇到问题，请检查应用权限设置。"
+                alert.addButton(withTitle: "确定")
+                alert.runModal()
+            }
+            return
+        }
+        
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { [self] in

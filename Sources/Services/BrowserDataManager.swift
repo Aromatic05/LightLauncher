@@ -85,6 +85,18 @@ class BrowserDataManager {
     }
     
     func loadBrowserData() {
+        // 检查是否有完全磁盘访问权限
+        guard PermissionManager.shared.checkBrowserDataPermissions() else {
+            // 如果没有权限，显示权限请求
+            Task { @MainActor in
+                PermissionManager.shared.withBrowserDataPermission {
+                    // 权限获得后重新调用
+                    self.loadBrowserData()
+                }
+            }
+            return
+        }
+        
         if let lastLoad = lastLoadTime, Date().timeIntervalSince(lastLoad) < 300 { return }
         
         Task.detached(priority: .utility) {
@@ -163,6 +175,13 @@ class BrowserDataManager {
     }
 
     func searchBrowserData(query: String) -> [BrowserItem] {
+        // 检查权限，如果没有权限返回空结果并尝试加载数据（触发权限请求）
+        guard PermissionManager.shared.checkBrowserDataPermissions() else {
+            // 静默尝试加载数据，这会触发权限请求
+            loadBrowserData()
+            return []
+        }
+        
         let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if queryLower.isEmpty { return [] }
 
@@ -220,6 +239,13 @@ class BrowserDataManager {
     }
     
     func getDefaultBrowserItems(limit: Int = 10) -> [BrowserItem] {
+        // 检查权限，如果没有权限返回空结果并尝试加载数据
+        guard PermissionManager.shared.checkBrowserDataPermissions() else {
+            // 静默尝试加载数据，这会触发权限请求
+            loadBrowserData()
+            return []
+        }
+        
         return allItems
             .sorted { $0.baseScore > $1.baseScore }
             .prefix(limit)
