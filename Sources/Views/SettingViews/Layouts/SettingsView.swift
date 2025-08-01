@@ -4,6 +4,7 @@ import Carbon
 // MARK: - 设置选项卡枚举
 enum SettingsTab {
     case general
+    case permissions
     case modes
     case directories
     case abbreviations
@@ -54,6 +55,14 @@ struct SettingsView: View {
                         isSelected: selectedTab == .general
                     ) {
                         selectedTab = .general
+                    }
+                    
+                    TabButton(
+                        title: "权限管理",
+                        icon: "shield.checkered",
+                        isSelected: selectedTab == .permissions
+                    ) {
+                        selectedTab = .permissions
                     }
                     
                     TabButton(
@@ -205,6 +214,8 @@ struct SettingsView: View {
                     localMonitor: $localMonitor,
                     currentModifiers: $currentModifiers
                 )
+            case .permissions:
+                PermissionSettingsView()
             case .modes:
                 ModeSettingsView(
                     settingsManager: settingsManager,

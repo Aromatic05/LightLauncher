@@ -86,7 +86,7 @@ enum PermissionRiskLevel: String, CaseIterable {
 }
 
 /// 权限管理器，统一检测和引导用户授权敏感权限
-class PermissionManager {
+final class PermissionManager: ObservableObject {
     @MainActor static let shared = PermissionManager()
     private init() {}
 
@@ -306,9 +306,8 @@ class PermissionManager {
     /// 获取当前应用实际需要的权限列表
     func getRequiredPermissions() -> [AppPermissionType] {
         return [
-            .accessibility,      // 全局快捷键和自动化操作
+            .accessibility,      // 应用控制和自动化操作
             .fullDiskAccess,     // 浏览器数据访问
-            .inputMonitoring,    // 键盘监听
             .automation,         // 应用控制
             .fileAccess,         // 文件浏览
             .networkAccess       // 网页搜索
