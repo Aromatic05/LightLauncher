@@ -75,6 +75,8 @@ cat > LightLauncher.app/Contents/Info.plist << 'EOF'
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
     <!-- 权限声明 -->
+    <key>NSSystemAdministrationUsageDescription</key>
+    <string>需要完全磁盘访问权限以管理和搜索您的所有文件。</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>用于自动化控制其他应用（如模拟输入、窗口切换等）</string>
     <key>NSDocumentsFolderUsageDescription</key>
