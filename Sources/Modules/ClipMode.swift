@@ -45,11 +45,22 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         }
     }
 
+    var interceptedKeys: Set<KeyEvent> {
+        return [.enterWithModifiers(modifierRawValue: UInt(NSEvent.ModifierFlags.shift.rawValue))]
+    }
+
     func handle(keyEvent: KeyEvent) -> Bool {
         switch keyEvent {
         case .commandFlagChanged:
             if .commandFlagChanged(isPressed: true) == keyEvent {
                 isSnippetMode.toggle()
+            }
+            return true
+        case .enterWithModifiers(modifierRawValue: UInt(NSEvent.ModifierFlags.shift.rawValue)):
+            // 处理带修饰键的 Enter
+            NotificationCenter.default.post(name: .hideWindow, object: nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                _ = self.executeInputAction(at: LauncherViewModel.shared.selectedIndex)
             }
             return true
         default:
@@ -90,6 +101,49 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
             return true
         }
         return false
+    }
+
+
+    /// 直接输入选中内容（使用辅助功能 API），而不是复制到剪切板
+    func executeInputAction(at index: Int) -> Bool {
+        guard index >= 0 && index < self.displayableItems.count else {
+            return false
+        }
+        let item = self.displayableItems[index]
+        if let clipItem = item as? ClipboardItem {
+            switch clipItem {
+            case .text(let str):
+                Self.simulateTextInput(str)
+                return true
+            case .file(let url):
+                Self.simulateTextInput(url.path)
+                return false
+            }
+        } else if let snippet = item as? SnippetItem {
+            Self.simulateTextInput(snippet.snippet)
+            return true
+        }
+        return false
+    }
+
+    /// 使用 Accessibility API 将文本直接输入到当前聚焦控件
+    private static func simulateTextInput(_ text: String) {
+        guard !text.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        let src = CGEventSource(stateID: .hidSystemState)
+        let vKey: CGKeyCode = 9 // 'v' 键
+        let cmdDown = CGEvent(keyboardEventSource: src, virtualKey: 0x37, keyDown: true) // Command
+        let vDown = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true)
+        let vUp = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false)
+        let cmdUp = CGEvent(keyboardEventSource: src, virtualKey: 0x37, keyDown: false)
+        cmdDown?.flags = .maskCommand
+        vDown?.flags = .maskCommand
+        vUp?.flags = .maskCommand
+        cmdDown?.post(tap: .cghidEventTap)
+        vDown?.post(tap: .cghidEventTap)
+        vUp?.post(tap: .cghidEventTap)
+        cmdUp?.post(tap: .cghidEventTap)
     }
 
     // 3. 生命周期与UI

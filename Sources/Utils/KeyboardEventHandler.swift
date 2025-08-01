@@ -13,6 +13,7 @@ enum KeyEvent: Hashable {
     case commandFlagChanged(isPressed: Bool)
     case optionFlagChanged(isPressed: Bool)
     case controlFlagChanged(isPressed: Bool)
+    case enterWithModifiers(modifierRawValue: UInt)
 }
 
 // MARK: - KeyboardEventHandler
@@ -113,7 +114,14 @@ final class KeyboardEventHandler {
         switch event.keyCode {
         case 126: return .arrowUp
         case 125: return .arrowDown
-        case 36, 76: return .enter
+        case 36, 76:
+            // enter 键，判断修饰键
+            let mods = event.modifierFlags.intersection([.command, .shift, .control, .option])
+            if !mods.isEmpty {
+                return .enterWithModifiers(modifierRawValue: mods.rawValue)
+            } else {
+                return .enter
+            }
         case 49: return .space
         case 53: return .escape
         default:
