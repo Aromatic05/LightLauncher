@@ -32,11 +32,6 @@ extension PermissionManager {
         return hasPermission(for: .fileAccess)
     }
     
-    /// 检查全局快捷键所需的权限
-    func checkGlobalHotKeyPermissions() -> Bool {
-        return hasPermission(for: .accessibility) && hasPermission(for: .inputMonitoring)
-    }
-    
     /// 检查终端命令执行所需的权限
     func checkTerminalPermissions() -> Bool {
         return hasPermission(for: .automation)
@@ -167,28 +162,11 @@ extension PermissionManager {
         }
     }
     
-    /// 安全执行需要全局快捷键权限的操作
+    /// 安全执行注册全局快捷键的操作（无需权限）
     @MainActor
     func withGlobalHotKeyPermission(perform action: @escaping () -> Void) {
-        if checkGlobalHotKeyPermissions() {
-            action()
-        } else {
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = "需要输入监控权限"
-            alert.informativeText = "全局快捷键功能需要辅助功能和输入监控权限。"
-            alert.addButton(withTitle: "前往设置")
-            alert.addButton(withTitle: "取消")
-            
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                if !hasPermission(for: .accessibility) {
-                    promptPermissionGuide(for: .accessibility)
-                } else if !hasPermission(for: .inputMonitoring) {
-                    promptPermissionGuide(for: .inputMonitoring)
-                }
-            }
-        }
+        // 注册快捷键无需权限，直接执行
+        action()
     }
     
     // MARK: - 调试和诊断
