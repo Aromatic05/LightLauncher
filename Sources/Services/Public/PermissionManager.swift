@@ -88,7 +88,22 @@ enum PermissionRiskLevel: String, CaseIterable {
 /// 权限管理器，统一检测和引导用户授权敏感权限
 final class PermissionManager: ObservableObject {
     @MainActor static let shared = PermissionManager()
-    private init() {}
+    
+    // MARK: - 防重复弹窗机制
+    
+    /// 跟踪已显示权限弹窗的类型和时间
+    internal var shownPermissionAlerts: [AppPermissionType: Date] = [:]
+    
+    /// 防重复弹窗的时间间隔（秒）
+    private let alertCooldownInterval: TimeInterval = 300 // 5分钟
+    
+    /// 当前是否有权限弹窗正在显示
+    internal var isShowingPermissionAlert: Bool = false
+    
+    private init() {
+        // 每次启动自动重置弹窗冷却状态
+        resetPermissionAlertState()
+    }
 
     // MARK: - 通用权限检查方法
     
@@ -137,6 +152,16 @@ final class PermissionManager: ObservableObject {
     /// 引导用户授权指定权限
     @MainActor
     func promptPermissionGuide(for type: AppPermissionType) {
+        // 防重复弹窗检查
+        print("[DEBUG] 请求权限弹窗: promptPermissionGuide(for: \(type))")
+        if shouldSkipPermissionAlert(for: type) {
+            print("[DEBUG] promptPermissionGuide skipped for: \(type)")
+            return
+        }
+        
+        isShowingPermissionAlert = true
+        shownPermissionAlerts[type] = Date()
+        
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = "需要\(type.rawValue)权限"
@@ -145,9 +170,25 @@ final class PermissionManager: ObservableObject {
         alert.addButton(withTitle: "取消")
         
         let response = alert.runModal()
+        isShowingPermissionAlert = false
+        
+        print("[DEBUG] promptPermissionGuide finished for: \(type), response: \(response.rawValue)")
         if response == .alertFirstButtonReturn {
             openSystemPreferences(for: type)
         }
+    }
+    
+    /// 检查是否应该跳过权限弹窗（防重复）
+    internal func shouldSkipPermissionAlert(for type: AppPermissionType) -> Bool {
+        // 检查是否在冷却时间内
+        if let lastShownTime = shownPermissionAlerts[type] {
+            let timeSinceLastAlert = Date().timeIntervalSince(lastShownTime)
+            if timeSinceLastAlert < alertCooldownInterval {
+                return true
+            }
+        }
+        
+        return false
     }
     
     /// 打开对应的系统偏好设置
@@ -206,7 +247,6 @@ final class PermissionManager: ObservableObject {
         // 检测是否能访问受保护的目录（如 Safari 书签）
         let safariBookmarksPath = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Safari/Bookmarks.plist")
-        
         do {
             _ = try Data(contentsOf: safariBookmarksPath)
             return true
@@ -320,40 +360,6 @@ final class PermissionManager: ObservableObject {
         return required.filter { !hasPermission(for: $0) }
     }
     
-    /// 引导用户授权所有缺失的权限
-    @MainActor
-    func promptAllMissingPermissions() {
-        let missingPermissions = getMissingPermissions()
-        
-        if missingPermissions.isEmpty {
-            let alert = NSAlert()
-            alert.alertStyle = .informational
-            alert.messageText = "权限检查完成"
-            alert.informativeText = "所有必要权限已授权，应用功能完全可用。"
-            alert.addButton(withTitle: "确定")
-            alert.runModal()
-            return
-        }
-        
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "需要授权权限"
-        
-        let permissionList = missingPermissions.map { "• \($0.rawValue)：\($0.description)" }.joined(separator: "\n")
-        alert.informativeText = "为了正常使用所有功能，需要授权以下权限：\n\n\(permissionList)\n\n建议逐个授权这些权限。"
-        
-        alert.addButton(withTitle: "逐个设置")
-        alert.addButton(withTitle: "稍后设置")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            // 逐个引导用户设置权限
-            for permission in missingPermissions {
-                promptPermissionGuide(for: permission)
-            }
-        }
-    }
-    
     /// 获取权限状态摘要
     func getPermissionSummary() -> AppPermissionSummary {
         let allPermissions = checkAllPermissions()
@@ -383,6 +389,19 @@ final class PermissionManager: ObservableObject {
     @MainActor
     func promptAccessibilityGuide() {
         promptPermissionGuide(for: .accessibility)
+    }
+    
+    // MARK: - 防重复弹窗管理方法
+    
+    /// 重置权限弹窗状态（用于调试或强制重新显示）
+    func resetPermissionAlertState() {
+        shownPermissionAlerts.removeAll()
+        isShowingPermissionAlert = false
+    }
+    
+    /// 清除特定权限的弹窗冷却时间
+    func clearPermissionAlertCooldown(for type: AppPermissionType) {
+        shownPermissionAlerts.removeValue(forKey: type)
     }
 }
 

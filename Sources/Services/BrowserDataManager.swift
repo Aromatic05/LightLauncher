@@ -175,12 +175,7 @@ class BrowserDataManager {
     }
 
     func searchBrowserData(query: String) -> [BrowserItem] {
-        // 检查权限，如果没有权限返回空结果并尝试加载数据（触发权限请求）
-        guard PermissionManager.shared.checkBrowserDataPermissions() else {
-            // 静默尝试加载数据，这会触发权限请求
-            loadBrowserData()
-            return []
-        }
+        loadBrowserData()
         
         let queryLower = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if queryLower.isEmpty { return [] }
@@ -239,12 +234,7 @@ class BrowserDataManager {
     }
     
     func getDefaultBrowserItems(limit: Int = 10) -> [BrowserItem] {
-        // 检查权限，如果没有权限返回空结果并尝试加载数据
-        guard PermissionManager.shared.checkBrowserDataPermissions() else {
-            // 静默尝试加载数据，这会触发权限请求
-            loadBrowserData()
-            return []
-        }
+        loadBrowserData()
         
         return allItems
             .sorted { $0.baseScore > $1.baseScore }

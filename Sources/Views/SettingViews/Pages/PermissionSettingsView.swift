@@ -143,7 +143,7 @@ struct PermissionSettingsView: View {
                                     Spacer()
                                     Button("立即设置") {
                                         Task { @MainActor in
-                                            permissionManager.promptAllMissingPermissions()
+                                            permissionManager.showPermissionReminder()
                                         }
                                     }
                                     .buttonStyle(.borderedProminent)

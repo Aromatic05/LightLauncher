@@ -49,70 +49,40 @@ extension PermissionManager {
     @MainActor
     func performStartupPermissionCheck() {
         let summary = getPermissionSummary()
-        
         if !summary.isFullyAuthorized {
-            showPermissionOnboardingIfNeeded()
-        }
-    }
-    
-    /// 显示权限引导界面（如果需要）
-    @MainActor
-    private func showPermissionOnboardingIfNeeded() {
-        let userDefaults = UserDefaults.standard
-        let hasShownOnboarding = userDefaults.bool(forKey: "HasShownPermissionOnboarding")
-        
-        if !hasShownOnboarding {
-            showPermissionOnboarding()
-            userDefaults.set(true, forKey: "HasShownPermissionOnboarding")
-        } else {
-            // 已经显示过引导，但仍有缺失权限，显示简短提醒
             showPermissionReminder()
         }
     }
     
-    /// 显示完整的权限引导
-    @MainActor
-    private func showPermissionOnboarding() {
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = "欢迎使用 LightLauncher"
-        alert.informativeText = """
-        为了获得最佳使用体验，LightLauncher 需要一些系统权限：
-        
-        • 辅助功能：用于应用控制和自动化操作
-        • 完全磁盘访问：读取浏览器书签和历史记录
-        • 自动化：控制其他应用程序
-        • 文件访问：浏览文件系统
-        
-        您可以稍后在设置中管理这些权限。
-        """
-        
-        alert.addButton(withTitle: "立即设置")
-        alert.addButton(withTitle: "稍后设置")
-        
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            promptAllMissingPermissions()
-        }
-    }
+    // 已移除 showPermissionOnboarding 及相关调用
     
-    /// 显示权限提醒
+    /// 显示缺失权限说明弹窗（只显示缺失项及说明）
     @MainActor
-    private func showPermissionReminder() {
-        let missingCount = getMissingPermissions().count
-        guard missingCount > 0 else { return }
-        
+    func showPermissionReminder() {
+        resetPermissionAlertState()
+        let missingPermissions = getMissingPermissions()
+        guard !missingPermissions.isEmpty else { return }
+        // 防止重复弹窗 - 使用一个特殊的key来跟踪权限提醒
+        let reminderKey = AppPermissionType.automation
+        if shouldSkipPermissionAlert(for: reminderKey) {
+            return
+        }
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "权限不完整"
-        alert.informativeText = "当前有 \(missingCount) 个权限未授权，某些功能可能无法正常使用。是否前往设置？"
-        
-        alert.addButton(withTitle: "前往设置")
+        alert.messageText = "需要授权以下权限"
+        let permissionList = missingPermissions.map { "• \($0.rawValue)：\($0.description)" }.joined(separator: "\n")
+        alert.informativeText = "为了正常使用所有功能，需要授权以下权限：\n\n\(permissionList)\n\n建议逐个授权这些权限。"
+        alert.addButton(withTitle: "逐个设置")
         alert.addButton(withTitle: "忽略")
-        
         let response = alert.runModal()
+        isShowingPermissionAlert = false
         if response == .alertFirstButtonReturn {
-            promptAllMissingPermissions()
+            // 逐个引导用户设置权限，无延迟
+            Task { @MainActor in
+                for permission in missingPermissions {
+                    promptPermissionGuide(for: permission)
+                }
+            }
         }
     }
     
@@ -124,17 +94,7 @@ extension PermissionManager {
         if checkBrowserDataPermissions() {
             action()
         } else {
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = "需要完全磁盘访问权限"
-            alert.informativeText = "访问浏览器书签和历史记录需要完全磁盘访问权限。"
-            alert.addButton(withTitle: "前往设置")
-            alert.addButton(withTitle: "取消")
-            
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                promptPermissionGuide(for: .fullDiskAccess)
-            }
+            promptPermissionGuide(for: .fullDiskAccess)
         }
     }
     
@@ -144,20 +104,10 @@ extension PermissionManager {
         if checkProcessManagementPermissions() {
             action()
         } else {
-            let alert = NSAlert()
-            alert.alertStyle = .warning
-            alert.messageText = "需要应用控制权限"
-            alert.informativeText = "结束其他应用的进程需要辅助功能和自动化权限。"
-            alert.addButton(withTitle: "前往设置")
-            alert.addButton(withTitle: "取消")
-            
-            let response = alert.runModal()
-            if response == .alertFirstButtonReturn {
-                if !hasPermission(for: .accessibility) {
-                    promptPermissionGuide(for: .accessibility)
-                } else if !hasPermission(for: .automation) {
-                    promptPermissionGuide(for: .automation)
-                }
+            if !hasPermission(for: .accessibility) {
+                promptPermissionGuide(for: .accessibility)
+            } else if !hasPermission(for: .automation) {
+                promptPermissionGuide(for: .automation)
             }
         }
     }
