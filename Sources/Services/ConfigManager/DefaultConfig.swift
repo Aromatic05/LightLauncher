@@ -49,6 +49,7 @@ enum AppConfigDefaults {
     static let preferredTerminal: String = "auto"
     static let enabledBrowsers: [String] = ["safari"]
     static let fileBrowserStartPaths: [String] = [
+        "/",
         NSHomeDirectory(),
         NSHomeDirectory() + "/Desktop",
         NSHomeDirectory() + "/Downloads",
