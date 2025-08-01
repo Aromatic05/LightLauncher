@@ -74,6 +74,21 @@ cat > LightLauncher.app/Contents/Info.plist << 'EOF'
     <string>NSApplication</string>
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
+    <!-- 权限声明 -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>用于自动化控制其他应用（如模拟输入、窗口切换等）</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>用于访问和管理您的文档文件夹</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>用于访问和管理您的下载文件夹</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>用于访问和管理您的桌面文件夹</string>
+    <key>NSFileProviderDomainUsageDescription</key>
+    <string>用于访问和管理您的文件提供者域</string>
+    <key>NSNetworkVolumesUsageDescription</key>
+    <string>用于访问和管理您的网络卷</string>
+    <key>NSRemovableVolumesUsageDescription</key>
+    <string>用于访问和管理您的可移动磁盘</string>
 </dict>
 </plist>
 EOF
