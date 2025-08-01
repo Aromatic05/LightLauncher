@@ -152,18 +152,17 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func makeContentView() -> AnyView {
-        if !displayableItems.isEmpty || isSnippetMode {
-            return AnyView(ClipModeView(viewModel: LauncherViewModel.shared))
-        } else {
-            let hasSearchText = !LauncherViewModel.shared.searchText.isEmpty
-            return AnyView(EmptyStateView(
-                icon: "doc.on.clipboard",
-                iconColor: hasSearchText ? .secondary.opacity(0.5) : .accentColor.opacity(0.7),
-                title: hasSearchText ? "未找到剪切板内容" : "暂无剪切板历史",
-                description: hasSearchText ? "请尝试其他搜索关键词" : nil,
-                helpTexts: getHelpText()
-            ))
-        }
+        return AnyView(ClipModeView(viewModel: LauncherViewModel.shared))
+        // else {
+        //     let hasSearchText = !LauncherViewModel.shared.searchText.isEmpty
+        //     return AnyView(EmptyStateView(
+        //         icon: "doc.on.clipboard",
+        //         iconColor: hasSearchText ? .secondary.opacity(0.5) : .accentColor.opacity(0.7),
+        //         title: hasSearchText ? "未找到剪切板内容" : "暂无剪切板历史",
+        //         description: hasSearchText ? "请尝试其他搜索关键词" : nil,
+        //         helpTexts: getHelpText()
+        //     ))
+        // }
     }
 
     func getHelpText() -> [String] {
