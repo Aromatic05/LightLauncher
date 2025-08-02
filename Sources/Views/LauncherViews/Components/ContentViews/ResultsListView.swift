@@ -14,7 +14,9 @@ struct ResultsListView: View {
                         item.makeRowView(isSelected: index == viewModel.selectedIndex, index: index)
                             .id(index)
                             .onTapGesture {
-                                handleItemSelection(at: index)
+                                if viewModel.executeSelectedAction(at: index) {
+                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                }
                             }
                     }
                 }
@@ -24,15 +26,6 @@ struct ResultsListView: View {
             .onChange(of: viewModel.selectedIndex) { newIndex in
                 proxy.scrollTo(newIndex)
                 onSelectionChanged?(newIndex)
-            }
-        }
-    }
-    
-    private func handleItemSelection(at index: Int) {
-        viewModel.selectedIndex = index
-        if viewModel.executeSelectedAction() {
-            if viewModel.shouldHideWindowAfterAction {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
         }
     }

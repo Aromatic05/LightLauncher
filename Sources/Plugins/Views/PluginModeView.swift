@@ -38,10 +38,8 @@ struct PluginModeView: View {
                         .id(index)
                         .onTapGesture {
                             viewModel.selectedIndex = index
-                            if viewModel.executeSelectedAction() {
-                                // if (viewModel.controllers[.plugin] as? PluginModeController)?.getPluginShouldHideWindowAfterAction() == true {
-                                //     NotificationCenter.default.post(name: .hideWindow, object: nil)
-                                // }
+                            if viewModel.executeSelectedAction(at: index) {
+                                NotificationCenter.default.post(name: .hideWindow, object: nil)
                             }
                         }
                     }
