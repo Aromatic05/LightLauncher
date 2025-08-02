@@ -1,61 +1,6 @@
 import Foundation
-import AppKit
 import SwiftUI
 import Combine
-
-// =================================================================================
-// MARK: - Helper: Icon Loader
-// =================================================================================
-
-/// 一个可复用的辅助函数，用于从配置文件中加载图标。
-fileprivate func loadIcon(named iconName: String?) -> NSImage? {
-    guard let iconName = iconName, !iconName.isEmpty else {
-        return NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
-    }
-    if let resourceURL = Bundle.module.url(forResource: (iconName as NSString).deletingPathExtension, withExtension: (iconName as NSString).pathExtension),
-       let bundleIcon = NSImage(contentsOf: resourceURL) {
-        return bundleIcon
-    }
-    let home = FileManager.default.homeDirectoryForCurrentUser
-    let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/").appendingPathComponent(iconName).path
-    if let userIcon = NSImage(contentsOfFile: iconFullPath) {
-        return userIcon
-    }
-    return NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
-}
-
-// =================================================================================
-// MARK: - Displayable Items (View Models)
-// =================================================================================
-// 这部分结构体定义了UI上显示的内容，它们是视图模型，无需修改。
-
-struct KeywordSuggestionItem: DisplayableItem {
-    let item: KeywordSearchItem
-    var id: String { item.keyword }
-    var title: String { item.keyword }
-    var subtitle: String? { item.title }
-    var icon: NSImage? { loadIcon(named: item.icon) }
-    @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView { AnyView(KeywordRowView(keyword: title, title: subtitle ?? "", icon: icon, isSelected: isSelected)) }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    static func == (lhs: KeywordSuggestionItem, rhs: KeywordSuggestionItem) -> Bool { lhs.id == rhs.id }
-}
-
-struct ActionableSearchItem: DisplayableItem {
-    let item: KeywordSearchItem
-    let query: String
-    var id: String { item.keyword + query }
-    var title: String { query.isEmpty ? item.title : item.title.replacingOccurrences(of: "{query}", with: query) }
-    var subtitle: String? { "使用 \(item.title) 搜索: \(query)" }
-    var icon: NSImage? { loadIcon(named: item.icon) }
-    @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView { AnyView(KeywordRowView(keyword: title, title: subtitle ?? "", icon: icon, isSelected: isSelected)) }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    static func == (lhs: ActionableSearchItem, rhs: ActionableSearchItem) -> Bool { lhs.id == rhs.id }
-}
-
-
-// =================================================================================
-// MARK: - Keyword Mode Controller
-// =================================================================================
 
 @MainActor
 final class KeywordModeController: NSObject, ModeStateController, ObservableObject {
