@@ -7,8 +7,8 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     static let shared = FileModeController()
     private override init() {}
 
-    // MARK: - ModeStateController Protocol Implementation
-    
+    // MARK: - ModeStateController 协议实现
+
     // 1. 身份与元数据
     let mode: LauncherMode = .file
     let prefix: String? = "/o"
@@ -31,56 +31,68 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     func handle(keyEvent: KeyEvent) -> Bool {
         switch keyEvent {
         case .space:
-            openInFinder()
-            return true // 空格键被消费
+            if !showStartPaths {
+                openInFinder()
+                return true
+            }
+            return false
         default:
             return false
         }
     }
-    
+
     // 2. 核心逻辑
     func handleInput(arguments: String) {
-        // 检查是否是重复的查询，避免循环处理
         let currentQuery = "/o \(arguments)"
+        
+        if currentQuery.count < lastProcessedQuery.count {
+            lastInputAction = .delete
+        } else {
+            lastInputAction = .input
+        }
+
         if currentQuery == lastProcessedQuery {
             return
         }
-        
         lastProcessedQuery = currentQuery
-        
-        // 标记为已初始化，允许属性观察器更新搜索框
+
         if !isInitialized {
             isInitialized = true
         }
-        
-        // 防抖机制：取消之前的定时器
+
         updateTimer?.invalidate()
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { [weak self] _ in
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 self?.processInputWithDebounce(arguments: arguments)
             }
         }
     }
     
+    /// --- 最终修复：添加了对根目录返回的特殊处理 ---
     private func processInputWithDebounce(arguments: String) {
-        // 解析输入，提取路径和搜索查询
-        let (pathFromInput, searchQuery) = parseInputArguments(arguments)
+        let (newPath, searchQuery) = parseInputArguments(arguments)
         
-        // 如果输入包含路径信息，更新当前路径
-        if let newPath = pathFromInput {
-            updateCurrentPath(newPath)
-        }
-        
-        // 根据当前状态获取项目
-        if showStartPaths {
-            let items = getStartPathItems(query: searchQuery)
-            self.displayableItems = items.map { $0 as any DisplayableItem }
+        if let path = newPath {
+            // 关键修复：检查是否是从根目录 (/) 返回。
+            // 只有当“新路径”与当前路径相同，且用户操作是删除时，才会发生。
+            if path == currentPath && lastInputAction == .delete {
+                resetToStartScreen()
+                return
+            }
+            
+            // 正常导航
+            updateCurrentPath(to: path, with: searchQuery)
         } else {
-            let items = getFileItems(path: currentPath, query: searchQuery)
-            self.displayableItems = items.map { $0 as any DisplayableItem }
+            // 在当前视图下筛选
+            let items: [any DisplayableItem]
+            if showStartPaths {
+                items = getStartPathItems(query: searchQuery)
+            } else {
+                items = getFileItems(path: currentPath, query: searchQuery)
+            }
+            self.displayableItems = items
         }
         
-        // 只在列表为空时才重置选中索引
         if displayableItems.isEmpty {
             LauncherViewModel.shared.selectedIndex = 0
         }
@@ -88,38 +100,40 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
 
     func executeAction(at index: Int) -> Bool {
         guard index >= 0 && index < self.displayableItems.count else { return false }
-        
-        if showStartPaths {
-            guard let startPath = self.displayableItems[index] as? FileBrowserStartPath else { return false }
+
+        if let startPath = self.displayableItems[index] as? FileBrowserStartPath {
             navigateToDirectory(URL(fileURLWithPath: startPath.path))
             return false
-        } else {
-            guard let fileItem = self.displayableItems[index] as? FileItem else { return false }
+        }
+        
+        if let fileItem = self.displayableItems[index] as? FileItem {
             if fileItem.isDirectory {
                 navigateToDirectory(fileItem.url)
                 return false
             } else {
                 let success = NSWorkspace.shared.open(fileItem.url)
                 if success {
-                    // After opening a file, reset to the initial screen
                     resetToStartScreen()
                 }
                 return success
             }
         }
+        
+        return false
     }
 
     // 3. 生命周期与UI
     func cleanup() {
         updateTimer?.invalidate()
         updateTimer = nil
-        self.displayableItems = []
-        self.showStartPaths = true
-        self.currentPath = NSHomeDirectory()
-        self.isInitialized = false
-        self.lastProcessedQuery = ""
+        displayableItems = []
+        showStartPaths = true
+        currentPath = NSHomeDirectory()
+        isInitialized = false
+        lastProcessedQuery = ""
+        lastInputAction = .input
     }
-    
+
     func makeContentView() -> AnyView {
         if !displayableItems.isEmpty {
             return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
@@ -127,7 +141,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(EmptyStateView(
                 icon: "folder.fill",
                 iconColor: .blue.opacity(0.8),
-                title: "文件浏览器",
+                title: "File Browser",
                 description: modeDescription,
                 helpTexts: getHelpText()
             ))
@@ -136,75 +150,51 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
 
     func getHelpText() -> [String] {
         return [
-            "Enter to select a directory or open a file",
-            "Space to open in Finder",
-            "Type to filter the current list"
+            "Enter to select or open.",
+            "Type a path ending with '/' to navigate (e.g., '~/Desktop/').",
+            "Backspace at the end of a path to go up a directory.",
+            "Spacebar in a directory to open it in Finder."
         ]
     }
+    
+    // MARK: - 内部状态与辅助方法
 
-    // MARK: - Internal State & Helper Methods
+    private enum InputAction { case input, delete }
+    private var lastInputAction: InputAction = .input
     
     private var isInitialized = false
     private var updateTimer: Timer?
-    private var lastProcessedQuery = ""  // 记录最后处理的查询，防止循环
-    
-    @Published private var showStartPaths: Bool = true {
-        didSet {
-            // 当显示状态变化时，更新搜索框（但跳过初始化）
-            if isInitialized {
-                if showStartPaths {
-                    let newQuery = "/o "
-                    if lastProcessedQuery != newQuery {
-                        lastProcessedQuery = newQuery
-                        LauncherViewModel.shared.updateQuery(newQuery: newQuery)
-                    }
-                } else {
-                    updateQuery(newQuery: currentPath)
-                }
-            }
-        }
-    }
-    @Published private var currentPath: String = NSHomeDirectory() {
-        didSet {
-            // 当路径变化时，自动更新搜索框内容（但跳过初始化）
-            if isInitialized && !showStartPaths {
-                updateQuery(newQuery: currentPath)
-            }
-        }
-    }
-    
+    private var lastProcessedQuery = ""
+
+    @Published private var showStartPaths: Bool = true
+    @Published private var currentPath: String = NSHomeDirectory()
+
     func navigateToDirectory(_ url: URL) {
-        let path = url.path
+        let standardizedURL = url.standardized
         
-        // 验证路径是否有效
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue else {
-            print("错误: 无法导航到无效路径: \(path)")
-            showPathError(message: "无法访问目录 '\(url.lastPathComponent)'")
+        guard FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+            showPathError(message: "Cannot access directory at '\(url.path)'")
             return
         }
         
-        self.showStartPaths = false
-        self.currentPath = path
-        // 直接加载目录内容
-        let items = getFileItems(path: currentPath, query: "")
-        self.displayableItems = items.map { $0 as any DisplayableItem }
-        LauncherViewModel.shared.selectedIndex = 0
+        updateCurrentPath(to: standardizedURL.path, with: "")
     }
     
-    private func updateQuery(newQuery path: String) {
-        let displayPath: String
-        let home = NSHomeDirectory()
-        if path.hasPrefix(home) {
-            displayPath = "~" + String(path.dropFirst(home.count))
-        } else {
-            displayPath = path
-        }
-        // 确保路径以 / 结尾，这样用户可以通过删除 / 来回到上一级目录
-        let pathWithSlash = displayPath.hasSuffix("/") ? displayPath : displayPath + "/"
-        let newQuery = "/o \(pathWithSlash)"
+    private func updateCurrentPath(to newPath: String, with searchQuery: String) {
+        self.showStartPaths = false
+        self.currentPath = newPath
         
-        // 只有当查询真的改变时才更新
+        updateQueryInLauncher(path: newPath, searchQuery: searchQuery)
+        
+        self.displayableItems = getFileItems(path: newPath, query: searchQuery)
+        LauncherViewModel.shared.selectedIndex = 0
+    }
+
+    private func updateQueryInLauncher(path: String, searchQuery: String) {
+        let displayPath = getDisplayPath(for: path, asPrefix: true)
+        let newQuery = "/o \(displayPath)\(searchQuery)"
+
         if lastProcessedQuery != newQuery {
             lastProcessedQuery = newQuery
             LauncherViewModel.shared.updateQuery(newQuery: newQuery)
@@ -214,9 +204,14 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     func resetToStartScreen() {
         self.showStartPaths = true
         self.currentPath = NSHomeDirectory()
-        // 直接加载起始路径，不更新搜索框
-        let items = getStartPathItems(query: "")
-        self.displayableItems = items.map { $0 as any DisplayableItem }
+        
+        let newQuery = "/o "
+        if lastProcessedQuery != newQuery {
+            lastProcessedQuery = newQuery
+            LauncherViewModel.shared.updateQuery(newQuery: newQuery)
+        }
+        
+        self.displayableItems = getStartPathItems(query: "")
         LauncherViewModel.shared.selectedIndex = 0
     }
 
@@ -231,10 +226,8 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     private func getFileItems(path: String, query: String) -> [FileItem] {
-        // 在调用 FileManager 之前验证路径
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue else {
-            print("警告: 尝试访问无效路径: \(path)")
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
             return []
         }
         
@@ -247,133 +240,79 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
     }
     
-    // MARK: - Path Parsing and Navigation Helper Methods
-    
-    /// 解析输入参数，分离路径和搜索查询
-    private func parseInputArguments(_ arguments: String) -> (pathFromInput: String?, searchQuery: String) {
-        let trimmed = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
-        
-        // 如果输入为空，返回当前状态的搜索查询
-        if trimmed.isEmpty {
-            return (nil, "")
-        }
-        
-        // 检查是否是删除末尾 / 回到上一级目录的操作
-        if !showStartPaths {
-            let currentDisplayPath = getCurrentDisplayPath()
+    // MARK: - 路径解析与导航辅助方法
+
+    private func parseInputArguments(_ arguments: String) -> (newPath: String?, searchQuery: String) {
+        let trimmedArgs = arguments.trimmingCharacters(in: .whitespaces)
+
+        // 规则 1 (最高优先级): 检查是否为导航命令 (以 / 结尾)
+        if trimmedArgs.hasSuffix("/") {
+            let pathToResolve = String(trimmedArgs.dropLast())
+            let resolvedPath = resolvePath(from: pathToResolve)
             
-            // 如果用户删除了末尾的 /，回到上一级目录
-            if currentDisplayPath.hasSuffix("/") && trimmed == String(currentDisplayPath.dropLast()) {
-                let parentPath = URL(fileURLWithPath: currentPath).deletingLastPathComponent().path
-                return (parentPath, "")
-            }
-            
-            // 如果用户删除了路径的一部分，也回到上一级目录
-            if trimmed.count < currentDisplayPath.count && currentDisplayPath.hasPrefix(trimmed) && trimmed.contains("/") {
-                let parentPath = URL(fileURLWithPath: currentPath).deletingLastPathComponent().path
-                return (parentPath, "")
-            }
-        }
-        
-        // 特殊处理根目录的情况
-        if trimmed == "/" {
-            return ("/", "")
-        }
-        
-        // 简化逻辑：只有当输入以/结尾时才尝试路径导航，否则作为搜索
-        if (trimmed.hasPrefix("/") || trimmed.hasPrefix("~")) && trimmed.hasSuffix("/") && trimmed != "/" {
-            let pathWithoutSlash = String(trimmed.dropLast())
-            let expandedPath = expandPath(pathWithoutSlash)
-            
-            // 检查路径是否存在且为目录
             var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: expandedPath, isDirectory: &isDirectory) && isDirectory.boolValue {
-                return (expandedPath, "")
-            } else {
-                // 路径不存在或不是目录，显示错误提示但不中断，作为搜索处理
-                return (nil, trimmed)
+            if FileManager.default.fileExists(atPath: resolvedPath, isDirectory: &isDirectory), isDirectory.boolValue {
+                return (resolvedPath, "")
             }
         }
         
-        // 处理路径过滤的情况（如 /bin 应该过滤 / 下面的 bin 目录）
-        if trimmed.hasPrefix("/") || trimmed.hasPrefix("~") {
-            let expandedPath = expandPath(trimmed)
-            let url = URL(fileURLWithPath: expandedPath)
-            let parentPath = url.deletingLastPathComponent().path
-            let searchTerm = url.lastPathComponent
-            
-            // 验证父目录是否存在
-            var parentIsDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: parentPath, isDirectory: &parentIsDirectory) && parentIsDirectory.boolValue {
-                return (parentPath, searchTerm)
-            }
-        }
-        
-        // 其他情况都作为搜索查询处理
-        return (nil, trimmed)
-    }
-    
-    /// 获取当前显示路径（用于比较）
-    private func getCurrentDisplayPath() -> String {
-        let home = NSHomeDirectory()
-        let displayPath: String
-        if currentPath.hasPrefix(home) {
-            displayPath = "~" + String(currentPath.dropFirst(home.count))
-        } else {
-            displayPath = currentPath
-        }
-        return displayPath.hasSuffix("/") ? displayPath : displayPath + "/"
-    }
-    
-    /// 获取当前应该显示的查询字符串
-    private func getCurrentDisplayQuery() -> String {
         if showStartPaths {
-            return "/o "
-        } else {
-            let displayPath = getCurrentDisplayPath()
-            return "/o \(displayPath)"
+            return (nil, trimmedArgs)
         }
-    }
-    
-    /// 展开路径（处理 ~ 等符号）
-    private func expandPath(_ path: String) -> String {
-        if path.hasPrefix("~") {
-            return NSString(string: path).expandingTildeInPath
-        }
-        return path
-    }
-    
-    /// 更新当前路径并切换到文件浏览状态
-    private func updateCurrentPath(_ newPath: String) {
-        var isDirectory: ObjCBool = false
         
-        // 验证路径是否存在且为目录
-        if FileManager.default.fileExists(atPath: newPath, isDirectory: &isDirectory) {
-            if isDirectory.boolValue {
-                // 路径存在且是目录，进行导航
-                self.showStartPaths = false
-                self.currentPath = newPath
-                // currentPath 的 didSet 观察器会自动调用 updateQuery，无需重复调用
-            } else {
-                // 路径存在但不是目录
-                print("错误: '\(newPath)' 不是一个目录")
-                showPathError(message: "'\(URL(fileURLWithPath: newPath).lastPathComponent)' 不是一个目录")
+        // 规则 2: 检查是否为 "返回上一级" 的删除操作
+        if lastInputAction == .delete {
+            let displayPath = getDisplayPath(for: currentPath, asPrefix: true)
+            
+            // `displayPath` 保证以'/'结尾，所以可以直接比较
+            if trimmedArgs == String(displayPath.dropLast()) {
+                let parentPath = URL(fileURLWithPath: currentPath).deletingLastPathComponent().standardized.path
+                return (parentPath, "") // 让调用者决定如何处理 parentPath (即使 parentPath == currentPath)
             }
-        } else {
-            // 路径不存在
-            print("错误: 路径 '\(newPath)' 不存在")
-            showPathError(message: "路径 '\(newPath)' 不存在")
         }
+        
+        // 规则 3 (默认行为): 在当前目录内筛选
+        let prefix = getDisplayPath(for: currentPath, asPrefix: true)
+        let searchQuery = trimmedArgs.hasPrefix(prefix) ? String(trimmedArgs.dropFirst(prefix.count)) : trimmedArgs
+        
+        return (nil, searchQuery)
+    }
+
+    private func resolvePath(from input: String) -> String {
+        if input.isEmpty {
+            return "/"
+        }
+        
+        let expandedInput = NSString(string: input).expandingTildeInPath
+        return URL(fileURLWithPath: expandedInput).standardized.path
+    }
+
+    private func getDisplayPath(for path: String, asPrefix: Bool = false) -> String {
+        let home = NSHomeDirectory()
+        var displayPath: String
+        
+        if path == home {
+            displayPath = "~"
+        } else if path.hasPrefix(home + "/") {
+            displayPath = "~" + String(path.dropFirst(home.count))
+        } else {
+            displayPath = path
+        }
+        
+        if asPrefix && !displayPath.hasSuffix("/") {
+            return displayPath + "/"
+        }
+        
+        return displayPath
     }
     
-    /// 显示路径错误信息
     private func showPathError(message: String) {
         Task { @MainActor in
             let alert = NSAlert()
             alert.alertStyle = .warning
-            alert.messageText = "无法访问路径"
+            alert.messageText = "Path Access Error"
             alert.informativeText = message
-            alert.addButton(withTitle: "确定")
+            alert.addButton(withTitle: "OK")
             alert.runModal()
         }
     }
