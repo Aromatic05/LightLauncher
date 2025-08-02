@@ -2,28 +2,6 @@ import AppKit
 import Foundation
 import SwiftUI
 
-struct SystemCommandItem: DisplayableItem {
-    let id = UUID()
-    let title: String         // 用于查找（英文）
-    let displayName: String   // 用于界面显示（中文）
-    let subtitle: String?
-    let icon: NSImage?
-    let action: () -> Void
-
-    @ViewBuilder @MainActor
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(SystemCommandRowView(command: self, isSelected: isSelected, index: index))
-    }
-
-    // Hashable/Equatable 实现，使用 id 唯一
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
-    static func == (lhs: SystemCommandItem, rhs: SystemCommandItem) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
 @MainActor
 class SystemCommandManager: ObservableObject {
     static let shared = SystemCommandManager()

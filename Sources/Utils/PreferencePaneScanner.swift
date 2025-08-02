@@ -2,27 +2,6 @@ import Foundation
 import AppKit
 import SwiftUI
 
-struct PreferencePaneItem: DisplayableItem {
-    let id: UUID = UUID()
-    let title: String
-    let subtitle: String?
-    let icon: NSImage?
-    let url: URL
-
-    // 只用路径做哈希和判等，保证唯一
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(url.path)
-    }
-    static func == (lhs: PreferencePaneItem, rhs: PreferencePaneItem) -> Bool {
-        lhs.url.path == rhs.url.path
-    }
-
-    @ViewBuilder @MainActor
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(PreferencePaneRowView(pane: self, isSelected: isSelected, index: index))
-    }
-}
-
 @MainActor
 class PreferencePaneScanner: ObservableObject {
     static let shared = PreferencePaneScanner()

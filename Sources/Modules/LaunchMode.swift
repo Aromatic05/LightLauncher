@@ -167,17 +167,17 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         paneScanner.scanForPreferencePanes()
     }
 
-    private func loadUsageData() {
+    func loadUsageData() {
         if let data = userDefaults.object(forKey: "appUsageCount") as? [String: Int] {
             self.appUsageCount = data
         }
     }
 
-    private func saveUsageData() {
+    func saveUsageData() {
         userDefaults.set(appUsageCount, forKey: "appUsageCount")
     }
 
-    private func incrementUsage(for appName: String) {
+    func incrementUsage(for appName: String) {
         appUsageCount[appName, default: 0] += 1
         saveUsageData()
     }
