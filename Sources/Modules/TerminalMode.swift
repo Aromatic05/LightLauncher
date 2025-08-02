@@ -4,13 +4,13 @@ import Combine
 @MainActor
 final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     // 终端命令历史管理器
-    private let historyManager = TerminalHistoryManager.shared
+    let historyManager = TerminalHistoryManager.shared
     static let shared = TerminalModeController()
     private override init() {}
 
     // MARK: - Dependencies
     /// 唯一的依赖项：终端执行服务
-    private let terminalExecutor = TerminalExecutorService.shared
+    let terminalExecutor = TerminalExecutorService.shared
 
     let mode: LauncherMode = .terminal
     let prefix: String? = ">"

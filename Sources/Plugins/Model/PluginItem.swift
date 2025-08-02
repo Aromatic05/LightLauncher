@@ -44,6 +44,21 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     static func == (lhs: PluginItem, rhs: PluginItem) -> Bool {
         return lhs.id == rhs.id
     }
+
+    @MainActor
+    func executeAction() -> Bool {
+        // if case .showingPluginList(let items) = internalMode {
+        //     let command = String(action.dropFirst("select_plugin:".count))
+        //     handleInput(arguments: command)
+        //     return true
+        // }
+        
+        guard let instance = PluginModeController.shared.activeInstance,
+              let action = self.action else {
+            return false
+        }
+        return instance.executeAction(action)
+    }
 }
 
 // MARK: - 插件结果集合
