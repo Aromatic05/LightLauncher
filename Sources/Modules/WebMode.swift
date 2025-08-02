@@ -54,7 +54,7 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
     func executeAction(at index: Int) -> Bool {
         guard index >= 0 && index < displayableItems.count,
               let item = displayableItems[index] as? BrowserItem else { return false }
-        return openWebURL(item.url)
+        return WebUtils.openWebURL(item.url)
     }
 
     func cleanup() {
@@ -72,50 +72,5 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
             "Press Enter to open in your default browser",
             "Press Esc to exit"
         ]
-    }
-
-    // MARK: - Private Helper Methods
-
-    private func openWebURL(_ text: String) -> Bool {
-        let cleanText = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanText.isEmpty else { return false }
-        
-        // Try to form a URL directly
-        if let url = URL(string: cleanText), url.scheme != nil {
-            NSWorkspace.shared.open(url)
-            return true
-        }
-        
-        // Try to treat it as a domain name (e.g., "apple.com")
-        if isDomainName(cleanText) {
-            if let url = URL(string: "https://\(cleanText)") {
-                NSWorkspace.shared.open(url)
-                return true
-            }
-        }
-        
-        // Fallback to searching with the default search engine
-        let encodedQuery = cleanText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cleanText
-        let searchURLString = getDefaultSearchEngineURL().replacingOccurrences(of: "{query}", with: encodedQuery)
-        
-        if let url = URL(string: searchURLString) {
-            NSWorkspace.shared.open(url)
-            return true
-        }
-        
-        return false
-    }
-
-    private func isDomainName(_ text: String) -> Bool {
-        return text.contains(".") && !text.contains(" ") && !text.hasPrefix(".")
-    }
-    
-    private func getDefaultSearchEngineURL() -> String {
-        let engine = ConfigManager.shared.config.modes.defaultSearchEngine
-        switch engine {
-        case "baidu": return "https://www.baidu.com/s?wd={query}"
-        case "bing": return "https://www.bing.com/search?q={query}"
-        default: return "https://www.google.com/search?q={query}"
-        }
     }
 }

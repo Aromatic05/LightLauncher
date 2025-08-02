@@ -59,7 +59,7 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
 
     func executeAction(at index: Int) -> Bool {
         if !currentQuery.isEmpty && index == 0 {
-            return performWebSearch(for: currentQuery)
+            return WebUtils.performWebSearch(query: currentQuery)
         }
         
         let historyIndex = currentQuery.isEmpty ? index : index - 1
@@ -67,7 +67,7 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
         guard historyIndex >= 0 && historyIndex < searchHistory.count else { return false }
         
         let item = searchHistory[historyIndex]
-        return performWebSearch(for: item.query)
+        return WebUtils.performWebSearch(query: item.query)
     }
     
     // 3. 生命周期与UI
@@ -86,28 +86,6 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
             "Press Enter to execute the search",
             "Press Esc to exit"
         ]
-    }
-
-    // MARK: - Private Helper Methods
-
-    private func performWebSearch(for query: String) -> Bool {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        
-        let engine = ConfigManager.shared.config.modes.defaultSearchEngine
-        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        
-        var urlString: String
-        switch engine {
-        case "Baidu": urlString = "https://www.baidu.com/s?wd=\(encodedQuery)"
-        case "Bing": urlString = "https://www.bing.com/search?q=\(encodedQuery)"
-        default: urlString = "https://www.google.com/search?q=\(encodedQuery)"
-        }
-        
-        guard let url = URL(string: urlString) else { return false }
-
-        SearchHistoryManager.shared.addSearch(query: query, category: String(engine))
-        NSWorkspace.shared.open(url)
-        return true
     }
 
     // MARK: - Public Helper Methods

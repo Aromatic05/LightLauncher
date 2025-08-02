@@ -2,28 +2,6 @@ import Foundation
 import AppKit
 import SwiftUI
 
-/// 快捷片段项，兼容 DisplayableItem
-struct SnippetItem: Codable, Equatable, DisplayableItem {
-    var name: String
-    var keyword: String
-    var snippet: String
-
-    var id: UUID {
-        let hashString = "\(name)-\(keyword)-\(snippet)".hash.description
-        return UUID(uuidString: hashString) ?? UUID()
-    }
-
-    var title: String { name }
-    var subtitle: String? { keyword.isEmpty ? nil : keyword }
-    var icon: NSImage? { nil }
-
-    @ViewBuilder
-    func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        // 可自定义 SnippetItemRowView，暂用 Text 占位
-        AnyView(SnippetItemRowView(item: self, isSelected: isSelected, index: index))
-    }
-}
-
 /// 快捷片段管理器
 @MainActor
 class SnippetManager: ObservableObject {

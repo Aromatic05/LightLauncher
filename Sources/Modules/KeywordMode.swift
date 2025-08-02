@@ -95,7 +95,7 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         
         if let item = selectedItem as? ActionableSearchItem {
             guard !item.query.isEmpty else { return false }
-            return performKeywordSearch(item: item.item, query: item.query)
+            return WebUtils.performWebSearch(query: item.query, encoding: String(item.item.spaceEncoding ?? "%20"))
             
         } else if let item = selectedItem as? KeywordSuggestionItem {
             LauncherViewModel.shared.updateQuery(newQuery: ". \(item.item.keyword) ")
@@ -177,32 +177,5 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         } else {
             return (content, "")
         }
-    }
-
-    /// 执行最终的URL搜索 (无需修改)。
-    private func performKeywordSearch(item: KeywordSearchItem, query: String) -> Bool {
-        let encoding = item.spaceEncoding ?? "+"
-        let encodedQuery: String
-
-        switch encoding {
-        case "%20":
-            encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)?.replacingOccurrences(of: "+", with: "%20") ?? query
-        case "+": fallthrough
-        default:
-            encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)?.replacingOccurrences(of: "%20", with: "+") ?? query
-        }
-
-        let urlString = item.url.replacingOccurrences(of: "{query}", with: encodedQuery)
-
-        guard let url = URL(string: urlString) else {
-            print("Error: Could not create URL from string: \(urlString)")
-            return false
-        }
-
-        // 记录历史（category使用item.title）
-        SearchHistoryManager.shared.addSearch(query: query, category: item.title)
-
-        NSWorkspace.shared.open(url)
-        return true
     }
 }
