@@ -116,7 +116,7 @@ struct SnippetItem: Codable, Equatable, DisplayableItem {
     }
 
     @MainActor
-    func executeAction(at index: Int) -> Bool {
+    func executeAction() -> Bool {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(self.snippet, forType: .string)
         return true

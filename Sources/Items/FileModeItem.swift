@@ -45,12 +45,14 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
         lhs.id == rhs.id
     }
     @MainActor
-    func executeAction() {
+    func executeAction() -> Bool {
         // 执行文件或目录的打开操作
         if isDirectory {
             NSWorkspace.shared.open(url)
+            return false
         } else {
             NSWorkspace.shared.activateFileViewerSelecting([url])
+            return true
         }
     }
 }

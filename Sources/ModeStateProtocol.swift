@@ -10,6 +10,8 @@ protocol DisplayableItem: Hashable, Identifiable {
     var icon: NSImage? { get }
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView
+    @MainActor
+    func executeAction() -> Bool
 }
 
 // MARK: - 模式状态控制器协议（清晰版）
