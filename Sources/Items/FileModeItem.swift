@@ -48,7 +48,7 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
     func executeAction() -> Bool {
         // 执行文件或目录的打开操作
         if isDirectory {
-            NSWorkspace.shared.open(url)
+            FileModeController.shared.navigateToDirectory(URL(fileURLWithPath: url.path))
             return false
         } else {
             NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -116,8 +116,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
     @MainActor
     func executeAction() -> Bool {
         // 执行打开起始路径的操作
-        let url = URL(fileURLWithPath: path)
-        NSWorkspace.shared.activateFileViewerSelecting([url])
+        FileModeController.shared.navigateToDirectory(URL(fileURLWithPath: path))
         return true
     }
 }

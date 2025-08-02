@@ -26,7 +26,7 @@ class FileManager_LightLauncher {
             let contents = try FileManager.default.contentsOfDirectory(
                 at: url,
                 includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey],
-                options: []
+                options: []  // 不跳过隐藏文件
             )
             
             var files: [FileItem] = []
@@ -99,8 +99,26 @@ class FileManager_LightLauncher {
         }
         
         return files.filter { file in
-            file.name.localizedCaseInsensitiveContains(query) ||
-            file.name.localizedLowercase.hasPrefix(query.localizedLowercase)
+            // 改进过滤逻辑，支持更精确的匹配
+            let fileName = file.name.localizedLowercase
+            let queryLower = query.localizedLowercase
+            
+            // 1. 完全匹配
+            if fileName == queryLower {
+                return true
+            }
+            
+            // 2. 前缀匹配
+            if fileName.hasPrefix(queryLower) {
+                return true
+            }
+            
+            // 3. 包含匹配
+            if fileName.contains(queryLower) {
+                return true
+            }
+            
+            return false
         }
     }
     
