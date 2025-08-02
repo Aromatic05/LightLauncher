@@ -114,17 +114,13 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         updateTimer?.invalidate()
         updateTimer = nil
         self.displayableItems = []
-        // Crucially, reset the internal state to its default
         self.showStartPaths = true
         self.currentPath = NSHomeDirectory()
         self.isInitialized = false
         self.lastProcessedQuery = ""
-        // Clear the search box when exiting file mode
-        LauncherViewModel.shared.updateQuery(newQuery: "")
     }
     
     func makeContentView() -> AnyView {
-        // This view logic remains the same
         if !displayableItems.isEmpty {
             return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
