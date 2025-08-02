@@ -154,27 +154,32 @@ final class WindowManager: NSObject, NSWindowDelegate {
     public func hideMainWindow(shouldActivatePreviousApp: Bool = true) {
         if isHidingWindow { return }
         isHidingWindow = true
-        
+
         launcherWindow?.orderOut(nil)
         viewModel?.clearSearch()
-        
+
         inputMethodManager.restorePreviousInputMethod()
-        
+
         if !shouldActivatePreviousApp {
             // 如果不需要激活前一个应用，简单重置标志位即可。
             DispatchQueue.main.async { self.isHidingWindow = false }
             return
         }
-        
-        // 激活记录的前一个应用
+
+        // 只有当前没有处于激活状态的应用时，才激活记录的前一个应用
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            if let previousApp = self?.previousFrontmostApp,
+            guard let self = self else { return }
+            let hasActivatedApp = NSWorkspace.shared.runningApplications.contains {
+                $0.isActive && !$0.isHidden && $0.bundleIdentifier != Bundle.main.bundleIdentifier
+            }
+            if !hasActivatedApp,
+               let previousApp = self.previousFrontmostApp,
                previousApp.bundleIdentifier != Bundle.main.bundleIdentifier {
                 previousApp.activate(options: [])
             }
             // 清空记录，避免下次误用
-            self?.previousFrontmostApp = nil
-            Task { @MainActor in self?.isHidingWindow = false }
+            self.previousFrontmostApp = nil
+            Task { @MainActor in self.isHidingWindow = false }
         }
 
     }
