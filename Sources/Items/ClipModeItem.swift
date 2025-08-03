@@ -95,14 +95,30 @@ enum ClipboardItem: Codable, Equatable, DisplayableItem {
 }
 
 /// 快捷片段项，兼容 DisplayableItem
-struct SnippetItem: Codable, Equatable, DisplayableItem {
+struct SnippetItem: Codable, Equatable, DisplayableItem, Identifiable {
+    let id: UUID
     var name: String
     var keyword: String
     var snippet: String
-
-    var id: UUID {
-        let hashString = "\(name)-\(keyword)-\(snippet)".hash.description
-        return UUID(uuidString: hashString) ?? UUID()
+    
+    init(name: String, keyword: String, snippet: String) {
+        self.id = UUID()
+        self.name = name
+        self.keyword = keyword
+        self.snippet = snippet
+    }
+    
+    // 为了支持 Codable，需要自定义编码/解码
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.name = try container.decode(String.self, forKey: .name)
+        self.keyword = try container.decode(String.self, forKey: .keyword)
+        self.snippet = try container.decode(String.self, forKey: .snippet)
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, keyword, snippet
     }
 
     var title: String { name }

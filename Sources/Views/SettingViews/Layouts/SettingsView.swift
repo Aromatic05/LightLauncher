@@ -10,6 +10,7 @@ enum SettingsTab {
     case abbreviations
     case keywordSearch
     case customHotKeys
+    case snippets
     case plugins
     case about
 }
@@ -105,6 +106,14 @@ struct SettingsView: View {
                         isSelected: selectedTab == .customHotKeys
                     ) {
                         selectedTab = .customHotKeys
+                    }
+                    
+                    TabButton(
+                        title: "代码片段",
+                        icon: "doc.text",
+                        isSelected: selectedTab == .snippets
+                    ) {
+                        selectedTab = .snippets
                     }
                     
                     TabButton(
@@ -247,6 +256,8 @@ struct SettingsView: View {
                 KeywordSearchSettingsView(configManager: configManager)
             case .customHotKeys:
                 CustomHotKeySettingsView(configManager: configManager)
+            case .snippets:
+                SnippetSettingsView()
             case .plugins:
                 PluginSettingsView()
             case .about:
