@@ -29,6 +29,7 @@ class LauncherViewModel: ObservableObject {
     private var controllerCancellable: AnyCancellable?
     var cancellables = Set<AnyCancellable>()
     private var previousSearchText = ""
+    let focusSearchField = PassthroughSubject<Void, Never>()
 
     var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []
@@ -201,11 +202,10 @@ class LauncherViewModel: ObservableObject {
     }
 
     func updateQuery(newQuery text: String) {
-        DispatchQueue.main.async {
-            self.searchText = text
-            self.showCommandSuggestions = false
-            self.commandSuggestions = []
-        }
+        self.searchText = text
+        self.showCommandSuggestions = false
+        self.commandSuggestions = []
+        focusSearchField.send(())
     }
 
     func clearSearch() {

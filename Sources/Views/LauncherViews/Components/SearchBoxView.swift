@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SearchBoxView: View {
+    @ObservedObject var viewModel = LauncherViewModel.shared
     @Binding var searchText: String
     @FocusState private var isSearchFieldFocused: Bool
     let mode: LauncherMode
@@ -54,6 +55,20 @@ struct SearchBoxView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     isSearchFieldFocused = true
                 }
+            }
+        }
+        .onReceive(viewModel.focusSearchField) { _ in
+            // 当接收到命令时，执行以下操作：
+            
+            // a. 设置焦点
+            self.isSearchFieldFocused = true
+            
+            // b. (关键技巧) 为了确保光标在末尾而不是全选，
+            //     我们快速地清空并恢复文本。这会重置文本编辑器的状态。
+            let currentText = self.searchText
+            self.searchText = ""
+            DispatchQueue.main.async {
+                self.searchText = currentText
             }
         }
     }
