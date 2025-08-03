@@ -248,6 +248,6 @@ class LauncherViewModel: ObservableObject {
     func executeSelectedAction(at index: Int) -> Bool {
         guard !displayableItems.isEmpty, index >= 0, index < displayableItems.count
         else { return false }
-        return activeController?.executeAction(at: index) ?? false
+        return displayableItems[index].executeAction()
     }
 }

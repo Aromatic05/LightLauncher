@@ -38,9 +38,6 @@ protocol ModeStateController: AnyObject {
 
     func handle(keyEvent: KeyEvent) -> Bool
 
-    // 执行动作：用户确认选择时的操作
-    func executeAction(at index: Int) -> Bool
-
     // 模式退出或切换时的清理操作
     func cleanup()
 

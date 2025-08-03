@@ -51,8 +51,11 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
             FileModeController.shared.navigateToDirectory(URL(fileURLWithPath: url.path))
             return false
         } else {
-            NSWorkspace.shared.activateFileViewerSelecting([url])
-            return true
+            let success = NSWorkspace.shared.open(url)
+                if success {
+                    FileModeController.shared.resetToStartScreen()
+                }
+            return success
         }
     }
 }
@@ -117,6 +120,6 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
     func executeAction() -> Bool {
         // 执行打开起始路径的操作
         FileModeController.shared.navigateToDirectory(URL(fileURLWithPath: path))
-        return true
+        return false
     }
 }
