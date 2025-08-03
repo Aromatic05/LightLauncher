@@ -63,7 +63,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         let (newPath, searchQuery) = parseInputArguments(arguments)
         
         if let path = newPath {
-            if path == currentPath && lastInputAction == .delete {
+            if path == "" {
                 resetToStartScreen()
                 return
             }
