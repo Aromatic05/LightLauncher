@@ -60,21 +60,9 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             isInitialized = true
         }
 
-        updateTimer?.invalidate()
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.processInputWithDebounce(arguments: arguments)
-            }
-        }
-    }
-    
-    /// --- 最终修复：添加了对根目录返回的特殊处理 ---
-    private func processInputWithDebounce(arguments: String) {
         let (newPath, searchQuery) = parseInputArguments(arguments)
         
         if let path = newPath {
-            // 关键修复：检查是否是从根目录 (/) 返回。
-            // 只有当“新路径”与当前路径相同，且用户操作是删除时，才会发生。
             if path == currentPath && lastInputAction == .delete {
                 resetToStartScreen()
                 return
@@ -124,8 +112,6 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
 
     // 3. 生命周期与UI
     func cleanup() {
-        updateTimer?.invalidate()
-        updateTimer = nil
         displayableItems = []
         showStartPaths = true
         currentPath = NSHomeDirectory()
@@ -163,7 +149,6 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     private var lastInputAction: InputAction = .input
     
     private var isInitialized = false
-    private var updateTimer: Timer?
     private var lastProcessedQuery = ""
 
     @Published private var showStartPaths: Bool = true
