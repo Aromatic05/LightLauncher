@@ -86,6 +86,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         window.makeFirstResponder(window.contentView)
+        KeyboardEventHandler.shared.startMonitoring()
     }
     
     /// 显示设置窗口。
@@ -152,6 +153,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
     
     /// 隐藏主启动器窗口。
     public func hideMainWindow(shouldActivatePreviousApp: Bool = true) {
+        KeyboardEventHandler.shared.stopMonitoring()
         if isHidingWindow { return }
         isHidingWindow = true
 

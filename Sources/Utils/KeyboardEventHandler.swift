@@ -46,7 +46,6 @@ final class KeyboardEventHandler {
 
     func startMonitoring() {
         stopMonitoring()
-
         keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
 

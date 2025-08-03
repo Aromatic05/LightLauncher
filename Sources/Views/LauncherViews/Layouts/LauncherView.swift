@@ -45,12 +45,6 @@ struct LauncherView: View {
         .opacity(0.95)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
-        .onAppear {
-            KeyboardEventHandler.shared.startMonitoring()
-        }
-        .onDisappear {
-            KeyboardEventHandler.shared.stopMonitoring()
-        }
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) {
             notification in
             if notification.object is LauncherWindow {
@@ -66,8 +60,5 @@ struct LauncherView: View {
                 isOurWindowKey = false
             }
         }
-        // .onChange(of: viewModel.mode) { newMode in
-        //     KeyboardEventHandler.shared.startMonitoring()
-        // }
     }
 }
