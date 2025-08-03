@@ -44,11 +44,6 @@ struct SearchBoxView: View {
         )
         .padding(.horizontal, 24)
         
-        // --- 核心逻辑修改 ---
-        // 删除了错误的 .onAppear 和 .onChange(of: isSearchFieldFocused)
-        
-        // 使用新的、正确的逻辑：
-        // 当父视图通知我们“窗口已成为关键窗口”时，才请求焦点。
         .onChange(of: isWindowKey) { newIsKey in
             if newIsKey {
                 // 使用一小段延迟可以确保窗口的过渡动画完成后再获取焦点，体验更平滑。
@@ -58,13 +53,7 @@ struct SearchBoxView: View {
             }
         }
         .onReceive(viewModel.focusSearchField) { _ in
-            // 当接收到命令时，执行以下操作：
-            
-            // a. 设置焦点
             self.isSearchFieldFocused = true
-            
-            // b. (关键技巧) 为了确保光标在末尾而不是全选，
-            //     我们快速地清空并恢复文本。这会重置文本编辑器的状态。
             let currentText = self.searchText
             self.searchText = ""
             DispatchQueue.main.async {

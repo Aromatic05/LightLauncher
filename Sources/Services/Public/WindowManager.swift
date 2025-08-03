@@ -53,26 +53,10 @@ final class WindowManager: NSObject, NSWindowDelegate {
     init(viewModel: LauncherViewModel) {
         self.viewModel = viewModel
         super.init()
-        
         // 在初始化时就创建好主窗口。
         setupLauncherWindow()
-        
         // 监听隐藏窗口的通知。
         setupNotificationObservers()
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleWindowKeyChange(_:)),
-            name: NSWindow.didBecomeKeyNotification,
-            object: nil
-        )
-    }
-
-    @objc private func handleWindowKeyChange(_ notification: Notification) {
-        if let window = notification.object as? NSWindow {
-            let windowName = window.title.isEmpty ? "\(type(of: window))" : window.title
-            print("🔑 [焦点追踪] 关键窗口变为: \(windowName)")
-        }
     }
     
     // MARK: - 公开方法
@@ -229,7 +213,6 @@ final class WindowManager: NSObject, NSWindowDelegate {
     
     /// 当窗口失去焦点时，自动隐藏。
     func windowDidResignKey(_ notification: Notification) {
-        print("窗口失去焦点，自动隐藏")
         if notification.object as? NSWindow == launcherWindow {
             hideMainWindow()
         }
@@ -245,16 +228,6 @@ class LauncherWindow: NSWindow {
     override var canBecomeKey: Bool { return true }
     override var canBecomeMain: Bool { return false }
     override var acceptsFirstResponder: Bool { return true }
-
-    override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
-        let windowName = self.title.isEmpty ? "\(type(of: self))" : self.title
-        let responderDescription = responder != nil ? "\(type(of: responder!))" : "nil (清除焦点)"
-        
-        print("👀 [焦点追踪] 窗口 '\(windowName)' 正在设置第一响应者为: \(responderDescription)")
-        
-        // 调用父类实现，保证正常功能
-        return super.makeFirstResponder(responder)
-    }
 }
 
 /// 一个自定义的 NSHostingView，用于确保键盘焦点能够正确传递。
