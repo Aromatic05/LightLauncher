@@ -77,33 +77,6 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         return SnippetManager.shared.searchSnippets(query: query)
     }
 
-    func executeAction(at index: Int) -> Bool {
-        guard index >= 0 && index < self.displayableItems.count else {
-            return false
-        }
-        let item = self.displayableItems[index]
-        if let clipItem = item as? ClipboardItem {
-            if let historyIndex = ClipboardManager.shared.getHistory().firstIndex(of: clipItem) {
-                ClipboardManager.shared.removeItem(at: historyIndex)
-            }
-            switch clipItem {
-            case .text(let str):
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(str, forType: .string)
-            case .file(let url):
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.writeObjects([url as NSURL])
-            }
-            return true
-        } else if let snippet = item as? SnippetItem {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(snippet.snippet, forType: .string)
-            return true
-        }
-        return false
-    }
-
-
     /// 直接输入选中内容（使用辅助功能 API），而不是复制到剪切板
     func executeInputAction(at index: Int) -> Bool {
         guard index >= 0 && index < self.displayableItems.count else {

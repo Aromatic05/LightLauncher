@@ -41,7 +41,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     func handle(keyEvent: KeyEvent) -> Bool {
         switch keyEvent {
         case .numeric(let number) where number >= 1 && number <= 6:
-            if executeAction(at: Int(number) - 1) {
+            if displayableItems[Int(number) - 1].executeAction() {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
             return true
@@ -53,27 +53,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     // 2. 核心逻辑 (单一输入入口)
     func handleInput(arguments: String) {
         filterApps(searchText: arguments)
-    }
-
-    /// 执行选中项的动作：启动应用、打开设置或执行系统命令
-    func executeAction(at index: Int) -> Bool {
-        guard index < self.displayableItems.count else { return false }
-        let item = self.displayableItems[index]
-        if let app = item as? AppInfo {
-            let success = NSWorkspace.shared.open(app.url)
-            if success {
-                incrementUsage(for: app.name)
-            }
-            return success
-        } else if let pane = item as? PreferencePaneItem {
-            // 打开设置面板
-            let success = NSWorkspace.shared.open(pane.url)
-            return success
-        } else if let cmd = item as? SystemCommandItem {
-            cmd.action()
-            return true
-        }
-        return false
     }
 
     // 3. 生命周期与UI
@@ -238,6 +217,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     func selectAppByNumber(_ number: Int) -> Bool {
         let idx = number - 1
         guard idx >= 0 && idx < self.displayableItems.count && idx < 6 else { return false }
-        return self.executeAction(at: idx)
+        return self.displayableItems[idx].executeAction()
     }
 }

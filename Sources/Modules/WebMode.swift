@@ -51,12 +51,6 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
         }
     }
 
-    func executeAction(at index: Int) -> Bool {
-        guard index >= 0 && index < displayableItems.count,
-              let item = displayableItems[index] as? BrowserItem else { return false }
-        return WebUtils.openWebURL(item.url)
-    }
-
     func cleanup() {
         self.displayableItems = []
         self.currentQuery = "" // 清理时也要重置

@@ -33,23 +33,6 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         }
     }
 
-    func executeAction(at index: Int) -> Bool {
-        guard index >= 0, index < displayableItems.count else { return false }
-        
-        let selectedItem = displayableItems[index]
-        
-        if let item = selectedItem as? ActionableSearchItem {
-            guard !item.query.isEmpty else { return false }
-            return WebUtils.performWebSearch(query: item.query, encoding: String(item.item.spaceEncoding ?? "%20"))
-            
-        } else if let item = selectedItem as? KeywordSuggestionItem {
-            LauncherViewModel.shared.updateQuery(newQuery: ". \(item.item.keyword) ")
-            return false
-        }
-        
-        return false
-    }
-
     // 4. 生命周期与UI
     func cleanup() {
         currentQuery = ""

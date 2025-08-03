@@ -40,7 +40,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     func handle(keyEvent: KeyEvent) -> Bool {
         switch keyEvent {
         case .numeric(let number) where number >= 1 && number <= 6:
-            if executeAction(at: Int(number) - 1) {
+            if displayableItems[Int(number) - 1].executeAction() {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
             return true
@@ -61,18 +61,6 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
         if LauncherViewModel.shared.selectedIndex != 0 {
             LauncherViewModel.shared.selectedIndex = 0
         }
-    }
-
-    func executeAction(at index: Int) -> Bool {
-        guard index < self.displayableItems.count,
-              let app = self.displayableItems[index] as? RunningAppInfo else {
-            return false
-        }
-        let result = RunningAppsManager.shared.killApp(app, force: forceKillEnabled)
-        if result {
-            self.displayableItems.remove(at: index)
-        }
-        return false // 返回 false 以避免自动隐藏窗口
     }
 
     // 3. 生命周期与UI
@@ -114,6 +102,6 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     func selectKillAppByNumber(_ number: Int) -> Bool {
         let index = number - 1
         guard index >= 0 && index < displayableItems.count && index < 6 else { return false }
-        return executeAction(at: index)
+        return displayableItems[index].executeAction()
     }
 }

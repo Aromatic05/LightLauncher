@@ -44,19 +44,6 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
             LauncherViewModel.shared.selectedIndex = 0
         }
     }
-
-    func executeAction(at index: Int) -> Bool {
-        if !currentQuery.isEmpty && index == 0 {
-            return WebUtils.performWebSearch(query: currentQuery)
-        }
-        
-        let historyIndex = currentQuery.isEmpty ? index : index - 1
-        
-        guard historyIndex >= 0 && historyIndex < searchHistory.count else { return false }
-        
-        let item = searchHistory[historyIndex]
-        return WebUtils.performWebSearch(query: item.query)
-    }
     
     // 3. 生命周期与UI
     func cleanup() {

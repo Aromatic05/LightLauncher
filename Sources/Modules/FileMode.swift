@@ -86,30 +86,6 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         }
     }
 
-    func executeAction(at index: Int) -> Bool {
-        guard index >= 0 && index < self.displayableItems.count else { return false }
-
-        if let startPath = self.displayableItems[index] as? FileBrowserStartPath {
-            navigateToDirectory(URL(fileURLWithPath: startPath.path))
-            return false
-        }
-        
-        if let fileItem = self.displayableItems[index] as? FileItem {
-            if fileItem.isDirectory {
-                navigateToDirectory(fileItem.url)
-                return false
-            } else {
-                let success = NSWorkspace.shared.open(fileItem.url)
-                if success {
-                    resetToStartScreen()
-                }
-                return success
-            }
-        }
-        
-        return false
-    }
-
     // 3. 生命周期与UI
     func cleanup() {
         displayableItems = []

@@ -34,25 +34,25 @@ final class PluginModeController: ObservableObject, ModeStateController {
         }
     }
 
-    func executeAction(at index: Int) -> Bool {
-        if case .showingPluginList(let items) = internalMode {
-            guard index >= 0 && index < items.count,
-                  let action = items[index].action,
-                  action.hasPrefix("select_plugin:") else {
-                return false
-            }
-            let command = String(action.dropFirst("select_plugin:".count))
-            handleInput(arguments: command)
-            return true
-        }
+    // func executeAction(at index: Int) -> Bool {
+    //     if case .showingPluginList(let items) = internalMode {
+    //         guard index >= 0 && index < items.count,
+    //               let action = items[index].action,
+    //               action.hasPrefix("select_plugin:") else {
+    //             return false
+    //         }
+    //         let command = String(action.dropFirst("select_plugin:".count))
+    //         handleInput(arguments: command)
+    //         return true
+    //     }
         
-        guard let instance = activeInstance, index >= 0 && index < instance.currentItems.count,
-              let pluginItem = instance.currentItems[index] as? PluginItem,
-              let action = pluginItem.action else {
-            return false
-        }
-        return instance.executeAction(action)
-    }
+    //     guard let instance = activeInstance, index >= 0 && index < instance.currentItems.count,
+    //           let pluginItem = instance.currentItems[index] as? PluginItem,
+    //           let action = pluginItem.action else {
+    //         return false
+    //     }
+    //     return instance.executeAction(action)
+    // }
 
     func cleanup() {
         activeInstance = nil

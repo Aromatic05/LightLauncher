@@ -33,26 +33,6 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         dataDidChange.send()
     }
 
-    func executeAction(at index: Int) -> Bool {
-        // index == 0 执行当前命令，否则执行历史项
-        let items = displayableItems
-        guard index < items.count else { return false }
-        let commandToExecute: String
-        if index == 0 {
-            commandToExecute = currentQuery
-        } else if let historyItem = items[index] as? TerminalHistoryItem {
-            commandToExecute = historyItem.command
-        } else {
-            return false
-        }
-
-        let result = terminalExecutor.execute(command: commandToExecute)
-        if result {
-            historyManager.addCommand(commandToExecute)
-        }
-        return result
-    }
-
     func cleanup() {
         self.currentQuery = ""
         dataDidChange.send()
