@@ -1,10 +1,11 @@
 import SwiftUI
-
 struct AbbreviationRow: View {
     let key: String
     let values: [String]
     let isEditing: Bool
     @Binding var editingValues: String
+    let onEdit: () -> Void
+    let onSave: () -> Void
     let onCancel: () -> Void
     let onDelete: () -> Void
     
@@ -22,6 +23,11 @@ struct AbbreviationRow: View {
                 TextField("编辑匹配词", text: $editingValues)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                 HStack(spacing: 8) {
+                    Button("保存") {
+                        onSave()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
                     Button("取消") {
                         onCancel()
                     }
@@ -34,6 +40,11 @@ struct AbbreviationRow: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 8) {
+                    Button("编辑") {
+                        onEdit()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                     Button("删除") {
                         onDelete()
                     }
@@ -56,8 +67,6 @@ struct AbbreviationRow: View {
 //     let values: [String]
 //     let isEditing: Bool
 //     @Binding var editingValues: String
-//     let onEdit: () -> Void
-//     let onSave: () -> Void
 //     let onCancel: () -> Void
 //     let onDelete: () -> Void
     
@@ -75,11 +84,6 @@ struct AbbreviationRow: View {
 //                 TextField("编辑匹配词", text: $editingValues)
 //                     .textFieldStyle(RoundedBorderTextFieldStyle())
 //                 HStack(spacing: 8) {
-//                     Button("保存") {
-//                         onSave()
-//                     }
-//                     .buttonStyle(.borderedProminent)
-//                     .controlSize(.small)
 //                     Button("取消") {
 //                         onCancel()
 //                     }
@@ -92,11 +96,6 @@ struct AbbreviationRow: View {
 //                     .foregroundColor(.secondary)
 //                     .frame(maxWidth: .infinity, alignment: .leading)
 //                 HStack(spacing: 8) {
-//                     Button("编辑") {
-//                         onEdit()
-//                     }
-//                     .buttonStyle(.bordered)
-//                     .controlSize(.small)
 //                     Button("删除") {
 //                         onDelete()
 //                     }
