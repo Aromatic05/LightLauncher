@@ -8,6 +8,8 @@ enum SettingsTab {
     case modes
     case directories
     case abbreviations
+    case keywordSearch
+    case customHotKeys
     case plugins
     case about
 }
@@ -87,6 +89,22 @@ struct SettingsView: View {
                         isSelected: selectedTab == .abbreviations
                     ) {
                         selectedTab = .abbreviations
+                    }
+                    
+                    TabButton(
+                        title: "关键词搜索",
+                        icon: "magnifyingglass",
+                        isSelected: selectedTab == .keywordSearch
+                    ) {
+                        selectedTab = .keywordSearch
+                    }
+                    
+                    TabButton(
+                        title: "自定义快捷键",
+                        icon: "command",
+                        isSelected: selectedTab == .customHotKeys
+                    ) {
+                        selectedTab = .customHotKeys
                     }
                     
                     TabButton(
@@ -225,6 +243,10 @@ struct SettingsView: View {
                 DirectorySettingsView(configManager: configManager)
             case .abbreviations:
                 AbbreviationSettingsView(configManager: configManager)
+            case .keywordSearch:
+                KeywordSearchSettingsView(configManager: configManager)
+            case .customHotKeys:
+                CustomHotKeySettingsView(configManager: configManager)
             case .plugins:
                 PluginSettingsView()
             case .about:
