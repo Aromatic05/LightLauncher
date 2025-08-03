@@ -4,6 +4,10 @@ struct SearchBoxView: View {
     @Binding var searchText: String
     @FocusState private var isSearchFieldFocused: Bool
     let mode: LauncherMode
+    
+    // 接收来自父视图 LauncherView 的窗口状态
+    let isWindowKey: Bool 
+    
     let onClear: () -> Void
     
     var body: some View {
@@ -15,7 +19,7 @@ struct SearchBoxView: View {
             TextField(mode.placeholder, text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 16))
-                .focused($isSearchFieldFocused)
+                .focused($isSearchFieldFocused) // 绑定焦点
             
             if !searchText.isEmpty {
                 Button(action: onClear) {
@@ -38,12 +42,16 @@ struct SearchBoxView: View {
                 )
         )
         .padding(.horizontal, 24)
-        .onAppear {
-            isSearchFieldFocused = true
-        }
-        .onChange(of: isSearchFieldFocused) { focused in
-            if !focused {
-                DispatchQueue.main.async {
+        
+        // --- 核心逻辑修改 ---
+        // 删除了错误的 .onAppear 和 .onChange(of: isSearchFieldFocused)
+        
+        // 使用新的、正确的逻辑：
+        // 当父视图通知我们“窗口已成为关键窗口”时，才请求焦点。
+        .onChange(of: isWindowKey) { newIsKey in
+            if newIsKey {
+                // 使用一小段延迟可以确保窗口的过渡动画完成后再获取焦点，体验更平滑。
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     isSearchFieldFocused = true
                 }
             }
