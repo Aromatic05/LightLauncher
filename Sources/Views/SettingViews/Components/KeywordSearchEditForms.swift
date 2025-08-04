@@ -5,13 +5,15 @@ struct KeywordSearchBasicForm: View {
     @Binding var title: String
     @Binding var keyword: String
     @Binding var icon: String
+    @State private var isFileImporterPresented = false
+    @State private var selectedIconName: String = ""
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("基本信息")
                 .font(.headline)
                 .fontWeight(.semibold)
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("搜索引擎名称")
@@ -20,7 +22,7 @@ struct KeywordSearchBasicForm: View {
                     TextField("例如：Google", text: $title)
                         .textFieldStyle(.roundedBorder)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("关键词")
                         .font(.subheadline)
@@ -29,14 +31,56 @@ struct KeywordSearchBasicForm: View {
                         .textFieldStyle(.roundedBorder)
                         .textCase(.lowercase)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("图标 URL (可选)")
+                    Text("图标文件 (可选)")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    TextField("图标的网络地址", text: $icon)
-                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        Button(action: {
+                            isFileImporterPresented = true
+                        }) {
+                            Text("选择图标文件")
+                        }
+                        if !selectedIconName.isEmpty {
+                            Text(selectedIconName)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
+            }
+        }
+        .fileImporter(
+            isPresented: $isFileImporterPresented,
+            allowedContentTypes: [.image],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    let fileManager = FileManager.default
+                    let homeDir = fileManager.homeDirectoryForCurrentUser
+                    let iconsDir = homeDir.appendingPathComponent(".config/LightLauncher/icons", isDirectory: true)
+                    do {
+                        if !fileManager.fileExists(atPath: iconsDir.path) {
+                            try fileManager.createDirectory(at: iconsDir, withIntermediateDirectories: true)
+                        }
+                        let destURL = iconsDir.appendingPathComponent(url.lastPathComponent)
+                        // 覆盖同名文件
+                        if fileManager.fileExists(atPath: destURL.path) {
+                            try fileManager.removeItem(at: destURL)
+                        }
+                        try fileManager.copyItem(at: url, to: destURL)
+                        icon = url.lastPathComponent
+                        selectedIconName = url.lastPathComponent
+                    } catch {
+                        // 错误处理
+                        selectedIconName = "文件保存失败"
+                    }
+                }
+            case .failure(_):
+                selectedIconName = "未选择文件"
             }
         }
         .padding(20)
