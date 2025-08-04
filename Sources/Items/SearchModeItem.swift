@@ -1,6 +1,6 @@
 import SwiftUI
 
-fileprivate func loadIcon(named iconName: String?) -> NSImage? {
+private func loadIcon(named iconName: String?) -> NSImage? {
     guard let iconName = iconName, !iconName.isEmpty else {
         return NSImage(
             systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
@@ -65,7 +65,9 @@ struct ActionableSearchItem: DisplayableItem {
     @MainActor
     func executeAction() -> Bool {
         guard !query.isEmpty else { return false }
-        return WebUtils.performWebSearch(query: query, encoding: String(item.spaceEncoding ?? "%20"))
+        return WebUtils.performWebSearch(
+            query: query, encoding: String(item.spaceEncoding ?? "%20"),
+            searchEngine: item.url)
     }
 }
 
@@ -89,23 +91,27 @@ struct SearchHistoryItem: Codable, Identifiable, Hashable, DisplayableItem {
     let id: UUID
     let query: String
     let timestamp: Date
-    let category: String // 使用 'category' 代替 'searchEngine'，更具通用性
+    let category: String  // 使用 'category' 代替 'searchEngine'，更具通用性
 
     // DisplayableItem 协议实现
     var title: String { query }
-    var subtitle: String? { category } // 副标题可以直接显示类别
+    var subtitle: String? { category }  // 副标题可以直接显示类别
     var icon: NSImage? {
         // 未来可以根据 category 返回不同图标
-        return NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "History")
+        return NSImage(
+            systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "History")
     }
 
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(SearchHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {
-            SearchHistoryManager.shared.removeSearch(item: self)
-        }))
+        AnyView(
+            SearchHistoryRowView(
+                item: self, isSelected: isSelected, index: index,
+                onDelete: {
+                    SearchHistoryManager.shared.removeSearch(item: self)
+                }))
     }
-    
+
     // 初始化方法也更新参数名
     init(query: String, category: String) {
         self.id = UUID()
