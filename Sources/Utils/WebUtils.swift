@@ -31,7 +31,7 @@ class WebUtils {
             encodedQuery = query.replacingOccurrences(of: " ", with: encoding)
         }
 
-        let searchURLString = getDefaultSearchEngineURL().replacingOccurrences(
+        let searchURLString = engine.replacingOccurrences(
             of: "{query}", with: encodedQuery)
 
         SearchHistoryManager.shared.addSearch(query: query, category: String(engine))
