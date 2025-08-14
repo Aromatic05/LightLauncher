@@ -241,18 +241,59 @@ struct CustomHotKeyEditView: View {
     }
     
     private func handleKeyEvent(_ event: NSEvent) {
-        if event.type == .flagsChanged {
-            currentModifiers = UInt32(event.modifierFlags.rawValue & 0xFFFF0000)
-        } else if event.type == .keyDown {
-            let newModifiers = UInt32(event.modifierFlags.rawValue & 0xFFFF0000)
-            let newKeyCode = UInt32(event.keyCode)
-            
-            // 确保有修饰键
-            if newModifiers != 0 {
-                modifiers = newModifiers
-                keyCode = newKeyCode
+        guard isRecordingHotKey else { return }
+        if event.type == .keyDown {
+            let keyCode = UInt32(event.keyCode)
+            let modifiers = event.modifierFlags
+            let validKeys: [UInt32] = [
+                UInt32(kVK_Space), UInt32(kVK_Return), UInt32(kVK_Escape), UInt32(kVK_Tab),
+                UInt32(kVK_F1), UInt32(kVK_F2), UInt32(kVK_F3), UInt32(kVK_F4),
+                UInt32(kVK_F5), UInt32(kVK_F6), UInt32(kVK_F7), UInt32(kVK_F8),
+                UInt32(kVK_F9), UInt32(kVK_F10), UInt32(kVK_F11), UInt32(kVK_F12),
+                UInt32(kVK_ANSI_A), UInt32(kVK_ANSI_B), UInt32(kVK_ANSI_C), UInt32(kVK_ANSI_D),
+                UInt32(kVK_ANSI_E), UInt32(kVK_ANSI_F), UInt32(kVK_ANSI_G), UInt32(kVK_ANSI_H),
+                UInt32(kVK_ANSI_I), UInt32(kVK_ANSI_J), UInt32(kVK_ANSI_K), UInt32(kVK_ANSI_L),
+                UInt32(kVK_ANSI_M), UInt32(kVK_ANSI_N), UInt32(kVK_ANSI_O), UInt32(kVK_ANSI_P),
+                UInt32(kVK_ANSI_Q), UInt32(kVK_ANSI_R), UInt32(kVK_ANSI_S), UInt32(kVK_ANSI_T),
+                UInt32(kVK_ANSI_U), UInt32(kVK_ANSI_V), UInt32(kVK_ANSI_W), UInt32(kVK_ANSI_X),
+                UInt32(kVK_ANSI_Y), UInt32(kVK_ANSI_Z)
+            ]
+            if validKeys.contains(keyCode) || (modifiers.rawValue != 0) {
+                let carbonModifiers = carbonModifiersFromCocoaModifiers(modifiers)
+                self.modifiers = carbonModifiers
+                self.keyCode = keyCode
+                cancelRecordingHotKey()
+            }
+        } else if event.type == .flagsChanged {
+            let modifiers = event.modifierFlags
+            currentModifiers = carbonModifiersFromCocoaModifiers(modifiers)
+            // 检查是否为单独的右 Command 或右 Option
+            if modifiers.contains(.command) && event.keyCode == 54 { // 右 Command
+                self.modifiers = 0x100010
+                self.keyCode = 0
+                cancelRecordingHotKey()
+            } else if modifiers.contains(.option) && event.keyCode == 61 { // 右 Option
+                self.modifiers = 0x100040
+                self.keyCode = 0
                 cancelRecordingHotKey()
             }
         }
+    }
+
+    private func carbonModifiersFromCocoaModifiers(_ modifiers: NSEvent.ModifierFlags) -> UInt32 {
+        var carbonModifiers: UInt32 = 0
+        if modifiers.contains(.command) {
+            carbonModifiers |= UInt32(cmdKey)
+        }
+        if modifiers.contains(.option) {
+            carbonModifiers |= UInt32(optionKey)
+        }
+        if modifiers.contains(.control) {
+            carbonModifiers |= UInt32(controlKey)
+        }
+        if modifiers.contains(.shift) {
+            carbonModifiers |= UInt32(shiftKey)
+        }
+        return carbonModifiers
     }
 }
