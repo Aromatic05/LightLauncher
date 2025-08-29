@@ -5,135 +5,163 @@
 # modifiers: 修饰键组合 (可选值: 256=Cmd, 512=Shift, 1024=Option, 2048=Ctrl)
 # 特殊值: 1048592=右Cmd, 1048640=右Option
 # keyCode: 按键代码 (0表示仅修饰键, 49=Space, 36=Return 等)
+
+# 功能模式配置
+# killModeEnabled: 启用关闭应用模式 (/k)
+# searchModeEnabled: 启用网页搜索模式 (/s)
+# webModeEnabled: 启用网页打开模式 (/w)
+# terminalModeEnabled: 启用终端执行模式 (/t)
+# showCommandSuggestions: 输入 / 时显示命令提示
+# defaultSearchEngine: 默认搜索引擎 (google, baidu, bing)
+# preferredTerminal: 首选终端应用 (auto, terminal, iterm2, ghostty, kitty, alacritty, wezterm)
+# enabledBrowsers: 启用的浏览器数据源 (safari, chrome, edge, firefox, arc)
+
 hotKey:
-  modifiers: 1024
+  modifiers: 2048
   keyCode: 49
-
-# 应用搜索目录
-# 支持 ~ 符号表示用户主目录
+customHotKeys:
+  - id: "\u526A\u5207\u677F"
+    name: "\u526A\u5207\u677F"
+    modifiers: 2048
+    keyCode: 9
+    text: "/v "
+  - id: "bilibili\u641C\u7D22"
+    name: "bilibili\u641C\u7D22"
+    modifiers: 2048
+    keyCode: 11
+    text: ". bb "
 searchDirectories:
-  - "/Applications"
-  - "/Applications/Utilities"
-  - "/System/Applications"
-  - "/System/Applications/Utilities"
-  - "~/Applications"
-
-# 常用应用缩写匹配
-# 格式: "缩写": ["匹配词1", "匹配词2"]
+  - path: /Applications
+  - path: /Applications/Utilities
+  - path: /System/Applications
+  - path: /System/Applications/Utilities
+  - path: ~/Applications
 commonAbbreviations:
-  "1password":
-    - "1password"
-  ae:
-    - "after effects"
-  ai:
-    - "illustrator"
-  alfred:
-    - "alfred"
-  amphetamine:
-    - "amphetamine"
-  bartender:
-    - "bartender"
-  calculator:
-    - "calculator"
-  calendar:
-    - "calendar"
-  chrome:
-    - "google chrome"
-  cleanmymac:
-    - "cleanmymac"
-  code:
-    - "visual studio code"
-    - "code"
-  docker:
-    - "docker"
-  dw:
-    - "dreamweaver"
-  edge:
-    - "microsoft edge"
-  excel:
-    - "microsoft excel"
-  ff:
-    - "firefox"
-  figma:
-    - "figma"
-  finder:
-    - "finder"
-  git:
-    - "github desktop"
-    - "sourcetree"
-  homebrew:
-    - "homebrew"
-  id:
-    - "indesign"
-  istat:
-    - "istat menus"
-  lr:
-    - "lightroom"
-  magnet:
-    - "magnet"
-  mail:
-    - "mail"
-  music:
-    - "music"
-  notes:
-    - "notes"
-  notion:
-    - "notion"
-  obsidian:
-    - "obsidian"
-  outlook:
-    - "microsoft outlook"
-  photos:
-    - "photos"
-  postman:
-    - "postman"
   ppt:
-    - "powerpoint"
-  pr:
-    - "premiere"
-  preview:
-    - "preview"
-  ps:
-    - "photoshop"
-  qq:
-    - "qq"
-  raycast:
-    - "raycast"
-  rectangle:
-    - "rectangle"
+    - powerpoint
+  code:
+    - visual studio code
+    - code
   safari:
-    - "safari"
-  simulator:
-    - "simulator"
-  sketch:
-    - "sketch"
-  slack:
-    - "slack"
-  teams:
-    - "microsoft teams"
-  terminal:
-    - "terminal"
-  typora:
-    - "typora"
-  vm:
-    - "vmware"
-    - "parallels"
+    - safari
+  qq:
+    - qq
   vs:
-    - "visual studio"
-    - "code"
-  vsc:
-    - "visual studio code"
-    - "code"
-  wechat:
-    - "微信"
-  word:
-    - "microsoft word"
+    - visual studio
+    - code
+  git:
+    - github desktop
+    - sourcetree
+  vm:
+    - vmware
+    - parallels
   wx:
-    - "wechat"
-    - "微信"
-  xcode:
-    - "xcode"
+    - wechat
+    - "\u5FAE\u4FE1"
+  dw:
+    - dreamweaver
+  ff:
+    - firefox
+  wechat:
+    - wechat
+  zen:
+    - zen browser
+  ps:
+    - photoshop
+  teams:
+    - microsoft teams
+  excel:
+    - microsoft excel
+  vsc:
+    - visual studio code
+    - code
+  lr:
+    - lightroom
+  edge:
+    - microsoft edge
+  id:
+    - indesign
+  pr:
+    - premiere
+  outlook:
+    - microsoft outlook
   xd:
-    - "adobe xd"
-  zoom:
-    - "zoom"
+    - adobe xd
+  chrome:
+    - google chrome
+  ae:
+    - after effects
+  ai:
+    - illustrator
+  word:
+    - microsoft word
+modes:
+  enabled:
+    clip: true
+    file: true
+    plugin: true
+    keyword: true
+    search: true
+    web: true
+    launch: true
+    kill: true
+    terminal: true
+  showCommandSuggestions: true
+  defaultSearchEngine: Google
+  preferredTerminal: auto
+  enabledBrowsers:
+    - edge
+    - safari
+  fileBrowserStartPaths:
+    - /
+    - /Users/aromatic
+    - /Users/aromatic/Desktop
+    - /Users/aromatic/Downloads
+    - /Users/aromatic/Documents
+  keywordModeConfig:
+    items:
+      - title: Google
+        url: https://www.google.com/search?q={query}
+        keyword: g
+        icon: google.png
+        spaceEncoding: +
+      - title: Bing
+        url: https://www.bing.com/search?q={query}
+        keyword: b
+        icon: bing.png
+        spaceEncoding: "%20"
+      - title: "\u77E5\u4E4E"
+        url: https://www.zhihu.com/search?type=content&q={query}
+        keyword: zh
+        icon: zhihu.png
+        spaceEncoding: "%20"
+      - title: "Google \u7FFB\u8BD1"
+        url: https://translate.google.com/?sl=auto&tl=zh-CN&text={query}&op=translate
+        keyword: gt
+        icon: googletranslate.png
+        spaceEncoding: "%20"
+      - title: GitHub
+        url: https://github.com/search?q={query}
+        keyword: gh
+        icon: github.png
+        spaceEncoding: "%20"
+      - title: "\u7EF4\u57FA\u767E\u79D1"
+        url: https://zh.wikipedia.org/wiki/{query}
+        keyword: wiki
+        icon: wiki.png
+        spaceEncoding: "%20"
+      - title: YouTube
+        url: https://www.youtube.com/results?search_query={query}
+        keyword: yt
+        icon: youtube.png
+        spaceEncoding: +
+      - title: "\u767E\u5EA6"
+        url: https://www.baidu.com/s?wd={query}
+        keyword: bd
+        icon: baidu.png
+        spaceEncoding: "%20"
+      - title: Bilibili
+        url: https://search.bilibili.com/all?keyword={query}
+        keyword: bb
+        icon: bilibili.png
+        spaceEncoding: "%20"
