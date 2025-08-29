@@ -15,7 +15,7 @@ final class TerminalExecutorService {
             ModernTerminalExecutor.sharedKitty,
             ModernTerminalExecutor.sharedWezTerm,
             ModernTerminalExecutor.sharedAlacritty,
-            AppleTerminalExecutor.shared
+            AppleTerminalExecutor.shared,
         ]
     }
 
@@ -34,18 +34,21 @@ final class TerminalExecutorService {
 
         let cleanCommand = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanCommand.isEmpty else { return false }
-        
+
         let preferredTerminalName = ConfigManager.shared.config.modes.preferredTerminal
-        
+
         // 如果用户有偏好设置
         if preferredTerminalName != "auto",
-           let preferredExecutor = executors.first(where: { $0.name.lowercased() == preferredTerminalName.lowercased() }) {
+            let preferredExecutor = executors.first(where: {
+                $0.name.lowercased() == preferredTerminalName.lowercased()
+            })
+        {
             // 尝试使用偏好的终端，如果失败，则回退到自动检测
             if preferredExecutor.execute(command: cleanCommand) {
                 return true
             }
         }
-        
+
         // 自动检测
         return executeWithAutoDetection(command: cleanCommand)
     }
@@ -57,6 +60,6 @@ final class TerminalExecutorService {
                 return true
             }
         }
-        return false // 如果所有终端都失败
+        return false  // 如果所有终端都失败
     }
 }

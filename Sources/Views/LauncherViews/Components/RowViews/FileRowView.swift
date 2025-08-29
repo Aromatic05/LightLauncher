@@ -1,12 +1,12 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - 起始路径行视图
 struct StartPathRowView: View {
     let startPath: FileBrowserStartPath
     let isSelected: Bool
     let index: Int
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // 序号
@@ -14,7 +14,7 @@ struct StartPathRowView: View {
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundColor(.secondary)
                 .frame(width: 20, alignment: .trailing)
-            
+
             // 图标
             if let icon = startPath.icon {
                 Image(nsImage: icon)
@@ -26,22 +26,22 @@ struct StartPathRowView: View {
                     .foregroundColor(.blue)
                     .frame(width: 32, height: 32)
             }
-            
+
             // 路径信息
             VStack(alignment: .leading, spacing: 4) {
                 Text(startPath.displayName)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(isSelected ? .white : .primary)
                     .lineLimit(1)
-                
+
                 Text(startPath.displayPath)
                     .font(.system(size: 12))
                     .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
                     .lineLimit(1)
             }
-            
+
             Spacer()
-            
+
             // 箭头指示器
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .medium))
@@ -62,7 +62,7 @@ struct FileRowView: View {
     let file: FileItem
     let isSelected: Bool
     let index: Int
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // 序号
@@ -70,7 +70,7 @@ struct FileRowView: View {
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundColor(.secondary)
                 .frame(width: 20, alignment: .trailing)
-            
+
             // 图标
             if let icon = file.icon {
                 Image(nsImage: icon)
@@ -82,7 +82,7 @@ struct FileRowView: View {
                     .foregroundColor(file.isDirectory ? .blue : .gray)
                     .frame(width: 24, height: 24)
             }
-            
+
             // 文件信息
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
@@ -90,9 +90,9 @@ struct FileRowView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(isSelected ? .white : .primary)
                         .lineLimit(1)
-                    
+
                     Spacer()
-                    
+
                     // 文件大小
                     if !file.displaySize.isEmpty {
                         Text(file.displaySize)
@@ -100,7 +100,7 @@ struct FileRowView: View {
                             .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
                     }
                 }
-                
+
                 // 修改时间
                 if let modificationDate = file.modificationDate {
                     Text(DateFormatter.fileDate.string(from: modificationDate))

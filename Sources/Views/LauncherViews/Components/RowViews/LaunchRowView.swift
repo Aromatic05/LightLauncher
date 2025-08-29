@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - 应用行视图
 struct AppRowView: View {
@@ -7,7 +7,7 @@ struct AppRowView: View {
     let isSelected: Bool
     let index: Int
     let mode: LauncherMode
-    
+
     var body: some View {
         HStack(spacing: 16) {
             // Number label
@@ -15,12 +15,12 @@ struct AppRowView: View {
                 Circle()
                     .fill(isSelected ? Color.white.opacity(0.2) : Color.secondary.opacity(0.1))
                     .frame(width: 24, height: 24)
-                
+
                 Text("\(index + 1)")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(isSelected ? .white : .secondary)
             }
-            
+
             // App icon
             if let icon = app.icon {
                 Image(nsImage: icon)
@@ -45,21 +45,21 @@ struct AppRowView: View {
                             .foregroundColor(.secondary)
                     )
             }
-            
+
             // App name
             VStack(alignment: .leading, spacing: 2) {
                 Text(app.name)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isSelected ? .white : .primary)
                     .lineLimit(1)
-                
+
                 Text("Application")
                     .font(.system(size: 12))
                     .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
             }
-            
+
             Spacer()
-            
+
             if isSelected {
                 Image(systemName: "return")
                     .font(.system(size: 12, weight: .medium))
@@ -72,16 +72,16 @@ struct AppRowView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(
                     isSelected
-                    ? LinearGradient(
-                        colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    : LinearGradient(
-                        colors: [Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                        ? LinearGradient(
+                            colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [Color.clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -163,16 +163,16 @@ struct PreferencePaneRowView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(
                     isSelected
-                    ? LinearGradient(
-                        colors: [Color.blue, Color.blue.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    : LinearGradient(
-                        colors: [Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                        ? LinearGradient(
+                            colors: [Color.blue, Color.blue.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [Color.clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -256,16 +256,16 @@ struct SystemCommandRowView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(
                     isSelected
-                    ? LinearGradient(
-                        colors: [Color.purple, Color.purple.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    : LinearGradient(
-                        colors: [Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                        ? LinearGradient(
+                            colors: [Color.purple, Color.purple.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [Color.clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)

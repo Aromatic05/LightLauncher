@@ -1,11 +1,11 @@
-import Foundation
-import ApplicationServices
-import AppKit
 import AVFoundation
+import AppKit
+import ApplicationServices
 import Contacts
-import EventKit
-import Photos
 import CoreGraphics
+import EventKit
+import Foundation
+import Photos
 
 /// 权限类型枚举
 enum AppPermissionType: String, CaseIterable {
@@ -22,7 +22,7 @@ enum AppPermissionType: String, CaseIterable {
     case photos = "照片"
     case fileAccess = "文件访问"
     case networkAccess = "网络访问"
-    
+
     /// 权限的描述信息
     var description: String {
         switch self {
@@ -54,7 +54,7 @@ enum AppPermissionType: String, CaseIterable {
             return "访问网络，网页搜索和在线插件需要"
         }
     }
-    
+
     /// 权限的风险等级
     var riskLevel: PermissionRiskLevel {
         switch self {
@@ -73,9 +73,9 @@ enum AppPermissionType: String, CaseIterable {
 /// 权限风险等级
 enum PermissionRiskLevel: String, CaseIterable {
     case low = "低风险"
-    case medium = "中等风险"  
+    case medium = "中等风险"
     case high = "高风险"
-    
+
     var color: NSColor {
         switch self {
         case .low: return .systemGreen
@@ -88,25 +88,25 @@ enum PermissionRiskLevel: String, CaseIterable {
 /// 权限管理器，统一检测和引导用户授权敏感权限
 final class PermissionManager: ObservableObject {
     @MainActor static let shared = PermissionManager()
-    
+
     // MARK: - 防重复弹窗机制
-    
+
     /// 跟踪已显示权限弹窗的类型和时间
     internal var shownPermissionAlerts: [AppPermissionType: Date] = [:]
-    
+
     /// 防重复弹窗的时间间隔（秒）
-    private let alertCooldownInterval: TimeInterval = 300 // 5分钟
-    
+    private let alertCooldownInterval: TimeInterval = 300  // 5分钟
+
     /// 当前是否有权限弹窗正在显示
     internal var isShowingPermissionAlert: Bool = false
-    
+
     private init() {
         // 每次启动自动重置弹窗冷却状态
         resetPermissionAlertState()
     }
 
     // MARK: - 通用权限检查方法
-    
+
     /// 有权限则执行，无权限则引导用户授权
     @MainActor
     func withPermission(_ type: AppPermissionType, perform action: @escaping () -> Void) {
@@ -116,7 +116,7 @@ final class PermissionManager: ObservableObject {
             promptPermissionGuide(for: type)
         }
     }
-    
+
     /// 检查指定权限是否已授权
     func hasPermission(for type: AppPermissionType) -> Bool {
         switch type {
@@ -148,7 +148,7 @@ final class PermissionManager: ObservableObject {
             return isNetworkAccessGranted()
         }
     }
-    
+
     /// 引导用户授权指定权限
     @MainActor
     func promptPermissionGuide(for type: AppPermissionType) {
@@ -158,26 +158,26 @@ final class PermissionManager: ObservableObject {
             print("[DEBUG] promptPermissionGuide skipped for: \(type)")
             return
         }
-        
+
         isShowingPermissionAlert = true
         shownPermissionAlerts[type] = Date()
-        
+
         let alert = NSAlert()
         alert.alertStyle = .informational
         alert.messageText = "需要\(type.rawValue)权限"
         alert.informativeText = type.description
         alert.addButton(withTitle: "前往设置")
         alert.addButton(withTitle: "取消")
-        
+
         let response = alert.runModal()
         isShowingPermissionAlert = false
-        
+
         print("[DEBUG] promptPermissionGuide finished for: \(type), response: \(response.rawValue)")
         if response == .alertFirstButtonReturn {
             openSystemPreferences(for: type)
         }
     }
-    
+
     /// 检查是否应该跳过权限弹窗（防重复）
     internal func shouldSkipPermissionAlert(for type: AppPermissionType) -> Bool {
         // 检查是否在冷却时间内
@@ -187,42 +187,58 @@ final class PermissionManager: ObservableObject {
                 return true
             }
         }
-        
+
         return false
     }
-    
+
     /// 打开对应的系统偏好设置
     private func openSystemPreferences(for type: AppPermissionType) {
         let url: URL
-        
+
         switch type {
         case .accessibility:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+            url = URL(
+                string:
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         case .automation:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation"
+            )!
         case .fullDiskAccess:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!
         case .inputMonitoring:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!
+            url = URL(
+                string:
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!
         case .screenRecording:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
+            url = URL(
+                string:
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!
         case .microphone:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone"
+            )!
         case .camera:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")!
         case .contacts:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts")!
         case .calendars:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")!
         case .reminders:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders")!
         case .photos:
-            url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos")!
+            url = URL(
+                string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos")!
         case .fileAccess, .networkAccess:
             // 这些权限通常通过应用程序内部处理，打开隐私设置主页面
             url = URL(string: "x-apple.systempreferences:com.apple.preference.security")!
         }
-        
+
         NSWorkspace.shared.open(url)
     }
 
@@ -232,7 +248,7 @@ final class PermissionManager: ObservableObject {
     func isAccessibilityGranted() -> Bool {
         return AXIsProcessTrusted()
     }
-    
+
     /// 检查自动化权限（通过尝试向系统发送 Apple Event 来检测）
     func isAutomationGranted() -> Bool {
         // 简单的检测方法：尝试获取 System Events 进程
@@ -241,7 +257,7 @@ final class PermissionManager: ObservableObject {
         let result = script?.executeAndReturnError(&error)
         return error == nil && result != nil
     }
-    
+
     /// 检查完全磁盘访问权限
     func isFullDiskAccessGranted() -> Bool {
         // 检测是否能访问受保护的目录（如 Safari 书签）
@@ -254,7 +270,7 @@ final class PermissionManager: ObservableObject {
             return false
         }
     }
-    
+
     /// 检查输入监控权限
     func isInputMonitoringGranted() -> Bool {
         // 在 macOS 10.15+ 需要此权限来监听全局按键
@@ -271,14 +287,14 @@ final class PermissionManager: ObservableObject {
                 },
                 userInfo: nil
             )
-            
+
             let hasPermission = eventTap != nil
             // 在 ARC 环境下，eventTap 会自动释放，不需要手动 CFRelease
             return hasPermission
         }
-        return true // 较老版本的 macOS 不需要此权限
+        return true  // 较老版本的 macOS 不需要此权限
     }
-    
+
     /// 检查屏幕录制权限
     func isScreenRecordingGranted() -> Bool {
         if #available(macOS 10.15, *) {
@@ -288,44 +304,45 @@ final class PermissionManager: ObservableObject {
         }
         return true
     }
-    
+
     /// 检查麦克风权限
     func isMicrophoneGranted() -> Bool {
         return AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
     }
-    
+
     /// 检查摄像头权限
     func isCameraGranted() -> Bool {
         return AVCaptureDevice.authorizationStatus(for: .video) == .authorized
     }
-    
+
     /// 检查通讯录权限
     func isContactsGranted() -> Bool {
         return CNContactStore.authorizationStatus(for: .contacts) == .authorized
     }
-    
+
     /// 检查日历权限
     func isCalendarsGranted() -> Bool {
         return EKEventStore.authorizationStatus(for: .event) == .authorized
     }
-    
+
     /// 检查提醒事项权限
     func isRemindersGranted() -> Bool {
         return EKEventStore.authorizationStatus(for: .reminder) == .authorized
     }
-    
+
     /// 检查照片权限
     func isPhotosGranted() -> Bool {
         return PHPhotoLibrary.authorizationStatus() == .authorized
     }
-    
+
     /// 检查文件访问权限（基本文件系统访问）
     func isFileAccessGranted() -> Bool {
         // 检查是否能访问用户文档目录
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+            .first!
         return FileManager.default.isReadableFile(atPath: documentsPath.path)
     }
-    
+
     /// 检查网络访问权限（应用层面，通常默认允许）
     func isNetworkAccessGranted() -> Bool {
         // 网络访问通常不需要特殊权限，除非有特殊的网络策略
@@ -342,32 +359,32 @@ final class PermissionManager: ObservableObject {
         }
         return result
     }
-    
+
     /// 获取当前应用实际需要的权限列表
     func getRequiredPermissions() -> [AppPermissionType] {
         return [
-            .accessibility,      // 应用控制和自动化操作
-            .fullDiskAccess,     // 浏览器数据访问
-            .automation,         // 应用控制
-            .fileAccess,         // 文件浏览
-            .networkAccess       // 网页搜索
+            .accessibility,  // 应用控制和自动化操作
+            .fullDiskAccess,  // 浏览器数据访问
+            .automation,  // 应用控制
+            .fileAccess,  // 文件浏览
+            .networkAccess,  // 网页搜索
         ]
     }
-    
+
     /// 获取缺失的权限
     func getMissingPermissions() -> [AppPermissionType] {
         let required = getRequiredPermissions()
         return required.filter { !hasPermission(for: $0) }
     }
-    
+
     /// 获取权限状态摘要
     func getPermissionSummary() -> AppPermissionSummary {
         let allPermissions = checkAllPermissions()
         let requiredPermissions = getRequiredPermissions()
-        
+
         let grantedRequired = requiredPermissions.filter { allPermissions[$0] == true }
         let missingRequired = requiredPermissions.filter { allPermissions[$0] == false }
-        
+
         return AppPermissionSummary(
             totalRequired: requiredPermissions.count,
             granted: grantedRequired.count,
@@ -390,15 +407,15 @@ final class PermissionManager: ObservableObject {
     func promptAccessibilityGuide() {
         promptPermissionGuide(for: .accessibility)
     }
-    
+
     // MARK: - 防重复弹窗管理方法
-    
+
     /// 重置权限弹窗状态（用于调试或强制重新显示）
     func resetPermissionAlertState() {
         shownPermissionAlerts.removeAll()
         isShowingPermissionAlert = false
     }
-    
+
     /// 清除特定权限的弹窗冷却时间
     func clearPermissionAlertCooldown(for type: AppPermissionType) {
         shownPermissionAlerts.removeValue(forKey: type)
@@ -413,11 +430,11 @@ struct AppPermissionSummary {
     let missing: Int
     let missingPermissions: [AppPermissionType]
     let allPermissions: [AppPermissionType: Bool]
-    
+
     var isFullyAuthorized: Bool {
         return missing == 0
     }
-    
+
     var completionPercentage: Double {
         guard totalRequired > 0 else { return 1.0 }
         return Double(granted) / Double(totalRequired)

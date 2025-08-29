@@ -1,7 +1,7 @@
-import Foundation
 import AppKit
-import SwiftUI
 import Combine
+import Foundation
+import SwiftUI
 
 // MARK: - 剪切板模式控制器
 @MainActor
@@ -105,8 +105,8 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
         let src = CGEventSource(stateID: .hidSystemState)
-        let vKey: CGKeyCode = 9 // 'v' 键
-        let cmdDown = CGEvent(keyboardEventSource: src, virtualKey: 0x37, keyDown: true) // Command
+        let vKey: CGKeyCode = 9  // 'v' 键
+        let cmdDown = CGEvent(keyboardEventSource: src, virtualKey: 0x37, keyDown: true)  // Command
         let vDown = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true)
         let vUp = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false)
         let cmdUp = CGEvent(keyboardEventSource: src, virtualKey: 0x37, keyDown: false)
@@ -142,37 +142,37 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         return [
             "Browse and paste clipboard history",
             "Press Enter to copy the selected item",
-            "Type to filter history, press Esc to exit"
+            "Type to filter history, press Esc to exit",
         ]
     }
 
     // MARK: - Private Helper Methods
-    
+
     private func filterHistory(with query: String) -> [ClipboardItem] {
         let allItems = ClipboardManager.shared.getHistory()
         if query.isEmpty {
             return allItems
         }
-        
+
         let scoredItems = allItems.compactMap { item -> (ClipboardItem, Double)? in
             switch item {
             case .text(let str):
                 let scores: [Double?] = [
                     StringMatcher.calculateWordStartMatch(text: str, query: query),
                     StringMatcher.calculateSubsequenceMatch(text: str, query: query),
-                    StringMatcher.calculateFuzzyMatch(text: str, query: query)
+                    StringMatcher.calculateFuzzyMatch(text: str, query: query),
                 ]
                 if let bestScore = scores.compactMap({ $0 }).max() {
                     return (item, bestScore)
                 }
             case .file(let url):
                 if url.lastPathComponent.localizedCaseInsensitiveContains(query) {
-                    return (item, 10.0) // Give file matches a high score
+                    return (item, 10.0)  // Give file matches a high score
                 }
             }
             return nil
         }
-        
+
         return scoredItems.sorted { $0.1 > $1.1 }.map { $0.0 }
     }
 }

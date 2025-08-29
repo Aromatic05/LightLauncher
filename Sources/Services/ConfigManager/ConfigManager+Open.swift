@@ -9,7 +9,8 @@ extension ConfigManager {
     func addFileBrowserStartPath(_ path: String) {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
-              isDirectory.boolValue else { return }
+            isDirectory.boolValue
+        else { return }
         if !config.modes.fileBrowserStartPaths.contains(path) {
             config.modes.fileBrowserStartPaths.append(path)
             saveConfig()
@@ -22,7 +23,8 @@ extension ConfigManager {
     func updateFileBrowserStartPaths(_ paths: [String]) {
         let validPaths = paths.filter { path in
             var isDirectory: ObjCBool = false
-            return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+            return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+                && isDirectory.boolValue
         }
         config.modes.fileBrowserStartPaths = validPaths
         saveConfig()

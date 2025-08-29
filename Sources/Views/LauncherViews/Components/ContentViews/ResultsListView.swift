@@ -5,12 +5,13 @@ import SwiftUI
 struct ResultsListView: View {
     @ObservedObject var viewModel: LauncherViewModel
     var onSelectionChanged: ((Int) -> Void)? = nil
-    
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 4) {
-                    ForEach(Array(viewModel.displayableItems.enumerated()), id: \ .offset) { index, item in
+                    ForEach(Array(viewModel.displayableItems.enumerated()), id: \.offset) {
+                        index, item in
                         item.makeRowView(isSelected: index == viewModel.selectedIndex, index: index)
                             .id(index)
                             .onTapGesture {

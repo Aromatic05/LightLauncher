@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import SwiftUI
 
 // MARK: - 终端命令历史项
@@ -16,12 +16,15 @@ struct TerminalHistoryItem: Codable, Identifiable, Hashable, DisplayableItem {
         if index == 0 {
             return AnyView(TerminalCurrentCommandRowView(command: command, isSelected: isSelected))
         } else {
-            return AnyView(TerminalHistoryRowView(item: self, isSelected: isSelected, index: index, onDelete: {
-                TerminalModeController.shared.deleteHistoryItem(self)
-            }))
+            return AnyView(
+                TerminalHistoryRowView(
+                    item: self, isSelected: isSelected, index: index,
+                    onDelete: {
+                        TerminalModeController.shared.deleteHistoryItem(self)
+                    }))
         }
     }
-    
+
     init(command: String) {
         self.id = UUID()
         self.command = command

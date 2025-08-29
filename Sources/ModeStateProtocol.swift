@@ -1,6 +1,6 @@
-import Foundation
 import AppKit
 import Combine
+import Foundation
 import SwiftUI
 
 // MARK: - DisplayableItem 协议

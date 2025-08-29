@@ -24,10 +24,10 @@ help:
 # 权限声明
 permissions:
   - type: file_write
-    directories: []  # 仅访问插件数据目录，无需特殊权限
+    directories: [] # 仅访问插件数据目录，无需特殊权限
 
 # 元信息
-keywords: 
+keywords:
   - "todo"
   - "task"
   - "productivity"

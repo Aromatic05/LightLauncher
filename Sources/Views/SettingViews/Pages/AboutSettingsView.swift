@@ -5,7 +5,7 @@ struct AboutSettingsView: View {
     @ObservedObject var configManager: ConfigManager
     @State private var showingConfigContent = false
     @State private var configContent = ""
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
@@ -18,14 +18,14 @@ struct AboutSettingsView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 // 应用信息
                 VStack(alignment: .leading, spacing: 20) {
                     HStack {
                         Image(systemName: "rocket.fill")
                             .font(.system(size: 64))
                             .foregroundColor(.accentColor)
-                        
+
                         VStack(alignment: .leading, spacing: 8) {
                             Text("LightLauncher")
                                 .font(.largeTitle)
@@ -34,18 +34,18 @@ struct AboutSettingsView: View {
                                 .font(.title3)
                                 .foregroundColor(.secondary)
                         }
-                        
+
                         Spacer()
                     }
                     .padding(24)
                     .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
                     .cornerRadius(16)
-                    
+
                     VStack(alignment: .leading, spacing: 16) {
                         Text("功能特性")
                             .font(.title2)
                             .fontWeight(.semibold)
-                        
+
                         VStack(alignment: .leading, spacing: 8) {
                             FeatureItem(icon: "magnifyingglass", text: "快速应用搜索和启动")
                             FeatureItem(icon: "keyboard", text: "支持自定义快捷键（包括左右修饰键）")
@@ -58,13 +58,13 @@ struct AboutSettingsView: View {
                     .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
                     .cornerRadius(12)
                 }
-                
+
                 // 配置文件管理
                 VStack(alignment: .leading, spacing: 16) {
                     Text("配置文件管理")
                         .font(.title2)
                         .fontWeight(.semibold)
-                    
+
                     VStack(spacing: 12) {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -77,26 +77,27 @@ struct AboutSettingsView: View {
                             }
                             Spacer()
                             Button("打开文件夹") {
-                                NSWorkspace.shared.selectFile(configManager.configURL.path, inFileViewerRootedAtPath: "")
+                                NSWorkspace.shared.selectFile(
+                                    configManager.configURL.path, inFileViewerRootedAtPath: "")
                             }
                             .buttonStyle(.bordered)
                         }
                         .padding(16)
                         .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
                         .cornerRadius(10)
-                        
+
                         HStack(spacing: 12) {
                             Button("查看配置内容") {
                                 loadConfigContent()
                                 showingConfigContent = true
                             }
                             .buttonStyle(.bordered)
-                            
+
                             Button("重新加载配置") {
                                 configManager.reloadConfig()
                             }
                             .buttonStyle(.bordered)
-                            
+
                             Button("重置为默认") {
                                 configManager.resetToDefaults()
                             }
@@ -105,7 +106,7 @@ struct AboutSettingsView: View {
                         }
                     }
                 }
-                
+
                 Spacer()
             }
             .padding(32)
@@ -114,7 +115,7 @@ struct AboutSettingsView: View {
             ConfigContentView(content: configContent)
         }
     }
-    
+
     private func loadConfigContent() {
         do {
             configContent = try String(contentsOf: configManager.configURL, encoding: .utf8)

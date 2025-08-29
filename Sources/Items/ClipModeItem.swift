@@ -100,14 +100,14 @@ struct SnippetItem: Codable, Equatable, DisplayableItem, Identifiable {
     var name: String
     var keyword: String
     var snippet: String
-    
+
     init(name: String, keyword: String, snippet: String) {
         self.id = UUID()
         self.name = name
         self.keyword = keyword
         self.snippet = snippet
     }
-    
+
     // 为了支持 Codable，需要自定义编码/解码
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -116,7 +116,7 @@ struct SnippetItem: Codable, Equatable, DisplayableItem, Identifiable {
         self.keyword = try container.decode(String.self, forKey: .keyword)
         self.snippet = try container.decode(String.self, forKey: .snippet)
     }
-    
+
     enum CodingKeys: String, CodingKey {
         case id, name, keyword, snippet
     }

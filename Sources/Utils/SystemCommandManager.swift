@@ -20,7 +20,9 @@ class SystemCommandManager: ObservableObject {
                 icon: NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil),
                 action: {
                     PermissionManager.shared.withAccessibilityPermission {
-                        runShell("osascript -e 'tell application \"System Events\" to keystroke \"q\" using {control down, command down}'")
+                        runShell(
+                            "osascript -e 'tell application \"System Events\" to keystroke \"q\" using {control down, command down}'"
+                        )
                     }
                 }
             ),
@@ -46,7 +48,9 @@ class SystemCommandManager: ObservableObject {
                 title: "logout",
                 displayName: "注销",
                 subtitle: "退出当前用户会话",
-                icon: NSImage(systemSymbolName: "person.crop.circle.badge.xmark", accessibilityDescription: nil),
+                icon: NSImage(
+                    systemSymbolName: "person.crop.circle.badge.xmark",
+                    accessibilityDescription: nil),
                 action: {
                     runShell("osascript -e 'tell app \"System Events\" to log out'")
                 }
@@ -64,7 +68,8 @@ class SystemCommandManager: ObservableObject {
                 title: "volumeup",
                 displayName: "音量+",
                 subtitle: "增加系统音量",
-                icon: NSImage(systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: nil),
+                icon: NSImage(
+                    systemSymbolName: "speaker.wave.2.fill", accessibilityDescription: nil),
                 action: {
                     adjustVolume(delta: 10)
                 }
@@ -73,7 +78,8 @@ class SystemCommandManager: ObservableObject {
                 title: "volumedown",
                 displayName: "音量-",
                 subtitle: "降低系统音量",
-                icon: NSImage(systemSymbolName: "speaker.wave.1.fill", accessibilityDescription: nil),
+                icon: NSImage(
+                    systemSymbolName: "speaker.wave.1.fill", accessibilityDescription: nil),
                 action: {
                     adjustVolume(delta: -10)
                 }
@@ -82,9 +88,12 @@ class SystemCommandManager: ObservableObject {
                 title: "mute",
                 displayName: "静音",
                 subtitle: "切换静音状态",
-                icon: NSImage(systemSymbolName: "speaker.slash.fill", accessibilityDescription: nil),
+                icon: NSImage(
+                    systemSymbolName: "speaker.slash.fill", accessibilityDescription: nil),
                 action: {
-                    runShell("osascript -e 'set volume output muted not (output muted of (get volume settings))'")
+                    runShell(
+                        "osascript -e 'set volume output muted not (output muted of (get volume settings))'"
+                    )
                 }
             ),
         ]

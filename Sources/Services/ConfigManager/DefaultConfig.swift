@@ -1,11 +1,12 @@
-import Foundation
 import Carbon
+import Foundation
 
 // 默认配置常量
 enum AppConfigDefaults {
-        // 默认自定义快捷键配置
+    // 默认自定义快捷键配置
     static let customHotKeys: [CustomHotKeyConfig] = [
-        CustomHotKeyConfig(name: "剪切板", modifiers: UInt32(optionKey), keyCode: UInt32(kVK_ANSI_V), text: "/v "),
+        CustomHotKeyConfig(
+            name: "剪切板", modifiers: UInt32(optionKey), keyCode: UInt32(kVK_ANSI_V), text: "/v ")
     ]
     static let searchDirectories: [SearchDirectory] = [
         SearchDirectory(path: "/Applications"),

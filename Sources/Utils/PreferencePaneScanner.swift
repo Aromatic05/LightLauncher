@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import SwiftUI
 
 @MainActor
@@ -12,7 +12,7 @@ class PreferencePaneScanner: ObservableObject {
         [
             "/System/Library/PreferencePanes",
             "/Library/PreferencePanes",
-            NSString(string: "~/Library/PreferencePanes").expandingTildeInPath
+            NSString(string: "~/Library/PreferencePanes").expandingTildeInPath,
         ]
     }
 
@@ -23,7 +23,9 @@ class PreferencePaneScanner: ObservableObject {
         Task {
             let foundPanes = await performScan()
             let uniquePanes = Array(Set(foundPanes))
-            self.panes = uniquePanes.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            self.panes = uniquePanes.sorted {
+                $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
             self.isScanning = false
         }
     }
@@ -35,11 +37,13 @@ class PreferencePaneScanner: ObservableObject {
         for directory in searchDirectories {
             guard fileManager.fileExists(atPath: directory) else { continue }
             let directoryURL = URL(fileURLWithPath: directory)
-            guard let enumerator = fileManager.enumerator(
-                at: directoryURL,
-                includingPropertiesForKeys: [.isDirectoryKey, .nameKey],
-                options: [.skipsHiddenFiles, .skipsPackageDescendants]
-            ) else { continue }
+            guard
+                let enumerator = fileManager.enumerator(
+                    at: directoryURL,
+                    includingPropertiesForKeys: [.isDirectoryKey, .nameKey],
+                    options: [.skipsHiddenFiles, .skipsPackageDescendants]
+                )
+            else { continue }
 
             let urls = Array(enumerator.compactMap { $0 as? URL })
             for fileURL in urls {
@@ -63,6 +67,7 @@ class PreferencePaneScanner: ObservableObject {
         let paneName: String = paneURL.deletingPathExtension().lastPathComponent
         let paneSubtitle: String? = nil
         let paneIcon: NSImage? = NSWorkspace.shared.icon(forFile: paneURL.path)
-        return PreferencePaneItem(title: paneName, subtitle: paneSubtitle, icon: paneIcon, url: paneURL)
+        return PreferencePaneItem(
+            title: paneName, subtitle: paneSubtitle, icon: paneIcon, url: paneURL)
     }
 }

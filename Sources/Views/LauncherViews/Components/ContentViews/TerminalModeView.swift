@@ -2,7 +2,7 @@ import SwiftUI
 
 struct TerminalModeView: View {
     @ObservedObject var viewModel: LauncherViewModel
-    
+
     var body: some View {
         VStack(spacing: 4) {
             // 历史记录标题和清空按钮
@@ -11,7 +11,9 @@ struct TerminalModeView: View {
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Spacer()
-                if let terminalController = viewModel.controllers[.terminal] as? TerminalModeController {
+                if let terminalController = viewModel.controllers[.terminal]
+                    as? TerminalModeController
+                {
                     Button("清空") {
                         terminalController.clearHistory()
                         terminalController.currentQuery = terminalController.currentQuery

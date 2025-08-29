@@ -3,7 +3,7 @@ import SwiftUI
 struct ConfigContentView: View {
     let content: String
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {

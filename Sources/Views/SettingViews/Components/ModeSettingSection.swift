@@ -8,7 +8,7 @@ struct ModeSettingSection<Content: View>: View {
     @Binding var isEnabled: Bool
     let onToggle: () -> Void
     @ViewBuilder let content: Content
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
@@ -42,11 +42,15 @@ struct ModeSettingSection<Content: View>: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(isEnabled ? iconColor.opacity(0.05) : Color(NSColor.controlBackgroundColor).opacity(0.1))
+                .fill(
+                    isEnabled
+                        ? iconColor.opacity(0.05)
+                        : Color(NSColor.controlBackgroundColor).opacity(0.1))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(isEnabled ? iconColor.opacity(0.3) : Color.secondary.opacity(0.2), lineWidth: 1)
+                .stroke(
+                    isEnabled ? iconColor.opacity(0.3) : Color.secondary.opacity(0.2), lineWidth: 1)
         )
     }
 }

@@ -1,5 +1,5 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 // MARK: - 文件模式控制器
 @MainActor
@@ -44,7 +44,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     // 2. 核心逻辑
     func handleInput(arguments: String) {
         let currentQuery = "/o \(arguments)"
-        
+
         if currentQuery.count < lastProcessedQuery.count {
             lastInputAction = .delete
         } else {
@@ -61,13 +61,13 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         }
 
         let (newPath, searchQuery) = parseInputArguments(arguments)
-        
+
         if let path = newPath {
             if path == "" {
                 resetToStartScreen()
                 return
             }
-            
+
             // 正常导航
             updateCurrentPath(to: path, with: searchQuery)
         } else {
@@ -80,7 +80,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             }
             self.displayableItems = items
         }
-        
+
         if displayableItems.isEmpty {
             LauncherViewModel.shared.selectedIndex = 0
         }
@@ -100,13 +100,14 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         if !displayableItems.isEmpty {
             return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
         } else {
-            return AnyView(EmptyStateView(
-                icon: "folder.fill",
-                iconColor: .blue.opacity(0.8),
-                title: "File Browser",
-                description: modeDescription,
-                helpTexts: getHelpText()
-            ))
+            return AnyView(
+                EmptyStateView(
+                    icon: "folder.fill",
+                    iconColor: .blue.opacity(0.8),
+                    title: "File Browser",
+                    description: modeDescription,
+                    helpTexts: getHelpText()
+                ))
         }
     }
 
@@ -115,15 +116,15 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             "Enter to select or open.",
             "Type a path ending with '/' to navigate (e.g., '~/Desktop/').",
             "Backspace at the end of a path to go up a directory.",
-            "Spacebar in a directory to open it in Finder."
+            "Spacebar in a directory to open it in Finder.",
         ]
     }
-    
+
     // MARK: - 内部状态与辅助方法
 
     private enum InputAction { case input, delete }
     private var lastInputAction: InputAction = .input
-    
+
     private var isInitialized = false
     private var lastProcessedQuery = ""
 
@@ -132,22 +133,25 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
 
     func navigateToDirectory(_ url: URL) {
         let standardizedURL = url.standardized
-        
+
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory), isDirectory.boolValue else {
+        guard
+            FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory),
+            isDirectory.boolValue
+        else {
             showPathError(message: "Cannot access directory at '\(url.path)'")
             return
         }
-        
+
         updateCurrentPath(to: standardizedURL.path, with: "")
     }
-    
+
     private func updateCurrentPath(to newPath: String, with searchQuery: String) {
         self.showStartPaths = false
         self.currentPath = newPath
-        
+
         updateQueryInLauncher(path: newPath, searchQuery: searchQuery)
-        
+
         self.displayableItems = getFileItems(path: newPath, query: searchQuery)
         LauncherViewModel.shared.selectedIndex = 0
     }
@@ -165,13 +169,13 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     func resetToStartScreen() {
         self.showStartPaths = true
         self.currentPath = NSHomeDirectory()
-        
+
         let newQuery = "/o "
         if lastProcessedQuery != newQuery {
             lastProcessedQuery = newQuery
             LauncherViewModel.shared.updateQuery(newQuery: newQuery)
         }
-        
+
         self.displayableItems = getStartPathItems(query: "")
         LauncherViewModel.shared.selectedIndex = 0
     }
@@ -188,10 +192,12 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
 
     private func getFileItems(path: String, query: String) -> [FileItem] {
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+            isDirectory.boolValue
+        else {
             return []
         }
-        
+
         let allFiles = FileManager_LightLauncher.shared.getFiles(at: path)
         return FileManager_LightLauncher.shared.filterFiles(allFiles, query: query)
     }
@@ -200,42 +206,48 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         let url = URL(fileURLWithPath: currentPath)
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
     }
-    
+
     // MARK: - 路径解析与导航辅助方法
 
-    private func parseInputArguments(_ arguments: String) -> (newPath: String?, searchQuery: String) {
+    private func parseInputArguments(_ arguments: String) -> (newPath: String?, searchQuery: String)
+    {
         let trimmedArgs = arguments.trimmingCharacters(in: .whitespaces)
 
         // 规则 1 (最高优先级): 检查是否为导航命令 (以 / 结尾)
         if trimmedArgs.hasSuffix("/") {
             let pathToResolve = String(trimmedArgs.dropLast())
             let resolvedPath = resolvePath(from: pathToResolve)
-            
+
             var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: resolvedPath, isDirectory: &isDirectory), isDirectory.boolValue {
+            if FileManager.default.fileExists(atPath: resolvedPath, isDirectory: &isDirectory),
+                isDirectory.boolValue
+            {
                 return (resolvedPath, "")
             }
         }
-        
+
         if showStartPaths {
             return (nil, trimmedArgs)
         }
-        
+
         // 规则 2: 检查是否为 "返回上一级" 的删除操作
         if lastInputAction == .delete {
             let displayPath = getDisplayPath(for: currentPath, asPrefix: true)
-            
+
             // `displayPath` 保证以'/'结尾，所以可以直接比较
             if trimmedArgs == String(displayPath.dropLast()) {
-                let parentPath = URL(fileURLWithPath: currentPath).deletingLastPathComponent().standardized.path
-                return (parentPath, "") // 让调用者决定如何处理 parentPath (即使 parentPath == currentPath)
+                let parentPath = URL(fileURLWithPath: currentPath).deletingLastPathComponent()
+                    .standardized.path
+                return (parentPath, "")  // 让调用者决定如何处理 parentPath (即使 parentPath == currentPath)
             }
         }
-        
+
         // 规则 3 (默认行为): 在当前目录内筛选
         let prefix = getDisplayPath(for: currentPath, asPrefix: true)
-        let searchQuery = trimmedArgs.hasPrefix(prefix) ? String(trimmedArgs.dropFirst(prefix.count)) : trimmedArgs
-        
+        let searchQuery =
+            trimmedArgs.hasPrefix(prefix)
+            ? String(trimmedArgs.dropFirst(prefix.count)) : trimmedArgs
+
         return (nil, searchQuery)
     }
 
@@ -243,7 +255,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         if input.isEmpty {
             return "/"
         }
-        
+
         let expandedInput = NSString(string: input).expandingTildeInPath
         return URL(fileURLWithPath: expandedInput).standardized.path
     }
@@ -251,7 +263,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     private func getDisplayPath(for path: String, asPrefix: Bool = false) -> String {
         let home = NSHomeDirectory()
         var displayPath: String
-        
+
         if path == home {
             displayPath = "~"
         } else if path.hasPrefix(home + "/") {
@@ -259,14 +271,14 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         } else {
             displayPath = path
         }
-        
+
         if asPrefix && !displayPath.hasSuffix("/") {
             return displayPath + "/"
         }
-        
+
         return displayPath
     }
-    
+
     private func showPathError(message: String) {
         Task { @MainActor in
             let alert = NSAlert()

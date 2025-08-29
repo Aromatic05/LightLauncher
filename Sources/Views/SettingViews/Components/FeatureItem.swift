@@ -3,7 +3,7 @@ import SwiftUI
 struct FeatureItem: View {
     let icon: String
     let text: String
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)

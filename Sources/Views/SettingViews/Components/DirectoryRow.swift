@@ -3,7 +3,7 @@ import SwiftUI
 struct DirectoryRow: View {
     let directory: String
     let onDelete: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "folder")

@@ -1,6 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import Combine
 
 @MainActor
 final class KeywordModeController: NSObject, ModeStateController, ObservableObject {
@@ -13,7 +13,7 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
     let prefix: String? = "."
     let displayName: String = "Keyword Search"
     let iconName: String = "magnifyingglass"
-    let placeholder: String = "输入关键字或直接搜索..." // 占位符可以更通用
+    let placeholder: String = "输入关键字或直接搜索..."  // 占位符可以更通用
     let modeDescription: String? = "通过自定义关键字或直接搜索"
 
     // 2. 状态属性
@@ -54,10 +54,12 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         // 状态A: 正在输入关键字 (内容中没有空格)
         if !text.contains(" ") {
             let allCustomKeywords = ConfigManager.shared.keywordSearchItems
-            if text.isEmpty { // 对应刚进入模式，输入为空
+            if text.isEmpty {  // 对应刚进入模式，输入为空
                 self.displayableItems = allCustomKeywords.map { KeywordSuggestionItem(item: $0) }
             } else {
-                let filtered = allCustomKeywords.filter { $0.keyword.lowercased().hasPrefix(text.lowercased()) }
+                let filtered = allCustomKeywords.filter {
+                    $0.keyword.lowercased().hasPrefix(text.lowercased())
+                }
                 // 如果过滤后有结果，显示建议；否则，走后备逻辑
                 if !filtered.isEmpty {
                     self.displayableItems = filtered.map { KeywordSuggestionItem(item: $0) }
@@ -70,20 +72,26 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
         // 状态B: 关键字输入完成，正在输入查询
         else {
             let allCustomKeywords = ConfigManager.shared.keywordSearchItems
-            if let matchedItem = allCustomKeywords.first(where: { $0.keyword.lowercased() == keyword.lowercased() }) {
+            if let matchedItem = allCustomKeywords.first(where: {
+                $0.keyword.lowercased() == keyword.lowercased()
+            }) {
                 // 精确匹配到自定义关键字，显示历史记录
-                let historyItems = SearchHistoryManager.shared.getMatchingHistory(for: query, category: matchedItem.title)
-                let historyDisplayItems: [ActionableSearchItem] = historyItems.map { ActionableSearchItem(item: matchedItem, query: $0.query) }
-                self.displayableItems = [ActionableSearchItem(item: matchedItem, query: query)] + historyDisplayItems
+                let historyItems = SearchHistoryManager.shared.getMatchingHistory(
+                    for: query, category: matchedItem.title)
+                let historyDisplayItems: [ActionableSearchItem] = historyItems.map {
+                    ActionableSearchItem(item: matchedItem, query: $0.query)
+                }
+                self.displayableItems =
+                    [ActionableSearchItem(item: matchedItem, query: query)] + historyDisplayItems
             } else {
                 // 未匹配到，使用后备搜索
                 showFallbackSearch(for: text)
             }
         }
-        
+
         dataDidChange.send()
     }
-    
+
     private func showFallbackSearch(for fullQuery: String) {
         let googleSearchItem = KeywordSearchItem(
             title: "Google",
@@ -92,10 +100,10 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
             icon: "google.png",
             spaceEncoding: "+"
         )
-        
+
         self.displayableItems = [ActionableSearchItem(item: googleSearchItem, query: fullQuery)]
     }
-    
+
     /// 辅助函数：解析内容，分离出关键字和查询词。
     private func parse(content: String) -> (keyword: String, query: String) {
         if let firstSpaceIndex = content.firstIndex(of: " ") {

@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 import SwiftUI
 
 // MARK: - 文件信息结构
@@ -14,7 +14,7 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
     // DisplayableItem 协议实现
     var title: String { name }
     var subtitle: String? { url.path }
-    
+
     var icon: NSImage? {
         if isDirectory {
             if #available(macOS 12.0, *) {
@@ -26,7 +26,7 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
             return NSWorkspace.shared.icon(forFile: url.path)
         }
     }
-    
+
     var displaySize: String {
         guard let size = size, !isDirectory else { return "" }
         return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
@@ -36,11 +36,11 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         AnyView(FileRowView(file: self, isSelected: isSelected, index: index))
     }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: FileItem, rhs: FileItem) -> Bool {
         lhs.id == rhs.id
     }
@@ -52,9 +52,9 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
             return false
         } else {
             let success = NSWorkspace.shared.open(url)
-                if success {
-                    FileModeController.shared.resetToStartScreen()
-                }
+            if success {
+                FileModeController.shared.resetToStartScreen()
+            }
             return success
         }
     }
@@ -65,7 +65,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
     let id = UUID()
     let name: String
     let path: String
-    
+
     var icon: NSImage? {
         if #available(macOS 12.0, *) {
             return NSWorkspace.shared.icon(for: .folder)
@@ -73,7 +73,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
             return NSWorkspace.shared.icon(forFileType: "public.folder")
         }
     }
-    
+
     // 优化后的路径到显示名映射
     static let specialPaths: [(String, String)] = [
         (NSHomeDirectory(), "Home"),
@@ -81,16 +81,16 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
         (NSHomeDirectory() + "/Downloads", "Downloads"),
         (NSHomeDirectory() + "/Documents", "Documents"),
         ("/Applications", "Applications"),
-        ("/", "Root")
+        ("/", "Root"),
     ]
-    
+
     var displayName: String {
         if let match = Self.specialPaths.first(where: { $0.0 == path }) {
             return match.1
         }
         return URL(fileURLWithPath: path).lastPathComponent
     }
-    
+
     var displayPath: String {
         let home = NSHomeDirectory()
         if path.hasPrefix(home) {
@@ -98,7 +98,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
         }
         return path
     }
-    
+
     // DisplayableItem 协议补充实现
     var title: String { displayName }
     var subtitle: String? { displayPath }
@@ -108,11 +108,11 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         AnyView(StartPathRowView(startPath: self, isSelected: isSelected, index: index))
     }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: FileBrowserStartPath, rhs: FileBrowserStartPath) -> Bool {
         lhs.id == rhs.id
     }

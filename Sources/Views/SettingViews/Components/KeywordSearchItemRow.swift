@@ -5,7 +5,7 @@ struct KeywordSearchItemRow: View {
     let item: KeywordSearchItem
     let onEdit: () -> Void
     let onDelete: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 16) {
             iconView
@@ -16,7 +16,7 @@ struct KeywordSearchItemRow: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
     }
-    
+
     private var iconView: some View {
         Group {
             if let icon = item.icon, !icon.isEmpty {
@@ -35,7 +35,7 @@ struct KeywordSearchItemRow: View {
         }
         .frame(width: 24, height: 24)
     }
-    
+
     private var contentView: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
@@ -50,14 +50,14 @@ struct KeywordSearchItemRow: View {
                     .foregroundColor(.blue)
                     .cornerRadius(6)
             }
-            
+
             Text(item.url)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
         }
     }
-    
+
     private var actionButtons: some View {
         HStack(spacing: 8) {
             Button(action: onEdit) {
@@ -65,7 +65,7 @@ struct KeywordSearchItemRow: View {
                     .foregroundColor(.blue)
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             Button(action: onDelete) {
                 Image(systemName: "trash")
                     .foregroundColor(.red)

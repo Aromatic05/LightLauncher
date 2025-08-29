@@ -9,12 +9,12 @@ struct AppInfo: Identifiable, Hashable, DisplayableItem {
     }
     let name: String
     let url: URL
-    
+
     // 使用 URL 路径作为唯一标识符，避免重复应用
     var id: String {
         url.path
     }
-    
+
     var icon: NSImage? {
         NSWorkspace.shared.icon(forFile: url.path)
     }
@@ -22,11 +22,11 @@ struct AppInfo: Identifiable, Hashable, DisplayableItem {
     var displayName: String { name }
     var title: String { name }
     var subtitle: String? { url.path }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(url.path)
     }
-    
+
     static func == (lhs: AppInfo, rhs: AppInfo) -> Bool {
         lhs.url.path == rhs.url.path
     }
@@ -43,8 +43,8 @@ struct AppInfo: Identifiable, Hashable, DisplayableItem {
 
 struct SystemCommandItem: DisplayableItem {
     let id = UUID()
-    let title: String         // 用于查找（英文）
-    let displayName: String   // 用于界面显示（中文）
+    let title: String  // 用于查找（英文）
+    let displayName: String  // 用于界面显示（中文）
     let subtitle: String?
     let icon: NSImage?
     let action: () -> Void
@@ -65,7 +65,7 @@ struct SystemCommandItem: DisplayableItem {
     @MainActor
     func executeAction() -> Bool {
         action()
-        return true // 执行命令后返回 true
+        return true  // 执行命令后返回 true
     }
 }
 
@@ -92,6 +92,6 @@ struct PreferencePaneItem: DisplayableItem {
     @MainActor
     func executeAction() -> Bool {
         let success = NSWorkspace.shared.open(url)
-        return success // 返回是否成功打开设置面板
+        return success  // 返回是否成功打开设置面板
     }
 }

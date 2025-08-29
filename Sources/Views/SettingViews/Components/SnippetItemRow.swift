@@ -5,7 +5,7 @@ struct SnippetItemRow: View {
     let snippet: SnippetItem
     let onEdit: () -> Void
     let onDelete: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 16) {
             snippetInfo
@@ -15,14 +15,14 @@ struct SnippetItemRow: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
     }
-    
+
     private var snippetInfo: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(snippet.name)
                     .font(.headline)
                     .fontWeight(.medium)
-                
+
                 if !snippet.keyword.isEmpty {
                     Text(snippet.keyword)
                         .font(.system(.caption, design: .monospaced))
@@ -32,10 +32,10 @@ struct SnippetItemRow: View {
                         .foregroundColor(.blue)
                         .cornerRadius(4)
                 }
-                
+
                 Spacer()
             }
-            
+
             Text(snippet.snippet)
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -43,7 +43,7 @@ struct SnippetItemRow: View {
                 .multilineTextAlignment(.leading)
         }
     }
-    
+
     private var actionButtons: some View {
         VStack(spacing: 8) {
             Button("编辑") {
@@ -51,7 +51,7 @@ struct SnippetItemRow: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            
+
             Button("删除") {
                 onDelete()
             }

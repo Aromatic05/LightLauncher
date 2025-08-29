@@ -14,29 +14,33 @@ struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
     let isHidden: Bool
     var title: String { name }
     var subtitle: String? { bundleIdentifier }
-    
+
     var icon: NSImage? {
-        if let app = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == processIdentifier }) {
+        if let app = NSWorkspace.shared.runningApplications.first(where: {
+            $0.processIdentifier == processIdentifier
+        }) {
             return app.icon
         }
         return nil
     }
     var displayName: String { name }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
-    
+
     static func == (lhs: RunningAppInfo, rhs: RunningAppInfo) -> Bool {
         lhs.id == rhs.id
     }
 
     @MainActor
     func executeAction() -> Bool {
-        let result = RunningAppsManager.shared.killApp(self, force: KillModeController.shared.forceKillEnabled)
+        let result = RunningAppsManager.shared.killApp(
+            self, force: KillModeController.shared.forceKillEnabled)
         if result {
-            KillModeController.shared.displayableItems.remove(at: LauncherViewModel.shared.selectedIndex)
+            KillModeController.shared.displayableItems.remove(
+                at: LauncherViewModel.shared.selectedIndex)
         }
-        return false // 返回 false 以避免自动隐藏窗口
+        return false  // 返回 false 以避免自动隐藏窗口
     }
 }

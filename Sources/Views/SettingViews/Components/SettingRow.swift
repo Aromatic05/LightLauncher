@@ -8,9 +8,12 @@ struct SettingRow: View {
     let isToggle: Bool
     @Binding var toggleValue: Bool
     let action: () -> Void
-    
-    init(icon: String, iconColor: Color = .accentColor, title: String, description: String, 
-         isToggle: Bool = false, toggleValue: Binding<Bool> = .constant(false), action: @escaping () -> Void = {}) {
+
+    init(
+        icon: String, iconColor: Color = .accentColor, title: String, description: String,
+        isToggle: Bool = false, toggleValue: Binding<Bool> = .constant(false),
+        action: @escaping () -> Void = {}
+    ) {
         self.icon = icon
         self.iconColor = iconColor
         self.title = title
@@ -19,7 +22,7 @@ struct SettingRow: View {
         self._toggleValue = toggleValue
         self.action = action
     }
-    
+
     var body: some View {
         HStack(spacing: 16) {
             ZStack {

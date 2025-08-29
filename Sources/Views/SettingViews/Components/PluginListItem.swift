@@ -5,7 +5,7 @@ struct PluginListItem: View {
     let isSelected: Bool
     let onSelect: () -> Void
     let onToggle: (Bool) -> Void
-    
+
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 12) {
@@ -23,10 +23,13 @@ struct PluginListItem: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { plugin.isEnabled },
-                    set: { onToggle($0) }
-                ))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { plugin.isEnabled },
+                        set: { onToggle($0) }
+                    )
+                )
                 .toggleStyle(SwitchToggleStyle(tint: .accentColor))
                 .controlSize(.mini)
             }

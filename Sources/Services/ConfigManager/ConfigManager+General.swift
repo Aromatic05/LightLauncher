@@ -1,5 +1,5 @@
-import Foundation
 import Carbon
+import Foundation
 
 extension ConfigManager {
     // MARK: Modes
@@ -41,7 +41,7 @@ extension ConfigManager {
         saveConfig()
         NotificationCenter.default.post(name: .hotKeyChanged, object: nil)
     }
-    
+
     func getHotKeyDescription() -> String {
         let modifiers = config.hotKey.modifiers
         let keyCode = config.hotKey.keyCode
@@ -60,7 +60,7 @@ extension ConfigManager {
         description += ConfigManager.getKeyName(for: keyCode)
         return description
     }
-    
+
     static func getKeyName(for keyCode: UInt32) -> String {
         switch keyCode {
         case UInt32(kVK_Space): return "Space"

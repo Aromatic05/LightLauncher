@@ -5,7 +5,7 @@ struct HotKeyInfoCard: View {
     let icon: String
     let iconColor: Color
     let examples: [String]
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {

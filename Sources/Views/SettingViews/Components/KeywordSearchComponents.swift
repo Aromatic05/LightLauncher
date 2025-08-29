@@ -31,7 +31,7 @@ struct KeywordSearchInfoCard: View {
                     .font(.headline)
                     .fontWeight(.semibold)
             }
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("使用方法：")
                     .font(.subheadline)
@@ -54,15 +54,15 @@ struct KeywordSearchInfoCard: View {
 // MARK: - 关键词搜索列表头部
 struct KeywordSearchListHeader: View {
     let onAddAction: () -> Void
-    
+
     var body: some View {
         HStack {
             Text("搜索项配置")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             Spacer()
-            
+
             Button(action: onAddAction) {
                 HStack(spacing: 6) {
                     Image(systemName: "plus")

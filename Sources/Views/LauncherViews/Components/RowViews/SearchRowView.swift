@@ -1,35 +1,35 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - Search Mode Views
 struct SearchCurrentQueryView: View {
     let query: String
     let isSelected: Bool
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Text("")
                 .font(.caption)
                 .foregroundColor(.clear)
                 .frame(width: 20, alignment: .trailing)
-            
+
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 16))
                 .foregroundColor(.blue)
                 .frame(width: 20)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text("搜索: \(query)")
                     .font(.system(size: 14))
                     .lineLimit(1)
-                
+
                 Text("按回车执行搜索")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
             Spacer()
-            
+
             Image(systemName: "return")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
@@ -52,9 +52,9 @@ struct SearchHistoryRowView: View {
     let isSelected: Bool
     let index: Int
     let onDelete: () -> Void
-    
+
     @State private var isHovered = false
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // 序号
@@ -62,25 +62,25 @@ struct SearchHistoryRowView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .frame(width: 20, alignment: .trailing)
-            
+
             // 搜索引擎图标
             Image(systemName: searchEngineIcon)
                 .font(.system(size: 16))
                 .foregroundColor(searchEngineColor)
                 .frame(width: 20)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 // 搜索查询
                 Text(item.query)
                     .font(.system(size: 14))
                     .lineLimit(1)
-                
+
                 // 时间和搜索引擎
                 HStack(spacing: 8) {
                     Text(formatTime(item.timestamp))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
+
                     Text(item.category.capitalized)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -90,9 +90,9 @@ struct SearchHistoryRowView: View {
                         .cornerRadius(4)
                 }
             }
-            
+
             Spacer()
-            
+
             // 删除按钮
             if isHovered {
                 Button(action: {
@@ -122,7 +122,7 @@ struct SearchHistoryRowView: View {
             }
         }
     }
-    
+
     private var searchEngineIcon: String {
         switch item.category.lowercased() {
         case "google":
@@ -135,7 +135,7 @@ struct SearchHistoryRowView: View {
             return "magnifyingglass"
         }
     }
-    
+
     private var searchEngineColor: Color {
         switch item.category.lowercased() {
         case "google":
@@ -148,15 +148,18 @@ struct SearchHistoryRowView: View {
             return .secondary
         }
     }
-    
+
     private func formatTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         let calendar = Calendar.current
-        
+
         if calendar.isDate(date, inSameDayAs: Date()) {
             formatter.dateFormat = "HH:mm"
             return "今天 \(formatter.string(from: date))"
-        } else if calendar.isDate(date, inSameDayAs: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()) {
+        } else if calendar.isDate(
+            date,
+            inSameDayAs: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date())
+        {
             formatter.dateFormat = "HH:mm"
             return "昨天 \(formatter.string(from: date))"
         } else {

@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // MARK: - 增强命令建议视图
 struct CommandSuggestionsView: View {
@@ -8,7 +8,7 @@ struct CommandSuggestionsView: View {
     @Binding var selectedIndex: Int
     // 【修改】回调的参数类型变为 CommandRecord
     let onCommandSelected: (CommandRecord) -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
@@ -26,7 +26,7 @@ struct CommandSuggestionsView: View {
             }
             .padding(.horizontal, 24)
             .padding(.top, 0)
-            
+
             if commands.isEmpty {
                 Text("没有匹配的命令")
                     .font(.subheadline)
@@ -38,7 +38,8 @@ struct CommandSuggestionsView: View {
                     ScrollView {
                         VStack(spacing: 4) {
                             // 【修改】ID 现在使用 CommandRecord 的 `prefix` 属性，它保证唯一
-                            ForEach(Array(commands.enumerated()), id: \.element.prefix) { index, command in
+                            ForEach(Array(commands.enumerated()), id: \.element.prefix) {
+                                index, command in
                                 SelectableCommandSuggestionRow(
                                     // 【修改】传递 CommandRecord 给子视图
                                     command: command,
@@ -74,7 +75,7 @@ struct SelectableCommandSuggestionRow: View {
     let command: CommandRecord
     let isSelected: Bool
     let onTap: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 16) {
             // 图标
@@ -82,7 +83,7 @@ struct SelectableCommandSuggestionRow: View {
             Image(systemName: command.iconName)
                 .foregroundColor(command.mode == .kill ? .red : .blue)
                 .frame(width: 20, height: 20)
-            
+
             // 命令信息
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -90,22 +91,22 @@ struct SelectableCommandSuggestionRow: View {
                     Text(command.prefix)
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
                         .foregroundColor(isSelected ? .white : .blue)
-                    
+
                     // 【修改】直接从 CommandRecord 获取 displayName
                     Text(command.displayName)
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundColor(isSelected ? .white.opacity(0.9) : .primary)
                 }
-                
+
                 // 【修改】直接从 CommandRecord 获取 description
                 Text(command.description ?? "")
                     .font(.caption)
                     .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
             }
-            
+
             Spacer()
-            
+
             // 状态指示器
             // 注意：CommandRegistry 在注册时已经确保了只有启用的命令才会被添加，
             // 所以理论上这里不再需要 isEnabled 的判断，但为了 UI 兼容性暂时保留。
@@ -118,7 +119,9 @@ struct SelectableCommandSuggestionRow: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.accentColor : Color(NSColor.controlBackgroundColor).opacity(0.3))
+                .fill(
+                    isSelected
+                        ? Color.accentColor : Color(NSColor.controlBackgroundColor).opacity(0.3))
         )
         .contentShape(Rectangle())
         .onTapGesture {

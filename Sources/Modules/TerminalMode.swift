@@ -1,5 +1,5 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 @MainActor
 final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
@@ -46,7 +46,7 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         return [
             "Type after /t to enter a shell command",
             "Press Enter to run the command in your terminal",
-            "Press Esc to exit"
+            "Press Esc to exit",
         ]
     }
 

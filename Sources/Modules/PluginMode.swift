@@ -1,5 +1,5 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 @MainActor
 final class PluginModeController: ObservableObject, ModeStateController {
@@ -14,7 +14,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
         currentPlugin?.manifest.placeholder ?? "Enter plugin command..."
     }
     var modeDescription: String? = "Extend functionality with plugins"
-    
+
     let dataDidChange = PassthroughSubject<Void, Never>()
 
     var displayableItems: [any DisplayableItem] {
@@ -45,7 +45,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
     //         handleInput(arguments: command)
     //         return true
     //     }
-        
+
     //     guard let instance = activeInstance, index >= 0 && index < instance.currentItems.count,
     //           let pluginItem = instance.currentItems[index] as? PluginItem,
     //           let action = pluginItem.action else {
@@ -76,19 +76,19 @@ final class PluginModeController: ObservableObject, ModeStateController {
         }
         return helpTexts
     }
-    
+
     // MARK: - Internal Plugin System
     private enum InternalMode {
         case runningInstance
         case showingPluginList([PluginItem])
     }
-    
+
     private var internalMode: InternalMode = .runningInstance {
         didSet {
             dataDidChange.send()
         }
     }
-    
+
     @Published private(set) var currentPlugin: Plugin?
     @Published private(set) var activeInstance: PluginInstance? {
         didSet {
@@ -111,16 +111,16 @@ final class PluginModeController: ObservableObject, ModeStateController {
             showAvailablePlugins()
             return
         }
-        
+
         self.internalMode = .runningInstance
-        
+
         let args = components.count > 1 ? Array(components.dropFirst()).joined(separator: " ") : ""
-        
+
         guard let plugin = pluginManager.getPlugin(for: command) else {
             showPluginNotFound(command: command)
             return
         }
-        
+
         await switchToPlugin(plugin, input: args)
     }
 
@@ -157,7 +157,9 @@ final class PluginModeController: ObservableObject, ModeStateController {
             return
         }
         currentPlugin = plugin
-        activeInstance = pluginExecutor.getInstance(for: plugin.name) ?? pluginExecutor.createInstance(for: plugin)
+        activeInstance =
+            pluginExecutor.getInstance(for: plugin.name)
+            ?? pluginExecutor.createInstance(for: plugin)
         guard let instance = activeInstance else {
             errorMessage = "Failed to create instance for plugin: \(plugin.name)"
             return
@@ -176,7 +178,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
         }
         self.dataDidChange.send()
     }
-    
+
     // MARK: - Public Plugin Management API
     func reloadPlugins() async {
         isLoading = true

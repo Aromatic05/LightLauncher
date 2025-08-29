@@ -5,23 +5,23 @@ struct SearchBoxView: View {
     @Binding var searchText: String
     @FocusState private var isSearchFieldFocused: Bool
     let mode: LauncherMode
-    
+
     // 接收来自父视图 LauncherView 的窗口状态
-    let isWindowKey: Bool 
-    
+    let isWindowKey: Bool
+
     let onClear: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
-            
+
             TextField(mode.placeholder, text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 16))
-                .focused($isSearchFieldFocused) // 绑定焦点
-            
+                .focused($isSearchFieldFocused)  // 绑定焦点
+
             if !searchText.isEmpty {
                 Button(action: onClear) {
                     Image(systemName: "xmark.circle.fill")
@@ -39,11 +39,12 @@ struct SearchBoxView: View {
                 .fill(Color(NSColor.controlBackgroundColor))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.accentColor.opacity(isSearchFieldFocused ? 0.6 : 0), lineWidth: 2)
+                        .stroke(
+                            Color.accentColor.opacity(isSearchFieldFocused ? 0.6 : 0), lineWidth: 2)
                 )
         )
         .padding(.horizontal, 24)
-        
+
         .onChange(of: isWindowKey) { newIsKey in
             if newIsKey {
                 // 使用一小段延迟可以确保窗口的过渡动画完成后再获取焦点，体验更平滑。

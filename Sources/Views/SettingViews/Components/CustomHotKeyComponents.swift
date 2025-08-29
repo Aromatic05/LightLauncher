@@ -31,7 +31,7 @@ struct CustomHotKeyInfoCard: View {
                     .font(.headline)
                     .fontWeight(.semibold)
             }
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("功能说明：")
                     .font(.subheadline)
@@ -57,15 +57,15 @@ struct CustomHotKeyInfoCard: View {
 // MARK: - 自定义快捷键列表头部
 struct CustomHotKeyListHeader: View {
     let onAddAction: () -> Void
-    
+
     var body: some View {
         HStack {
             Text("快捷键配置")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             Spacer()
-            
+
             Button(action: onAddAction) {
                 HStack(spacing: 6) {
                     Image(systemName: "plus")

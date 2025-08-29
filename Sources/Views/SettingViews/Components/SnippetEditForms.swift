@@ -2,18 +2,18 @@ import SwiftUI
 
 // MARK: - 片段编辑表单组件
 struct SnippetEditForms {
-    
+
     // MARK: - 基本信息表单
     struct BasicInfoForm: View {
         @Binding var name: String
         @Binding var keyword: String
-        
+
         var body: some View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("基本信息")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("片段名称")
@@ -22,7 +22,7 @@ struct SnippetEditForms {
                         TextField("例如：函数模板", text: $name)
                             .textFieldStyle(.roundedBorder)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 6) {
                         Text("关键词")
                             .font(.subheadline)
@@ -40,17 +40,17 @@ struct SnippetEditForms {
             .cornerRadius(12)
         }
     }
-    
+
     // MARK: - 内容编辑表单
     struct ContentForm: View {
         @Binding var snippetText: String
-        
+
         var body: some View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("代码内容")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("片段内容")
                         .font(.subheadline)
@@ -83,27 +83,27 @@ struct SnippetEditForms {
             .cornerRadius(12)
         }
     }
-    
+
     // MARK: - 预览卡片
     struct PreviewCard: View {
         let isValid: Bool
         let name: String
         let keyword: String
         let snippetText: String
-        
+
         var body: some View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("预览")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 if isValid {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text(name)
                                 .font(.headline)
                                 .fontWeight(.medium)
-                            
+
                             Text(keyword)
                                 .font(.system(.caption, design: .monospaced))
                                 .padding(.horizontal, 6)
@@ -113,7 +113,7 @@ struct SnippetEditForms {
                                 .cornerRadius(4)
                             Spacer()
                         }
-                        
+
                         Text(snippetText)
                             .font(.body)
                             .padding(12)

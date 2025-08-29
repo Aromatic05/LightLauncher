@@ -26,7 +26,7 @@ struct EmptyStateView: View {
 
             if !helpTexts.isEmpty {
                 VStack(spacing: 4) {
-                    ForEach(helpTexts, id: \ .self) { helpText in
+                    ForEach(helpTexts, id: \.self) { helpText in
                         Text(helpText)
                             .font(.system(size: 14))
                             .foregroundColor(.secondary.opacity(0.7))

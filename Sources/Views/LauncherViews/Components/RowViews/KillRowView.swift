@@ -5,7 +5,7 @@ struct RunningAppRowView: View {
     let app: RunningAppInfo
     let isSelected: Bool
     let index: Int
-    
+
     var body: some View {
         HStack(spacing: 16) {
             // Number label
@@ -13,12 +13,12 @@ struct RunningAppRowView: View {
                 Circle()
                     .fill(isSelected ? Color.white.opacity(0.2) : Color.secondary.opacity(0.1))
                     .frame(width: 24, height: 24)
-                
+
                 Text("\(index + 1)")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(isSelected ? .white : .secondary)
             }
-            
+
             // App icon
             if let icon = app.icon {
                 Image(nsImage: icon)
@@ -43,21 +43,22 @@ struct RunningAppRowView: View {
                             .foregroundColor(.secondary)
                     )
             }
-            
+
             // App name and status
             VStack(alignment: .leading, spacing: 2) {
                 Text(app.name)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isSelected ? .white : .primary)
                     .lineLimit(1)
-                
+
                 Text(app.isHidden ? "Hidden" : "Running")
                     .font(.system(size: 12))
-                    .foregroundColor(isSelected ? .white.opacity(0.8) : (app.isHidden ? .orange : .green))
+                    .foregroundColor(
+                        isSelected ? .white.opacity(0.8) : (app.isHidden ? .orange : .green))
             }
-            
+
             Spacer()
-            
+
             if isSelected {
                 HStack(spacing: 4) {
                     Image(systemName: "xmark")
@@ -75,16 +76,16 @@ struct RunningAppRowView: View {
             RoundedRectangle(cornerRadius: 12)
                 .fill(
                     isSelected
-                    ? LinearGradient(
-                        colors: [Color.red, Color.red.opacity(0.8)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    : LinearGradient(
-                        colors: [Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                        ? LinearGradient(
+                            colors: [Color.red, Color.red.opacity(0.8)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        : LinearGradient(
+                            colors: [Color.clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)

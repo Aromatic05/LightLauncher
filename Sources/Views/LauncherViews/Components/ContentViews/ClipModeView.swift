@@ -2,7 +2,6 @@ import QuickLook
 import QuickLookUI
 import SwiftUI
 
-
 struct ClipModeView: View {
     @ObservedObject var viewModel: LauncherViewModel
     @ObservedObject var clipController = ClipModeController.shared
@@ -16,18 +15,21 @@ struct ClipModeView: View {
                     Button(action: { clipController.isSnippetMode = false }) {
                         Text("剪切板")
                             .fontWeight(clipController.isSnippetMode ? .regular : .bold)
-                            .foregroundColor(clipController.isSnippetMode ? .secondary : .accentColor)
+                            .foregroundColor(
+                                clipController.isSnippetMode ? .secondary : .accentColor)
                     }
                     .buttonStyle(PlainButtonStyle())
                     Button(action: { clipController.isSnippetMode = true }) {
                         Text("片段")
                             .fontWeight(clipController.isSnippetMode ? .bold : .regular)
-                            .foregroundColor(clipController.isSnippetMode ? .accentColor : .secondary)
+                            .foregroundColor(
+                                clipController.isSnippetMode ? .accentColor : .secondary)
                     }
                     .buttonStyle(PlainButtonStyle())
                     Spacer()
                     if !clipController.isSnippetMode,
-                        !ClipboardManager.shared.getHistory().isEmpty {
+                        !ClipboardManager.shared.getHistory().isEmpty
+                    {
                         Button("清空") {
                             ClipboardManager.shared.clearHistory()
                             clipController.handleInput(arguments: "")
@@ -36,7 +38,8 @@ struct ClipModeView: View {
                         .foregroundColor(.blue)
                         .font(.caption)
                     } else if clipController.isSnippetMode,
-                        !SnippetManager.shared.getSnippets().isEmpty {
+                        !SnippetManager.shared.getSnippets().isEmpty
+                    {
                         Button("清空") {
                             SnippetManager.shared.clearSnippets()
                             clipController.handleInput(arguments: "")

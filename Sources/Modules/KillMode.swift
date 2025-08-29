@@ -1,8 +1,6 @@
-import Foundation
 import AppKit
-import SwiftUI
 import Combine
-
+import Foundation
 // MARK: - 关闭应用模式控制器
 import SwiftUI
 
@@ -53,7 +51,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
             return false
         }
     }
-    
+
     // 2. 核心逻辑
     func handleInput(arguments: String) {
         let items = filterRunningApps(with: arguments)
@@ -73,24 +71,25 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
             return AnyView(KillModeView(viewModel: LauncherViewModel.shared))
         } else {
             let hasSearchText = !LauncherViewModel.shared.searchText.isEmpty
-            return AnyView(EmptyStateView(
-                icon: "xmark.circle",
-                iconColor: hasSearchText ? .red.opacity(0.5) : .red.opacity(0.7),
-                title: hasSearchText ? "未找到运行中的应用" : "暂无可关闭的应用",
-                description: hasSearchText ? "请尝试其他搜索关键词" : "输入 /k 后可搜索应用进程",
-                helpTexts: getHelpText()
-            ))
+            return AnyView(
+                EmptyStateView(
+                    icon: "xmark.circle",
+                    iconColor: hasSearchText ? .red.opacity(0.5) : .red.opacity(0.7),
+                    title: hasSearchText ? "未找到运行中的应用" : "暂无可关闭的应用",
+                    description: hasSearchText ? "请尝试其他搜索关键词" : "输入 /k 后可搜索应用进程",
+                    helpTexts: getHelpText()
+                ))
         }
     }
-    
+
     func getHelpText() -> [String] {
         return [
             "Type to filter running applications",
             "Press Enter to kill the selected process",
-            "Press Esc to exit"
+            "Press Esc to exit",
         ]
     }
-    
+
     private func filterRunningApps(with query: String) -> [RunningAppInfo] {
         let allApps = RunningAppsManager.shared.loadRunningApps()
         if query.isEmpty {

@@ -3,7 +3,7 @@ import Foundation
 /// 字符串匹配工具类
 /// 提供各种字符串比较和距离计算算法
 struct StringMatcher {
-    
+
     /// 计算两个字符串之间的编辑距离（Levenshtein距离）
     /// - Parameters:
     ///   - s1: 第一个字符串
@@ -14,84 +14,84 @@ struct StringMatcher {
         let s2Array = Array(s2)
         let s1Count = s1Array.count
         let s2Count = s2Array.count
-        
+
         if s1Count == 0 { return s2Count }
         if s2Count == 0 { return s1Count }
-        
+
         var matrix = Array(repeating: Array(repeating: 0, count: s2Count + 1), count: s1Count + 1)
-        
+
         for i in 0...s1Count {
             matrix[i][0] = i
         }
-        
+
         for j in 0...s2Count {
             matrix[0][j] = j
         }
-        
+
         for i in 1...s1Count {
             for j in 1...s2Count {
-                if s1Array[i-1] == s2Array[j-1] {
-                    matrix[i][j] = matrix[i-1][j-1]
+                if s1Array[i - 1] == s2Array[j - 1] {
+                    matrix[i][j] = matrix[i - 1][j - 1]
                 } else {
                     matrix[i][j] = min(
-                        matrix[i-1][j] + 1,     // deletion
-                        matrix[i][j-1] + 1,     // insertion
-                        matrix[i-1][j-1] + 1    // substitution
+                        matrix[i - 1][j] + 1,  // deletion
+                        matrix[i][j - 1] + 1,  // insertion
+                        matrix[i - 1][j - 1] + 1  // substitution
                     )
                 }
             }
         }
-        
+
         return matrix[s1Count][s2Count]
     }
-    
+
     /// 计算单词开头匹配分数
     /// 检查查询字符串是否匹配文本中任何单词的开头
     static func calculateWordStartMatch(text: String, query: String) -> Double? {
         let words = text.components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty }
-        
+
         var bestScore: Double = 0
         var foundMatch = false
-        
+
         for (wordIndex, word) in words.enumerated() {
             if word.lowercased().hasPrefix(query.lowercased()) {
                 foundMatch = true
-                
+
                 // 基础分数：匹配程度
                 let matchCompleteness = Double(query.count) / Double(word.count)
                 var score = matchCompleteness * 100.0
-                
+
                 // 位置奖励：越靠前的单词分数越高
                 let positionBonus = max(0, 50.0 - Double(wordIndex) * 10.0)
                 score += positionBonus
-                
+
                 // 单词长度奖励：匹配较短的单词获得更高分数
                 let lengthBonus = max(0, 30.0 - Double(word.count) * 2.0)
                 score += lengthBonus
-                
+
                 // 完全匹配单词获得额外奖励
                 if query.lowercased() == word.lowercased() {
                     score += 50.0
                 }
-                
+
                 bestScore = max(bestScore, score)
             }
         }
-        
+
         return foundMatch ? bestScore : nil
     }
-    
+
     /// 计算子序列匹配分数
     /// 检查查询字符串的字符是否按顺序出现在文本中
     static func calculateSubsequenceMatch(text: String, query: String) -> Double? {
         let textChars = Array(text.lowercased())
         let queryChars = Array(query.lowercased())
-        
+
         var textIndex = 0
         var queryIndex = 0
         var matchPositions: [Int] = []
-        
+
         // 寻找子序列匹配
         while textIndex < textChars.count && queryIndex < queryChars.count {
             if textChars[textIndex] == queryChars[queryIndex] {
@@ -100,27 +100,27 @@ struct StringMatcher {
             }
             textIndex += 1
         }
-        
+
         // 如果没有完全匹配所有查询字符
         guard queryIndex == queryChars.count else { return nil }
-        
+
         // 计算分数：考虑匹配密度和位置
         let totalSpan = matchPositions.last! - matchPositions.first! + 1
         let density = Double(queryChars.count) / Double(totalSpan)
         let positionBonus = 1.0 - Double(matchPositions.first!) / Double(textChars.count)
-        
+
         return (density * 50.0) + (positionBonus * 30.0)
     }
-    
+
     /// 计算模糊匹配分数
     /// 使用编辑距离算法计算字符串相似度
     static func calculateFuzzyMatch(text: String, query: String) -> Double? {
         let distance = levenshteinDistance(text.lowercased(), query.lowercased())
         let maxLength = max(text.count, query.count)
-        
+
         // 如果编辑距离太大，认为不匹配
         guard distance <= maxLength / 2 else { return nil }
-        
+
         let similarity = 1.0 - Double(distance) / Double(maxLength)
         return similarity * 80.0
     }

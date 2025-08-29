@@ -4,7 +4,7 @@ import SwiftUI
 struct ModeSettingsView: View {
     @ObservedObject var settingsManager: SettingsManager
     @ObservedObject var configManager: ConfigManager
-    
+
     private func getTerminalDisplayName(_ terminal: String) -> String {
         switch terminal {
         case "ghostty": return "Ghostty"
@@ -16,7 +16,7 @@ struct ModeSettingsView: View {
         default: return terminal.capitalized
         }
     }
-    
+
     private func getBrowserColor(_ browser: BrowserType) -> Color {
         switch browser {
         case .safari:
@@ -44,7 +44,7 @@ struct ModeSettingsView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
-                
+
                 // 模式设置组
                 VStack(spacing: 32) {
                     // 关闭模式
@@ -55,7 +55,10 @@ struct ModeSettingsView: View {
                         description: "快速关闭运行中的应用程序",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["kill"] ?? true },
-                            set: { settingsManager.modeEnabled["kill"] = $0; settingsManager.toggleMode("kill") }
+                            set: {
+                                settingsManager.modeEnabled["kill"] = $0
+                                settingsManager.toggleMode("kill")
+                            }
                         ),
                         onToggle: {
                             settingsManager.toggleMode("kill")
@@ -74,9 +77,9 @@ struct ModeSettingsView: View {
                             .foregroundColor(.secondary)
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // 剪贴板模式
                     ModeSettingSection(
                         title: "剪贴板模式 (/c)",
@@ -85,7 +88,10 @@ struct ModeSettingsView: View {
                         description: "快速管理和粘贴剪贴板历史",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["clip"] ?? true },
-                            set: { settingsManager.modeEnabled["clip"] = $0; settingsManager.toggleMode("clip") }
+                            set: {
+                                settingsManager.modeEnabled["clip"] = $0
+                                settingsManager.toggleMode("clip")
+                            }
                         ),
                         onToggle: {
                             settingsManager.toggleMode("clip")
@@ -129,7 +135,10 @@ struct ModeSettingsView: View {
                         description: "通过插件扩展更多功能",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["plugin"] ?? true },
-                            set: { settingsManager.modeEnabled["plugin"] = $0; settingsManager.toggleMode("plugin") }
+                            set: {
+                                settingsManager.modeEnabled["plugin"] = $0
+                                settingsManager.toggleMode("plugin")
+                            }
                         ),
                         onToggle: {
                             settingsManager.toggleMode("plugin")
@@ -152,7 +161,10 @@ struct ModeSettingsView: View {
                         description: "使用默认搜索引擎搜索网络内容",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["search"] ?? true },
-                            set: { settingsManager.modeEnabled["search"] = $0; settingsManager.toggleMode("search") }
+                            set: {
+                                settingsManager.modeEnabled["search"] = $0
+                                settingsManager.toggleMode("search")
+                            }
                         ),
                         onToggle: {
                             settingsManager.toggleMode("search")
@@ -162,29 +174,32 @@ struct ModeSettingsView: View {
                             Text("搜索引擎设置：")
                                 .font(.headline)
                                 .fontWeight(.semibold)
-                            
+
                             HStack {
                                 Text("默认搜索引擎：")
                                     .font(.subheadline)
-                                Picker("搜索引擎", selection: Binding(
-                                    get: { configManager.config.modes.defaultSearchEngine },
-                                    set: { configManager.updateDefaultSearchEngine($0) }
-                                )) {
+                                Picker(
+                                    "搜索引擎",
+                                    selection: Binding(
+                                        get: { configManager.config.modes.defaultSearchEngine },
+                                        set: { configManager.updateDefaultSearchEngine($0) }
+                                    )
+                                ) {
                                     Text("Google").tag("google")
                                     Text("百度").tag("baidu")
                                     Text("必应").tag("bing")
                                 }
                                 .pickerStyle(MenuPickerStyle())
                             }
-                            
+
                             Text("输入 /s 后空格，然后输入搜索关键词")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // 网页打开模式
                     ModeSettingSection(
                         title: "网页打开 (/w)",
@@ -193,7 +208,10 @@ struct ModeSettingsView: View {
                         description: "快速打开网站或 URL，支持书签和历史记录",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["web"] ?? true },
-                            set: { settingsManager.modeEnabled["web"] = $0; settingsManager.toggleMode("web") }
+                            set: {
+                                settingsManager.modeEnabled["web"] = $0
+                                settingsManager.toggleMode("web")
+                            }
                         ),
                         onToggle: {
                             settingsManager.toggleMode("web")
@@ -211,35 +229,41 @@ struct ModeSettingsView: View {
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                            
+
                             // 浏览器数据源设置
                             Text("浏览器数据源：")
                                 .font(.headline)
                                 .fontWeight(.semibold)
                                 .padding(.top, 8)
-                            
+
                             VStack(alignment: .leading, spacing: 8) {
-                                ForEach(BrowserType.allCases, id: \ .self) { browser in
+                                ForEach(BrowserType.allCases, id: \.self) { browser in
                                     if browser.isInstalled {
                                         HStack {
-                                            Toggle(browser.displayName, isOn: Binding(
-                                                get: {
-                                                    configManager.getEnabledBrowsers().contains(browser)
-                                                },
-                                                set: { enabled in
-                                                    var enabledBrowsers = configManager.getEnabledBrowsers()
-                                                    if enabled {
-                                                        enabledBrowsers.insert(browser)
-                                                    } else {
-                                                        enabledBrowsers.remove(browser)
+                                            Toggle(
+                                                browser.displayName,
+                                                isOn: Binding(
+                                                    get: {
+                                                        configManager.getEnabledBrowsers().contains(
+                                                            browser)
+                                                    },
+                                                    set: { enabled in
+                                                        var enabledBrowsers =
+                                                            configManager.getEnabledBrowsers()
+                                                        if enabled {
+                                                            enabledBrowsers.insert(browser)
+                                                        } else {
+                                                            enabledBrowsers.remove(browser)
+                                                        }
+                                                        configManager.updateEnabledBrowsers(
+                                                            enabledBrowsers)
                                                     }
-                                                    configManager.updateEnabledBrowsers(enabledBrowsers)
-                                                }
-                                            ))
+                                                )
+                                            )
                                             .toggleStyle(SwitchToggleStyle())
-                                            
+
                                             Spacer()
-                                            
+
                                             // 浏览器状态指示器
                                             Circle()
                                                 .fill(getBrowserColor(browser))
@@ -257,27 +281,30 @@ struct ModeSettingsView: View {
                                     }
                                 }
                             }
-                            
+
                             // 搜索引擎设置
                             Text("默认搜索引擎：")
                                 .font(.headline)
                                 .fontWeight(.semibold)
                                 .padding(.top, 8)
-                            
+
                             HStack {
-                                Picker("搜索引擎", selection: Binding(
-                                    get: { configManager.config.modes.defaultSearchEngine },
-                                    set: { configManager.updateDefaultSearchEngine($0) }
-                                )) {
+                                Picker(
+                                    "搜索引擎",
+                                    selection: Binding(
+                                        get: { configManager.config.modes.defaultSearchEngine },
+                                        set: { configManager.updateDefaultSearchEngine($0) }
+                                    )
+                                ) {
                                     Text("Google").tag("google")
                                     Text("百度").tag("baidu")
                                     Text("必应").tag("bing")
                                 }
                                 .pickerStyle(MenuPickerStyle())
-                                
+
                                 Spacer()
                             }
-                            
+
                             HStack {
                                 Image(systemName: "info.circle")
                                     .foregroundColor(.blue)
@@ -288,9 +315,9 @@ struct ModeSettingsView: View {
                             .padding(.top, 8)
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // 终端执行模式
                     ModeSettingSection(
                         title: "终端执行 (/t)",
@@ -299,7 +326,10 @@ struct ModeSettingsView: View {
                         description: "在终端中执行命令",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["terminal"] ?? true },
-                            set: { settingsManager.modeEnabled["terminal"] = $0; settingsManager.toggleMode("terminal") }
+                            set: {
+                                settingsManager.modeEnabled["terminal"] = $0
+                                settingsManager.toggleMode("terminal")
+                            }
                         ),
                         onToggle: {
                             settingsManager.toggleMode("terminal")
@@ -309,14 +339,17 @@ struct ModeSettingsView: View {
                             Text("终端应用设置：")
                                 .font(.headline)
                                 .fontWeight(.semibold)
-                            
+
                             HStack {
                                 Text("首选终端：")
                                     .font(.subheadline)
-                                Picker("终端应用", selection: Binding(
-                                    get: { configManager.config.modes.preferredTerminal },
-                                    set: { configManager.updatePreferredTerminal($0) }
-                                )) {
+                                Picker(
+                                    "终端应用",
+                                    selection: Binding(
+                                        get: { configManager.config.modes.preferredTerminal },
+                                        set: { configManager.updatePreferredTerminal($0) }
+                                    )
+                                ) {
                                     Text("自动检测").tag("auto")
                                     Text("Terminal.app").tag("terminal")
                                     Text("iTerm2").tag("iterm2")
@@ -327,12 +360,12 @@ struct ModeSettingsView: View {
                                 }
                                 .pickerStyle(MenuPickerStyle())
                             }
-                            
+
                             Text("执行优先级说明：")
                                 .font(.headline)
                                 .fontWeight(.semibold)
                                 .padding(.top, 8)
-                            
+
                             VStack(alignment: .leading, spacing: 6) {
                                 let terminal = configManager.config.modes.preferredTerminal
                                 if terminal == "auto" {
@@ -351,7 +384,7 @@ struct ModeSettingsView: View {
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                            
+
                             HStack {
                                 Image(systemName: "exclamationmark.triangle")
                                     .foregroundColor(.orange)
@@ -362,9 +395,9 @@ struct ModeSettingsView: View {
                             .padding(.top, 8)
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // 文件管理器模式
                     ModeSettingSection(
                         title: "文件管理器 (/o)",
@@ -373,7 +406,10 @@ struct ModeSettingsView: View {
                         description: "浏览文件和文件夹，支持自定义起始路径",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["file"] ?? true },
-                            set: { settingsManager.modeEnabled["file"] = $0; settingsManager.toggleMode("file") }
+                            set: {
+                                settingsManager.modeEnabled["file"] = $0
+                                settingsManager.toggleMode("file")
+                            }
                         ),
                         onToggle: {
                             settingsManager.toggleMode("file")
@@ -392,16 +428,16 @@ struct ModeSettingsView: View {
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)
-                            
+
                             // 起始路径配置
                             Text("起始路径配置：")
                                 .font(.headline)
                                 .fontWeight(.semibold)
                                 .padding(.top, 8)
-                            
+
                             FileBrowserPathSettingsView(configManager: configManager)
                                 .frame(maxHeight: 300)
-                            
+
                             HStack {
                                 Image(systemName: "info.circle")
                                     .foregroundColor(.blue)
@@ -412,9 +448,9 @@ struct ModeSettingsView: View {
                             .padding(.top, 8)
                         }
                     }
-                    
+
                     Divider()
-                    
+
                     // 命令提示
                     SettingRow(
                         icon: "lightbulb",
@@ -427,7 +463,7 @@ struct ModeSettingsView: View {
                         settingsManager.showCommandSuggestions.toggle()
                     }
                 }
-                
+
                 Spacer()
             }
             .padding(32)

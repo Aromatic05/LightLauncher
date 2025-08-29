@@ -7,7 +7,7 @@ struct KeywordSearchBasicForm: View {
     @Binding var icon: String
     @State private var isFileImporterPresented = false
     @State private var selectedIconName: String = ""
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("基本信息")
@@ -61,10 +61,12 @@ struct KeywordSearchBasicForm: View {
                 if let url = urls.first {
                     let fileManager = FileManager.default
                     let homeDir = fileManager.homeDirectoryForCurrentUser
-                    let iconsDir = homeDir.appendingPathComponent(".config/LightLauncher/icons", isDirectory: true)
+                    let iconsDir = homeDir.appendingPathComponent(
+                        ".config/LightLauncher/icons", isDirectory: true)
                     do {
                         if !fileManager.fileExists(atPath: iconsDir.path) {
-                            try fileManager.createDirectory(at: iconsDir, withIntermediateDirectories: true)
+                            try fileManager.createDirectory(
+                                at: iconsDir, withIntermediateDirectories: true)
                         }
                         let destURL = iconsDir.appendingPathComponent(url.lastPathComponent)
                         // 覆盖同名文件
@@ -93,13 +95,13 @@ struct KeywordSearchBasicForm: View {
 struct KeywordSearchConfigForm: View {
     @Binding var url: String
     @Binding var spaceEncoding: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("搜索配置")
                 .font(.headline)
                 .fontWeight(.semibold)
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("搜索 URL")
@@ -111,7 +113,7 @@ struct KeywordSearchConfigForm: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("空格编码")
                         .font(.subheadline)
@@ -135,13 +137,13 @@ struct KeywordSearchPreview: View {
     let isValid: Bool
     let keyword: String
     let url: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("预览")
                 .font(.headline)
                 .fontWeight(.semibold)
-            
+
             if isValid {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -156,7 +158,7 @@ struct KeywordSearchPreview: View {
                             .foregroundColor(.blue)
                             .cornerRadius(6)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 6) {
                         Text("生成的 URL:")
                             .font(.subheadline)

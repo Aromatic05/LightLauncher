@@ -1,5 +1,5 @@
-import SwiftUI
 import Carbon
+import SwiftUI
 
 // MARK: - 快捷键录制按钮组件
 struct HotKeyRecordButton: View {
@@ -9,13 +9,13 @@ struct HotKeyRecordButton: View {
     let hasConflict: Bool
     let onStartRecording: () -> Void
     let onCancelRecording: () -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("当前快捷键")
                 .font(.subheadline)
                 .fontWeight(.medium)
-            
+
             Button(action: {
                 onStartRecording()
             }) {
@@ -34,20 +34,24 @@ struct HotKeyRecordButton: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(isRecording ? Color.purple.opacity(0.1) : Color(NSColor.windowBackgroundColor))
+                .background(
+                    isRecording ? Color.purple.opacity(0.1) : Color(NSColor.windowBackgroundColor)
+                )
                 .foregroundColor(isRecording ? .purple : .primary)
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(
-                            hasConflict ? Color.red : (isRecording ? Color.purple : Color.secondary.opacity(0.3)),
+                            hasConflict
+                                ? Color.red
+                                : (isRecording ? Color.purple : Color.secondary.opacity(0.3)),
                             lineWidth: 2
                         )
                 )
             }
             .buttonStyle(PlainButtonStyle())
             .disabled(isRecording)
-            
+
             if isRecording {
                 Button("取消录制") {
                     onCancelRecording()
@@ -56,10 +60,10 @@ struct HotKeyRecordButton: View {
             }
         }
     }
-    
+
     private func getHotKeyDescription() -> String {
         var description = ""
-        
+
         if modifiers & UInt32(controlKey) != 0 {
             description += "⌃"
         }
@@ -72,9 +76,9 @@ struct HotKeyRecordButton: View {
         if modifiers & UInt32(cmdKey) != 0 {
             description += "⌘"
         }
-        
+
         description += ConfigManager.getKeyName(for: keyCode)
-        
+
         return description
     }
 }
@@ -83,13 +87,13 @@ struct HotKeyRecordButton: View {
 struct HotKeyBasicInfoForm: View {
     @Binding var name: String
     @Binding var text: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("基本信息")
                 .font(.headline)
                 .fontWeight(.semibold)
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("快捷键名称")
@@ -98,7 +102,7 @@ struct HotKeyBasicInfoForm: View {
                     TextField("为这个快捷键起一个描述性的名字", text: $name)
                         .textFieldStyle(.roundedBorder)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("快捷输入文本")
                         .font(.subheadline)
@@ -129,16 +133,16 @@ struct HotKeySettingsCard: View {
     let hasConflict: Bool
     let onStartRecording: () -> Void
     let onCancelRecording: () -> Void
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("快捷键设置")
                     .font(.headline)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 if hasConflict {
                     Text("快捷键冲突")
                         .font(.caption)
@@ -149,7 +153,7 @@ struct HotKeySettingsCard: View {
                         .cornerRadius(6)
                 }
             }
-            
+
             HotKeyRecordButton(
                 isRecording: $isRecording,
                 modifiers: $modifiers,
@@ -171,13 +175,13 @@ struct HotKeyPreviewCard: View {
     let modifiers: UInt32
     let keyCode: UInt32
     let text: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("预览")
                 .font(.headline)
                 .fontWeight(.semibold)
-            
+
             if isValid {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -192,7 +196,7 @@ struct HotKeyPreviewCard: View {
                             .foregroundColor(.purple)
                             .cornerRadius(6)
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 6) {
                         Text("输入内容:")
                             .font(.subheadline)
@@ -215,10 +219,10 @@ struct HotKeyPreviewCard: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
     }
-    
+
     private func getHotKeyDescription() -> String {
         var description = ""
-        
+
         if modifiers & UInt32(controlKey) != 0 {
             description += "⌃"
         }
@@ -231,9 +235,9 @@ struct HotKeyPreviewCard: View {
         if modifiers & UInt32(cmdKey) != 0 {
             description += "⌘"
         }
-        
+
         description += ConfigManager.getKeyName(for: keyCode)
-        
+
         return description
     }
 }

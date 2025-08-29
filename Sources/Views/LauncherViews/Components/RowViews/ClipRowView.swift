@@ -4,7 +4,7 @@ struct ClipItemRowView: View {
     let item: ClipboardItem
     let isSelected: Bool
     let index: Int
-    
+
     var body: some View {
         HStack(spacing: 16) {
             switch item {

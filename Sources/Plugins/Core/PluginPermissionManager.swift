@@ -4,9 +4,9 @@ import Foundation
 @MainActor
 class PluginPermissionManager {
     static let shared = PluginPermissionManager()
-    
+
     private init() {}
-    
+
     /// 检查插件是否具有指定权限
     /// - Parameters:
     ///   - plugin: 插件对象
@@ -16,10 +16,10 @@ class PluginPermissionManager {
         guard let permissions = plugin.manifest.permissions else {
             return false
         }
-        
+
         return permissions.contains { $0.type == type }
     }
-    
+
     /// 检查插件是否具有指定目录的文件权限
     /// - Parameters:
     ///   - plugin: 插件对象
@@ -30,27 +30,27 @@ class PluginPermissionManager {
         guard type == .fileRead || type == .fileWrite else {
             return false
         }
-        
+
         guard let permissions = plugin.manifest.permissions else {
             return false
         }
-        
+
         // 查找对应的权限配置
         guard let permission = permissions.first(where: { $0.type == type }) else {
             return false
         }
-        
+
         // 如果没有指定目录限制，则允许访问所有目录
         guard let allowedDirectories = permission.directories, !allowedDirectories.isEmpty else {
             return true
         }
-        
+
         // 检查路径是否在允许的目录中
         return allowedDirectories.contains { allowedDir in
             path.hasPrefix(allowedDir)
         }
     }
-    
+
     /// 验证插件的所有权限声明是否有效
     /// - Parameter plugin: 插件对象
     /// - Returns: 验证结果
@@ -58,16 +58,16 @@ class PluginPermissionManager {
         guard let permissions = plugin.manifest.permissions else {
             return .valid
         }
-        
+
         var issues: [String] = []
-        
+
         for permission in permissions {
             // 验证权限类型是否有效
             if !PluginPermissionType.allCases.contains(permission.type) {
                 issues.append("未知的权限类型: \(permission.type.rawValue)")
                 continue
             }
-            
+
             // 验证目录权限的配置
             if permission.type == .fileRead || permission.type == .fileWrite {
                 if let directories = permission.directories {
@@ -79,10 +79,10 @@ class PluginPermissionManager {
                 }
             }
         }
-        
+
         return issues.isEmpty ? .valid : .invalid(issues)
     }
-    
+
     /// 获取插件的权限摘要
     /// - Parameter plugin: 插件对象
     /// - Returns: 权限摘要
@@ -90,7 +90,7 @@ class PluginPermissionManager {
         guard let permissions = plugin.manifest.permissions else {
             return PermissionSummary(permissions: [], riskLevel: .low)
         }
-        
+
         let permissionDescriptions = permissions.map { permission in
             PermissionDescription(
                 type: permission.type,
@@ -98,19 +98,19 @@ class PluginPermissionManager {
                 directories: permission.directories
             )
         }
-        
+
         let riskLevel = calculateRiskLevel(permissions: permissions)
-        
+
         return PermissionSummary(permissions: permissionDescriptions, riskLevel: riskLevel)
     }
-    
+
     // MARK: - 私有方法
-    
+
     private func isValidDirectoryPath(_ path: String) -> Bool {
         // 基本的路径验证
         return !path.isEmpty && !path.contains("..") && path.hasPrefix("/")
     }
-    
+
     private func getPermissionDescription(_ type: PluginPermissionType) -> String {
         switch type {
         case .network:
@@ -127,13 +127,13 @@ class PluginPermissionManager {
             return "显示系统通知"
         }
     }
-    
+
     private func calculateRiskLevel(permissions: [PluginPermissionSpec]) -> RiskLevel {
         let highRiskPermissions: Set<PluginPermissionType> = [.systemCommand, .fileWrite]
         let mediumRiskPermissions: Set<PluginPermissionType> = [.network, .fileRead]
-        
+
         let permissionTypes = Set(permissions.map { $0.type })
-        
+
         if !permissionTypes.isDisjoint(with: highRiskPermissions) {
             return .high
         } else if !permissionTypes.isDisjoint(with: mediumRiskPermissions) {
@@ -166,7 +166,7 @@ enum RiskLevel {
     case low
     case medium
     case high
-    
+
     var description: String {
         switch self {
         case .low:
@@ -177,7 +177,7 @@ enum RiskLevel {
             return "高风险"
         }
     }
-    
+
     var color: String {
         switch self {
         case .low:

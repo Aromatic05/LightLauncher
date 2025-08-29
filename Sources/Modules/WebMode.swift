@@ -1,7 +1,7 @@
-import Foundation
 import AppKit
-import SwiftUI
 import Combine
+import Foundation
+import SwiftUI
 
 // MARK: - 网页模式控制器
 @MainActor
@@ -28,7 +28,7 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
 
     func handleInput(arguments: String) {
         let query = arguments.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.currentQuery = query 
+        self.currentQuery = query
 
         var items: [any DisplayableItem] = []
         let inputItem = BrowserItem(
@@ -53,7 +53,7 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
 
     func cleanup() {
         self.displayableItems = []
-        self.currentQuery = "" // 清理时也要重置
+        self.currentQuery = ""  // 清理时也要重置
     }
 
     func makeContentView() -> AnyView {
@@ -64,7 +64,7 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
         return [
             "Type a URL or search term to open",
             "Press Enter to open in your default browser",
-            "Press Esc to exit"
+            "Press Esc to exit",
         ]
     }
 }

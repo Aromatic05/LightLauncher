@@ -7,9 +7,12 @@ extension ConfigManager {
         BrowserDataManager.shared.setEnabledBrowsers(browsers)
     }
     func getEnabledBrowsers() -> Set<BrowserType> {
-        let browserTypes = Set(config.modes.enabledBrowsers.compactMap { browserString in
-            BrowserType.allCases.first { $0.rawValue.lowercased() == browserString.lowercased() }
-        })
+        let browserTypes = Set(
+            config.modes.enabledBrowsers.compactMap { browserString in
+                BrowserType.allCases.first {
+                    $0.rawValue.lowercased() == browserString.lowercased()
+                }
+            })
         return browserTypes.isEmpty ? [.safari] : browserTypes
     }
 }

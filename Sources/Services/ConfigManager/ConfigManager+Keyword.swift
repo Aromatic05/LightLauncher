@@ -43,4 +43,3 @@ extension ConfigManager {
         }
     }
 }
-

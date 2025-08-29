@@ -4,7 +4,7 @@ struct PluginDetailView: View {
     let plugin: Plugin
     @State private var configData: [String: Any] = [:]
     @State private var hasConfig = false
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -23,7 +23,7 @@ struct PluginDetailView: View {
             loadConfig()
         }
     }
-    
+
     private var pluginBasicInfoSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -94,7 +94,7 @@ struct PluginDetailView: View {
             }
         }
     }
-    
+
     private var pluginConfigSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -158,7 +158,7 @@ struct PluginDetailView: View {
             }
         }
     }
-    
+
     private var pluginActionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("插件操作")
@@ -187,7 +187,7 @@ struct PluginDetailView: View {
             }
         }
     }
-    
+
     private func loadConfig() {
         let config = PluginConfigManager.shared.loadConfig(for: plugin.name)
         if !config.settings.isEmpty {

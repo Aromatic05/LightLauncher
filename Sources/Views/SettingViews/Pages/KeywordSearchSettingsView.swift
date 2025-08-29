@@ -5,7 +5,7 @@ struct KeywordSearchSettingsView: View {
     @ObservedObject var configManager: ConfigManager
     @State private var showingAddSheet = false
     @State private var editingItem: KeywordSearchItem?
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
@@ -33,7 +33,7 @@ struct KeywordSearchSettingsView: View {
             )
         }
     }
-    
+
     private var headerView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("关键词搜索")
@@ -44,13 +44,13 @@ struct KeywordSearchSettingsView: View {
                 .foregroundColor(.secondary)
         }
     }
-    
+
     private var searchItemsSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             KeywordSearchListHeader {
                 showingAddSheet = true
             }
-            
+
             if configManager.config.modes.keywordModeConfig?.items.isEmpty ?? true {
                 KeywordSearchEmptyView()
             } else {
@@ -58,7 +58,7 @@ struct KeywordSearchSettingsView: View {
             }
         }
     }
-    
+
     private var searchItemsList: some View {
         LazyVStack(spacing: 12) {
             ForEach(configManager.config.modes.keywordModeConfig?.items ?? []) { item in
@@ -74,7 +74,7 @@ struct KeywordSearchSettingsView: View {
             }
         }
     }
-    
+
     private func addKeywordSearchItem(_ item: KeywordSearchItem) {
         var config = configManager.config
         if config.modes.keywordModeConfig == nil {
@@ -84,16 +84,18 @@ struct KeywordSearchSettingsView: View {
         configManager.config = config
         configManager.saveConfig()
     }
-    
+
     private func updateKeywordSearchItem(_ updatedItem: KeywordSearchItem) {
         var config = configManager.config
-        if let index = config.modes.keywordModeConfig?.items.firstIndex(where: { $0.id == updatedItem.id }) {
+        if let index = config.modes.keywordModeConfig?.items.firstIndex(where: {
+            $0.id == updatedItem.id
+        }) {
             config.modes.keywordModeConfig?.items[index] = updatedItem
             configManager.config = config
             configManager.saveConfig()
         }
     }
-    
+
     private func removeKeywordSearchItem(_ item: KeywordSearchItem) {
         var config = configManager.config
         config.modes.keywordModeConfig?.items.removeAll { $0.id == item.id }

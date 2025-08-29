@@ -1,4 +1,5 @@
 import SwiftUI
+
 struct AbbreviationRow: View {
     let key: String
     let values: [String]
@@ -8,7 +9,7 @@ struct AbbreviationRow: View {
     let onSave: () -> Void
     let onCancel: () -> Void
     let onDelete: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 12) {
             Text(key)
@@ -69,7 +70,7 @@ struct AbbreviationRow: View {
 //     @Binding var editingValues: String
 //     let onCancel: () -> Void
 //     let onDelete: () -> Void
-    
+
 //     var body: some View {
 //         HStack(spacing: 12) {
 //             Text(key)

@@ -27,25 +27,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let viewModel = viewModel {
             windowManager = WindowManager(viewModel: viewModel)
         }
-        
+
         setupStatusMenuManager()
         setupAllHotkeys()
         setupPluginSystem()
-        
+
         setupHotkeyObservers()
     }
-    
+
     /// 统一设置所有热键。
     private func setupAllHotkeys() {
         // 1. 获取所有热键配置
         let mainHotkeyConfig = configManager.config.hotKey
-        let mainHotkey = HotKey(keyCode: mainHotkeyConfig.keyCode, modifiers: mainHotkeyConfig.modifiers)
+        let mainHotkey = HotKey(
+            keyCode: mainHotkeyConfig.keyCode, modifiers: mainHotkeyConfig.modifiers)
         let customHotkeys = configManager.config.customHotKeys
-        
+
         // 2. 调用统一的静态注册方法
         HotkeyManager.registerAll(mainHotkey: mainHotkey, customHotkeys: customHotkeys)
     }
-    
+
     private func setupHotkeyObservers() {
         NotificationCenter.default.addObserver(
             self,
@@ -53,7 +54,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             name: .mainHotkeyTriggered,
             object: nil
         )
-        
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(customHotkeyDidTrigger(notification:)),
@@ -68,7 +69,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func customHotkeyDidTrigger(notification: Notification) {
         guard let hotkeyID = notification.userInfo?["hotkeyID"] as? UInt32 else { return }
-        
+
         Task { @MainActor in
             guard let config = HotkeyManager.getConfig(for: hotkeyID) else { return }
             self.windowManager?.showMainWindow()

@@ -17,11 +17,11 @@ extension ConfigManager {
                 let encoder = YAMLEncoder()
                 let yamlString = try encoder.encode(defaultConfig)
                 let commentedYaml = """
-                # LightLauncher 插件管理配置
-                # 管理插件启用、命令、元数据等
+                    # LightLauncher 插件管理配置
+                    # 管理插件启用、命令、元数据等
 
-                \(yamlString)
-                """
+                    \(yamlString)
+                    """
                 try commentedYaml.write(to: url, atomically: true, encoding: .utf8)
                 print("插件配置文件不存在，已创建默认配置: \(url.path)")
             } catch let err {
@@ -43,11 +43,11 @@ extension ConfigManager {
             let encoder = YAMLEncoder()
             let yamlString = try encoder.encode(pluginsConfig)
             let commentedYaml = """
-# LightLauncher 插件管理配置
-# 管理插件启用、命令、元数据等
+                # LightLauncher 插件管理配置
+                # 管理插件启用、命令、元数据等
 
-\(yamlString)
-"""
+                \(yamlString)
+                """
             try commentedYaml.write(to: pluginsConfigURL, atomically: true, encoding: .utf8)
             print("插件配置已保存到: \(pluginsConfigURL.path)")
         } catch {

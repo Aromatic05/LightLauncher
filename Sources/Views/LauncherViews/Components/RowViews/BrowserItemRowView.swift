@@ -5,7 +5,7 @@ struct BrowserItemRowView: View {
     let item: BrowserItem
     let isSelected: Bool
     let index: Int
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // 图标
@@ -13,7 +13,7 @@ struct BrowserItemRowView: View {
                 .font(.title3)
                 .foregroundColor(iconColor(for: item))
                 .frame(width: 24, height: 24)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 // 标题
                 Text(item.title)
@@ -21,7 +21,7 @@ struct BrowserItemRowView: View {
                     .fontWeight(.medium)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                
+
                 // 副标题/URL/附加信息
                 HStack(spacing: 8) {
                     if let subtitle = item.subtitle {
@@ -99,7 +99,7 @@ struct BrowserItemRowView: View {
                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
         )
     }
-    
+
     private func formatRelativeDate(_ date: Date) -> String {
         let now = Date()
         let interval = now.timeIntervalSince(date)
@@ -109,7 +109,7 @@ struct BrowserItemRowView: View {
         } else if interval < 86400 {
             let hours = Int(interval / 3600)
             return "\(hours)小时前"
-        } else if interval < 2592000 {
+        } else if interval < 2_592_000 {
             let days = Int(interval / 86400)
             return "\(days)天前"
         } else {
@@ -118,7 +118,7 @@ struct BrowserItemRowView: View {
             return formatter.string(from: date)
         }
     }
-    
+
     private func browserSourceColor(_ source: BrowserType) -> Color {
         switch source {
         case .safari:
@@ -133,7 +133,7 @@ struct BrowserItemRowView: View {
             return .purple
         }
     }
-    
+
     private func defaultIconName(for type: BrowserItemType) -> String {
         switch type {
         case .bookmark:

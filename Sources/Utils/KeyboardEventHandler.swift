@@ -1,6 +1,6 @@
-import SwiftUI
 import AppKit
 import Combine
+import SwiftUI
 
 /// 定义键盘事件的抽象契约，必须是 Hashable 以便用作 Set 的元素
 enum KeyEvent: Hashable {
@@ -31,7 +31,7 @@ final class KeyboardEventHandler {
         .arrowUp,
         .arrowDown,
         .enter,
-        .escape
+        .escape,
     ]
 
     // 2. 一个变量，用于存储当前模式声明要拦截的“原型”键
@@ -62,13 +62,14 @@ final class KeyboardEventHandler {
                     return nil
                 }
             }
-            
+
             // 否则，直接放行事件，让它可以被输入到文本框等
             return event
         }
 
         // flagsChangedMonitor 的作用仅仅是触发 checkFlags
-        flagsChangedMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+        flagsChangedMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) {
+            [weak self] event in
             self?.checkFlags(eventFlags: event.modifierFlags)
             // 总是放行修饰键事件本身
             return event
@@ -80,8 +81,8 @@ final class KeyboardEventHandler {
         // 创建一个无关联值的“原型”版本用于查询规则
         let keyPrototype = keyEvent
         // 如果“原型”在全局列表或当前模式列表中，则拦截
-        return KeyboardEventHandler.alwaysInterceptedKeys.contains(keyPrototype) ||
-               self.currentModeInterceptedKeys.contains(keyPrototype)
+        return KeyboardEventHandler.alwaysInterceptedKeys.contains(keyPrototype)
+            || self.currentModeInterceptedKeys.contains(keyPrototype)
     }
 
     /// 统一处理修饰键状态变化的辅助函数
@@ -126,9 +127,10 @@ final class KeyboardEventHandler {
         default:
             // 检查是否为无修饰键的数字
             if let chars = event.characters,
-               let number = Int(chars),
-               (0...9).contains(number),
-               event.modifierFlags.intersection([.command, .shift, .control, .option]).isEmpty {
+                let number = Int(chars),
+                (0...9).contains(number),
+                event.modifierFlags.intersection([.command, .shift, .control, .option]).isEmpty
+            {
                 return .numeric(number)
             }
         }

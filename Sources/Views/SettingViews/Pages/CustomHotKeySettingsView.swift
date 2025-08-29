@@ -1,12 +1,12 @@
-import SwiftUI
 import Carbon
+import SwiftUI
 
 // MARK: - 自定义快捷键设置视图
 struct CustomHotKeySettingsView: View {
     @ObservedObject var configManager: ConfigManager
     @State private var showingAddSheet = false
     @State private var editingHotKey: CustomHotKeyConfig?
-    
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
@@ -36,7 +36,7 @@ struct CustomHotKeySettingsView: View {
             )
         }
     }
-    
+
     private var headerView: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("自定义快捷键")
@@ -47,13 +47,13 @@ struct CustomHotKeySettingsView: View {
                 .foregroundColor(.secondary)
         }
     }
-    
+
     private var hotKeysSection: some View {
         VStack(alignment: .leading, spacing: 20) {
             CustomHotKeyListHeader {
                 showingAddSheet = true
             }
-            
+
             if configManager.config.customHotKeys.isEmpty {
                 CustomHotKeyEmptyView()
             } else {
@@ -61,7 +61,7 @@ struct CustomHotKeySettingsView: View {
             }
         }
     }
-    
+
     private var hotKeysList: some View {
         LazyVStack(spacing: 12) {
             ForEach(configManager.config.customHotKeys) { hotKey in
@@ -77,14 +77,14 @@ struct CustomHotKeySettingsView: View {
             }
         }
     }
-    
+
     private func addCustomHotKey(_ hotKey: CustomHotKeyConfig) {
         var config = configManager.config
         config.customHotKeys.append(hotKey)
         configManager.config = config
         configManager.saveConfig()
     }
-    
+
     private func updateCustomHotKey(_ updatedHotKey: CustomHotKeyConfig) {
         var config = configManager.config
         if let index = config.customHotKeys.firstIndex(where: { $0.id == updatedHotKey.id }) {
@@ -93,7 +93,7 @@ struct CustomHotKeySettingsView: View {
             configManager.saveConfig()
         }
     }
-    
+
     private func removeCustomHotKey(_ hotKey: CustomHotKeyConfig) {
         var config = configManager.config
         config.customHotKeys.removeAll { $0.id == hotKey.id }
@@ -107,7 +107,7 @@ struct CustomHotKeyEditView: View {
     let hotKey: CustomHotKeyConfig?
     let existingHotKeys: [CustomHotKeyConfig]
     let onSave: (CustomHotKeyConfig) -> Void
-    
+
     @State private var name: String
     @State private var text: String
     @State private var isRecordingHotKey = false
@@ -116,10 +116,13 @@ struct CustomHotKeyEditView: View {
     @State private var globalMonitor: Any?
     @State private var localMonitor: Any?
     @State private var currentModifiers: UInt32 = 0
-    
+
     @Environment(\.dismiss) private var dismiss
-    
-    init(hotKey: CustomHotKeyConfig?, existingHotKeys: [CustomHotKeyConfig], onSave: @escaping (CustomHotKeyConfig) -> Void) {
+
+    init(
+        hotKey: CustomHotKeyConfig?, existingHotKeys: [CustomHotKeyConfig],
+        onSave: @escaping (CustomHotKeyConfig) -> Void
+    ) {
         self.hotKey = hotKey
         self.existingHotKeys = existingHotKeys
         self.onSave = onSave
@@ -128,18 +131,18 @@ struct CustomHotKeyEditView: View {
         self._modifiers = State(initialValue: hotKey?.modifiers ?? UInt32(optionKey))
         self._keyCode = State(initialValue: hotKey?.keyCode ?? UInt32(kVK_Space))
     }
-    
+
     var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    
+
     var hasConflict: Bool {
         existingHotKeys.contains { existing in
             existing.modifiers == modifiers && existing.keyCode == keyCode
         }
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             headerView
@@ -152,20 +155,20 @@ struct CustomHotKeyEditView: View {
             cancelRecordingHotKey()
         }
     }
-    
+
     private var headerView: some View {
         HStack {
             Text(hotKey == nil ? "添加快捷键" : "编辑快捷键")
                 .font(.title2)
                 .fontWeight(.semibold)
-            
+
             Spacer()
-            
+
             Button("取消") {
                 dismiss()
             }
             .buttonStyle(.bordered)
-            
+
             Button("保存") {
                 saveHotKey()
             }
@@ -175,12 +178,12 @@ struct CustomHotKeyEditView: View {
         .padding(20)
         .background(Color(NSColor.windowBackgroundColor))
     }
-    
+
     private var contentView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 HotKeyBasicInfoForm(name: $name, text: $text)
-                
+
                 HotKeySettingsCard(
                     isRecording: $isRecordingHotKey,
                     modifiers: $modifiers,
@@ -189,7 +192,7 @@ struct CustomHotKeyEditView: View {
                     onStartRecording: startRecordingHotKey,
                     onCancelRecording: cancelRecordingHotKey
                 )
-                
+
                 HotKeyPreviewCard(
                     isValid: isValid,
                     modifiers: modifiers,
@@ -200,7 +203,7 @@ struct CustomHotKeyEditView: View {
             .padding(20)
         }
     }
-    
+
     private func saveHotKey() {
         let newHotKey = CustomHotKeyConfig(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -211,35 +214,37 @@ struct CustomHotKeyEditView: View {
         onSave(newHotKey)
         dismiss()
     }
-    
+
     private func startRecordingHotKey() {
         isRecordingHotKey = true
         currentModifiers = 0
-        
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) {
+            event in
             handleKeyEvent(event)
         }
-        
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { event in
+
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) {
+            event in
             handleKeyEvent(event)
             return nil
         }
     }
-    
+
     private func cancelRecordingHotKey() {
         isRecordingHotKey = false
-        
+
         if let monitor = globalMonitor {
             NSEvent.removeMonitor(monitor)
             globalMonitor = nil
         }
-        
+
         if let monitor = localMonitor {
             NSEvent.removeMonitor(monitor)
             localMonitor = nil
         }
     }
-    
+
     private func handleKeyEvent(_ event: NSEvent) {
         guard isRecordingHotKey else { return }
         if event.type == .keyDown {
@@ -256,7 +261,7 @@ struct CustomHotKeyEditView: View {
                 UInt32(kVK_ANSI_M), UInt32(kVK_ANSI_N), UInt32(kVK_ANSI_O), UInt32(kVK_ANSI_P),
                 UInt32(kVK_ANSI_Q), UInt32(kVK_ANSI_R), UInt32(kVK_ANSI_S), UInt32(kVK_ANSI_T),
                 UInt32(kVK_ANSI_U), UInt32(kVK_ANSI_V), UInt32(kVK_ANSI_W), UInt32(kVK_ANSI_X),
-                UInt32(kVK_ANSI_Y), UInt32(kVK_ANSI_Z)
+                UInt32(kVK_ANSI_Y), UInt32(kVK_ANSI_Z),
             ]
             if validKeys.contains(keyCode) || (modifiers.rawValue != 0) {
                 let carbonModifiers = carbonModifiersFromCocoaModifiers(modifiers)
@@ -268,11 +273,11 @@ struct CustomHotKeyEditView: View {
             let modifiers = event.modifierFlags
             currentModifiers = carbonModifiersFromCocoaModifiers(modifiers)
             // 检查是否为单独的右 Command 或右 Option
-            if modifiers.contains(.command) && event.keyCode == 54 { // 右 Command
+            if modifiers.contains(.command) && event.keyCode == 54 {  // 右 Command
                 self.modifiers = 0x100010
                 self.keyCode = 0
                 cancelRecordingHotKey()
-            } else if modifiers.contains(.option) && event.keyCode == 61 { // 右 Option
+            } else if modifiers.contains(.option) && event.keyCode == 61 {  // 右 Option
                 self.modifiers = 0x100040
                 self.keyCode = 0
                 cancelRecordingHotKey()

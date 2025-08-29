@@ -8,7 +8,7 @@ struct SnippetSettingsView: View {
     @State private var searchText = ""
     @State private var filteredSnippets: [SnippetItem] = []
     @State private var searchDebounceTimer: Timer?
-    
+
     private func updateFilteredSnippets() {
         // 去抖动：避免在用户输入时频繁搜索
         searchDebounceTimer?.invalidate()
@@ -18,7 +18,7 @@ struct SnippetSettingsView: View {
             }
         }
     }
-    
+
     private func doUpdateFilteredSnippets() {
         if searchText.isEmpty {
             filteredSnippets = snippetManager.snippets
@@ -26,7 +26,7 @@ struct SnippetSettingsView: View {
             filteredSnippets = snippetManager.searchSnippets(query: searchText)
         }
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             SnippetComponents.HeaderView(
@@ -40,13 +40,13 @@ struct SnippetSettingsView: View {
         }
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
-            doUpdateFilteredSnippets() // 直接更新，不需要延迟
+            doUpdateFilteredSnippets()  // 直接更新，不需要延迟
         }
         .onChange(of: searchText) { _ in
-            updateFilteredSnippets() // 使用去抖动
+            updateFilteredSnippets()  // 使用去抖动
         }
         .onChange(of: snippetManager.snippets) { _ in
-            doUpdateFilteredSnippets() // 数据变化时立即更新
+            doUpdateFilteredSnippets()  // 数据变化时立即更新
         }
         .sheet(isPresented: $showingAddSnippet) {
             SnippetEditView(snippet: nil) { newSnippet in
@@ -59,7 +59,7 @@ struct SnippetSettingsView: View {
             }
         }
     }
-    
+
     private var contentView: some View {
         Group {
             if filteredSnippets.isEmpty {
@@ -67,20 +67,18 @@ struct SnippetSettingsView: View {
                     Image(systemName: searchText.isEmpty ? "doc.text" : "magnifyingglass")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                    
+
                     VStack(spacing: 8) {
                         Text(searchText.isEmpty ? "暂无代码片段" : "未找到匹配的片段")
                             .font(.headline)
                             .foregroundColor(.secondary)
-                        
-                        Text(searchText.isEmpty ? 
-                             "点击上方按钮添加您的第一个代码片段" : 
-                             "尝试其他搜索关键词或添加新片段")
+
+                        Text(searchText.isEmpty ? "点击上方按钮添加您的第一个代码片段" : "尝试其他搜索关键词或添加新片段")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    
+
                     if searchText.isEmpty {
                         Button("添加片段") {
                             showingAddSnippet = true
@@ -117,7 +115,7 @@ private struct SnippetRow: View {
     let snippet: SnippetItem
     let onEdit: () -> Void
     let onDelete: () -> Void
-    
+
     var body: some View {
         HStack(spacing: 16) {
             snippetInfo
@@ -127,14 +125,14 @@ private struct SnippetRow: View {
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
     }
-    
+
     private var snippetInfo: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(snippet.name)
                     .font(.headline)
                     .fontWeight(.medium)
-                
+
                 if !snippet.keyword.isEmpty {
                     Text(snippet.keyword)
                         .font(.system(.caption, design: .monospaced))
@@ -144,10 +142,10 @@ private struct SnippetRow: View {
                         .foregroundColor(.blue)
                         .cornerRadius(4)
                 }
-                
+
                 Spacer()
             }
-            
+
             Text(snippet.snippet)
                 .font(.body)
                 .foregroundColor(.secondary)
@@ -155,13 +153,13 @@ private struct SnippetRow: View {
                 .multilineTextAlignment(.leading)
         }
     }
-    
+
     private var actionButtons: some View {
         VStack(spacing: 8) {
             Button("编辑") { onEdit() }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-            
+
             Button("删除") { onDelete() }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -174,13 +172,13 @@ private struct SnippetRow: View {
 struct SnippetEditView: View {
     let snippet: SnippetItem?
     let onSave: (SnippetItem) -> Void
-    
+
     @State private var name: String
     @State private var keyword: String
     @State private var snippetText: String
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     init(snippet: SnippetItem?, onSave: @escaping (SnippetItem) -> Void) {
         self.snippet = snippet
         self.onSave = onSave
@@ -188,11 +186,11 @@ struct SnippetEditView: View {
         self._keyword = State(initialValue: snippet?.keyword ?? "")
         self._snippetText = State(initialValue: snippet?.snippet ?? "")
     }
-    
+
     private var isValid: Bool {
         !name.isEmpty && !keyword.isEmpty && !snippetText.isEmpty
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // 标题栏
@@ -200,27 +198,27 @@ struct SnippetEditView: View {
                 Text(snippet == nil ? "添加代码片段" : "编辑代码片段")
                     .font(.title2)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 Button("取消") { dismiss() }
                     .buttonStyle(.bordered)
-                
+
                 Button("保存") { saveSnippet() }
                     .disabled(!isValid)
                     .buttonStyle(.borderedProminent)
             }
             .padding(20)
-            
+
             Divider()
-            
+
             // 表单内容
             Form {
                 Section("基本信息") {
                     TextField("片段名称", text: $name)
                     TextField("关键词", text: $keyword)
                 }
-                
+
                 Section("内容") {
                     VStack(alignment: .leading) {
                         Text("片段内容")
@@ -230,7 +228,7 @@ struct SnippetEditView: View {
                             .frame(minHeight: 150)
                     }
                 }
-                
+
                 if isValid {
                     Section("预览") {
                         VStack(alignment: .leading, spacing: 8) {
@@ -256,7 +254,7 @@ struct SnippetEditView: View {
         }
         .frame(width: 600, height: 500)
     }
-    
+
     private func saveSnippet() {
         let newSnippet = SnippetItem(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
