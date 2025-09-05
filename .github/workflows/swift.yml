@@ -1,22 +1,104 @@
-# This workflow will build a Swift project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
-
-name: Swift
+name: Build and package LightLauncher
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
-
     runs-on: macos-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: swift build -v
-    - name: Run tests
-      run: swift test -v
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make build script executable
+        run: |
+          if [ -f ./build.sh ]; then
+            chmod +x ./build.sh
+          else
+            echo "No build.sh found in repository root" >&2
+            exit 1
+          fi
+        shell: bash
+
+      - name: Run build.sh
+        # 运行用户提供的 build 脚本，脚本应当生成 LightLauncher.app
+        run: |
+          ./build.sh
+        shell: bash
+
+      - name: Locate LightLauncher.app
+        id: find_app
+        run: |
+          set -euo pipefail
+          echo "Searching for LightLauncher.app..."
+          APP_PATH=$(find . -type d -name "LightLauncher.app" -print -quit || true)
+          if [ -z "$APP_PATH" ]; then
+            echo "LightLauncher.app not found after build." >&2
+            echo "::error ::LightLauncher.app not found after build."
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          # normalize path (remove leading ./)
+          APP_PATH="${APP_PATH#./}"
+          echo "app_path=${APP_PATH}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Package LightLauncher.app into DMG
+        id: create_dmg
+        run: |
+          set -euo pipefail
+          APP_PATH="${{ steps.find_app.outputs.app_path }}"
+          echo "Packaging $APP_PATH into a DMG..."
+
+          DIST_DIR="dist"
+          mkdir -p "$DIST_DIR"
+
+          # Create a temporary staging folder for the DMG contents
+          STAGING_DIR="$(mktemp -d)"
+          echo "Using staging dir: $STAGING_DIR"
+
+          # Copy the app into staging
+          cp -R "$APP_PATH" "$STAGING_DIR/"
+
+          # Create Applications symlink inside the DMG for user convenience
+          ln -s /Applications "$STAGING_DIR/Applications"
+
+          # Determine DMG name (include run number and short sha for uniqueness)
+          SHORT_SHA="$(echo "${GITHUB_SHA:-unknown}" | cut -c1-7)"
+          DMG_NAME="LightLauncher-${{ github.run_number }}-${SHORT_SHA}.dmg"
+          DMG_PATH="$DIST_DIR/$DMG_NAME"
+
+          # Create the compressed read-only DMG
+          hdiutil create -volname "LightLauncher" -srcfolder "$STAGING_DIR" -ov -format UDZO "$DMG_PATH"
+
+          # Optionally verify the DMG was created
+          if [ ! -f "$DMG_PATH" ]; then
+            echo "Failed to create DMG at $DMG_PATH" >&2
+            exit 1
+          fi
+
+          # Compute a checksum for reproducibility/reference
+          shasum -a 256 "$DMG_PATH" > "$DMG_PATH.sha256"
+
+          echo "dmg_path=$DMG_PATH" >> "$GITHUB_OUTPUT"
+          echo "dmg_sha256=$(<"$DMG_PATH.sha256")" >> "$GITHUB_OUTPUT"
+
+          # Clean up staging
+          rm -rf "$STAGING_DIR"
+        shell: bash
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LightLauncher-dmg
+          path: |
+            dist/*.dmg
+            dist/*.dmg.sha256
+
+      - name: List dist contents
+        if: always()
+        run: ls -al dist || true
+        shell: bash
