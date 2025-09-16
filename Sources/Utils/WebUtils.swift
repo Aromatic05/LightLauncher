@@ -18,13 +18,12 @@ class WebUtils {
 
     @MainActor
     static func performWebSearch(
-        query: String, encoding: String = "%20", searchEngine: String? = nil,
+        query: String, encoding: String = "%20", engineUrl: String? = nil,
         category: String? = nil
     ) -> Bool {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-
-        let engine = searchEngine ?? ConfigManager.shared.config.modes.defaultSearchEngine
         let category = category ?? ConfigManager.shared.config.modes.defaultSearchEngine
+        let engineUrl = engineUrl ?? getDefaultSearchEngineURL()
         let encodedQuery: String
         if encoding == "%20" {
             encodedQuery =
@@ -33,7 +32,7 @@ class WebUtils {
             encodedQuery = query.replacingOccurrences(of: " ", with: encoding)
         }
 
-        let searchURLString = engine.replacingOccurrences(
+        let searchURLString = engineUrl.replacingOccurrences(
             of: "{query}", with: encodedQuery)
 
         SearchHistoryManager.shared.addSearch(query: query, category: category)
