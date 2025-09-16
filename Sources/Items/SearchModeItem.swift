@@ -132,7 +132,7 @@ struct ActionableSearchItem: DisplayableItem {
         guard !query.isEmpty else { return false }
         return WebUtils.performWebSearch(
             query: query, encoding: String(item.spaceEncoding ?? "%20"),
-            searchEngine: item.url)
+            searchEngine: item.url, category: item.title)
     }
 }
 
