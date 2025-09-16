@@ -109,6 +109,7 @@ struct CustomHotKeyEditView: View {
     let onSave: (CustomHotKeyConfig) -> Void
 
     @State private var name: String
+    @State private var type: String
     @State private var text: String
     @State private var isRecordingHotKey = false
     @State private var modifiers: UInt32
@@ -127,6 +128,7 @@ struct CustomHotKeyEditView: View {
         self.existingHotKeys = existingHotKeys
         self.onSave = onSave
         self._name = State(initialValue: hotKey?.name ?? "")
+        self._type = State(initialValue: hotKey?.type ?? "query")
         self._text = State(initialValue: hotKey?.text ?? "")
         self._modifiers = State(initialValue: hotKey?.modifiers ?? UInt32(optionKey))
         self._keyCode = State(initialValue: hotKey?.keyCode ?? UInt32(kVK_Space))
@@ -182,7 +184,7 @@ struct CustomHotKeyEditView: View {
     private var contentView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                HotKeyBasicInfoForm(name: $name, text: $text)
+                HotKeyBasicInfoForm(name: $name, type: $type, text: $text)
 
                 HotKeySettingsCard(
                     isRecording: $isRecordingHotKey,
@@ -209,6 +211,7 @@ struct CustomHotKeyEditView: View {
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
             modifiers: modifiers,
             keyCode: keyCode,
+            type: type,
             text: text
         )
         onSave(newHotKey)

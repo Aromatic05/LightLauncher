@@ -86,6 +86,7 @@ struct HotKeyRecordButton: View {
 // MARK: - 快捷键基本信息表单
 struct HotKeyBasicInfoForm: View {
     @Binding var name: String
+    @Binding var type: String
     @Binding var text: String
 
     var body: some View {
@@ -101,6 +102,19 @@ struct HotKeyBasicInfoForm: View {
                         .fontWeight(.medium)
                     TextField("为这个快捷键起一个描述性的名字", text: $name)
                         .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("快捷键类型")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Picker(selection: $type, label: Text("快捷键类型")) {
+                        Text("open").tag("open")
+                        Text("web").tag("web")
+                        Text("search").tag("search")
+                        Text("query").tag("query")
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
