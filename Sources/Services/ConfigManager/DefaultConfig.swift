@@ -6,7 +6,10 @@ enum AppConfigDefaults {
     // 默认自定义快捷键配置
     static let customHotKeys: [CustomHotKeyConfig] = [
         CustomHotKeyConfig(
-            name: "剪切板", modifiers: UInt32(optionKey), keyCode: UInt32(kVK_ANSI_V), text: "/v ")
+            name: "剪切板", modifiers: UInt32(optionKey), keyCode: UInt32(kVK_ANSI_V), text: "/v "),
+        CustomHotKeyConfig(
+            name: "Code", modifiers: UInt32(optionKey), keyCode: UInt32(kVK_ANSI_C), type: "open",
+            text: "/Applications/Visual Studio Code.app"),
     ]
     static let searchDirectories: [SearchDirectory] = [
         SearchDirectory(path: "/Applications"),

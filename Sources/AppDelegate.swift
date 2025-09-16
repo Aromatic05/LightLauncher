@@ -72,8 +72,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         Task { @MainActor in
             guard let config = HotkeyManager.getConfig(for: hotkeyID) else { return }
-            self.windowManager?.showMainWindow()
-            self.viewModel?.updateQuery(newQuery: config.text)
+            if config.type == "open" {
+                let filePath = (config.text as NSString).expandingTildeInPath
+                let fileURL = URL(fileURLWithPath: filePath)
+                if FileManager.default.fileExists(atPath: fileURL.path) {
+                    NSWorkspace.shared.open(fileURL)
+                    return
+                }
+                print("❌ 文件不存在，无法打开：\(fileURL.path)")
+                return
+            } else if config.type == "web" {
+                if WebUtils.openWebURL(config.text) {
+                    return
+                }
+                print("❌ 无法识别的 URL：\(config.text)")
+                return
+            } else if config.type == "search" {
+                if WebUtils.performWebSearch(query: config.text) {
+                    return
+                }
+                print("❌ 无法执行网络搜索，查询为空：\(config.text)")
+                return
+            } else {
+                // 默认行为：显示主窗口并更新查询
+                self.windowManager?.showMainWindow()
+                self.viewModel?.updateQuery(newQuery: config.text)
+            }
         }
     }
 

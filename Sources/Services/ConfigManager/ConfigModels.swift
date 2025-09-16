@@ -155,14 +155,16 @@ struct CustomHotKeyConfig: Codable, Identifiable, Sendable {
     let name: String
     let modifiers: UInt32
     let keyCode: UInt32
+    let type: String
     let text: String
 
     // 如果 name 是唯一标识符，可以这样初始化
-    init(name: String, modifiers: UInt32, keyCode: UInt32, text: String) {
+    init(name: String, modifiers: UInt32, keyCode: UInt32, type: String = "query", text: String) {
         self.id = name  // 在初始化时赋值
         self.name = name
         self.modifiers = modifiers
         self.keyCode = keyCode
+        self.type = type
         self.text = text
     }
 }
