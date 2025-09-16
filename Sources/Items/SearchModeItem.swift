@@ -1,25 +1,90 @@
 import SwiftUI
 
 private func loadIcon(named iconName: String?) -> NSImage? {
+    // Return a sensible default early if no name provided
     guard let iconName = iconName, !iconName.isEmpty else {
         return NSImage(
-            systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
+            systemSymbolName: "magnifyingglass",
+            accessibilityDescription: "Default search icon")
     }
-    if let resourceURL = Bundle.module.url(
+
+    // Helper to load from a resource URL safely
+    func image(from url: URL?) -> NSImage? {
+        guard let url = url else { return nil }
+        return NSImage(contentsOf: url)
+    }
+
+    // 1) Try SPM module bundle if available
+    #if SWIFT_PACKAGE
+        if let resourceURL = Bundle.module.url(
+            forResource: (iconName as NSString).deletingPathExtension,
+            withExtension: (iconName as NSString).pathExtension),
+            let bundleIcon = image(from: resourceURL)
+        {
+            return bundleIcon
+        }
+    #endif
+
+    // 2) Try main bundle (in case resources were copied into the app bundle)
+    if let resourceURL = Bundle.main.url(
         forResource: (iconName as NSString).deletingPathExtension,
         withExtension: (iconName as NSString).pathExtension),
-        let bundleIcon = NSImage(contentsOf: resourceURL)
+        let mainIcon = image(from: resourceURL)
     {
-        return bundleIcon
+        return mainIcon
     }
+
+    // 3) If iconName looks like a file system path, try loading it directly
+    if iconName.hasPrefix("/") {
+        if let direct = NSImage(contentsOfFile: iconName) {
+            return direct
+        }
+    } else if let fileURL = URL(string: iconName), fileURL.isFileURL {
+        if let direct = image(from: fileURL) {
+            return direct
+        }
+    }
+
+    // 4) Try user-provided icons in ~/.config/LightLauncher/icons/
     let home = FileManager.default.homeDirectoryForCurrentUser
     let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/")
         .appendingPathComponent(iconName).path
     if let userIcon = NSImage(contentsOfFile: iconFullPath) {
         return userIcon
     }
+
+    // 5) If the passed name had no extension, attempt common extensions as a last resort.
+    let ext = (iconName as NSString).pathExtension
+    if ext.isEmpty {
+        let base = (iconName as NSString).deletingPathExtension
+        let commonExts = ["png", "jpg", "jpeg", "gif", "pdf"]
+        for e in commonExts {
+            #if SWIFT_PACKAGE
+                if let resourceURL = Bundle.module.url(forResource: base, withExtension: e),
+                    let img = image(from: resourceURL)
+                {
+                    return img
+                }
+            #endif
+
+            if let resourceURL = Bundle.main.url(forResource: base, withExtension: e),
+                let img = image(from: resourceURL)
+            {
+                return img
+            }
+
+            let candidate = home.appendingPathComponent(".config/LightLauncher/icons/")
+                .appendingPathComponent("\(base).\(e)").path
+            if let img = NSImage(contentsOfFile: candidate) {
+                return img
+            }
+        }
+    }
+
+    // Final fallback: system symbol
     return NSImage(
-        systemSymbolName: "magnifyingglass", accessibilityDescription: "Default search icon")
+        systemSymbolName: "magnifyingglass",
+        accessibilityDescription: "Default search icon")
 }
 
 struct KeywordSuggestionItem: DisplayableItem {
