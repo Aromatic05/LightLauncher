@@ -22,7 +22,7 @@ mkdir -p LightLauncher.app/Contents/Resources
 
 # 复制可执行文件
 cp .build/release/LightLauncher LightLauncher.app/Contents/MacOS/
-cp .build/release/LightLauncher_LightLauncher.bundle LightLauncher.app/
+cp -r .build/release/LightLauncher_LightLauncher.bundle LightLauncher.app/
 
 # 复制应用图标（如果存在）
 if [ -f "Sources/Resources/AppIcon.icns" ]; then
@@ -32,8 +32,8 @@ else
     echo "未找到应用图标，请运行 ./set_icon.sh 来设置图标"
 fi
 
-cp Sources/Resources/*.png LightLauncher.app/Contents/Resources/
-echo "复制资源文件..."
+# cp Sources/Resources/*.png LightLauncher.app/Contents/Resources/
+# echo "复制资源文件..."
 
 # 创建 Info.plist
 cat > LightLauncher.app/Contents/Info.plist << 'EOF'
