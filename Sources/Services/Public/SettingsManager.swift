@@ -127,41 +127,6 @@ class SettingsManager: ObservableObject {
         // 通知 AppDelegate 更新热键
         NotificationCenter.default.post(name: .hotKeyChanged, object: nil)
     }
-
-    // 获取热键描述
-    func getHotKeyDescription() -> String {
-        var description = ""
-
-        // 检查特殊的左右修饰键
-        if hotKeyModifiers == 0x100010 {  // 右 Command
-            description += "R⌘"
-        } else if hotKeyModifiers == 0x100040 {  // 右 Option
-            description += "R⌥"
-        } else {
-            // 标准修饰键
-            if hotKeyModifiers & UInt32(cmdKey) != 0 {
-                description += "⌘"
-            }
-            if hotKeyModifiers & UInt32(optionKey) != 0 {
-                description += "⌥"
-            }
-            if hotKeyModifiers & UInt32(controlKey) != 0 {
-                description += "⌃"
-            }
-            if hotKeyModifiers & UInt32(shiftKey) != 0 {
-                description += "⇧"
-            }
-        }
-
-        // 如果只有修饰键没有普通键，则不添加键名
-        if hotKeyCode == 0 {
-            return description.isEmpty ? "无" : description
-        }
-
-        description += ConfigManager.getKeyName(for: hotKeyCode)
-
-        return description
-    }
 }
 
 // MARK: - 通知名称扩展

@@ -76,7 +76,7 @@ struct GeneralSettingsView: View {
                                             .font(.system(size: 14, design: .monospaced))
                                     } else {
                                         Image(systemName: "keyboard")
-                                        Text(configManager.getHotKeyDescription())
+                                        Text(HotKeyUtils.getHotKeyDescription(modifiers: currentModifiers, keyCode: settingsManager.hotKeyCode))
                                             .font(
                                                 .system(
                                                     size: 16, weight: .semibold, design: .monospaced

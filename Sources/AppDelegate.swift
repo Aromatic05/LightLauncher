@@ -1,5 +1,4 @@
 import AppKit
-import Carbon
 import SwiftUI
 
 @MainActor
@@ -118,7 +117,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         statusMenuManager = StatusMenuManager(
             actions: actions,
-            hotkeyDescription: settingsManager.getHotKeyDescription()
+            hotkeyDescription: HotKeyUtils.getHotKeyDescription(
+                modifiers: configManager.config.hotKey.modifiers,
+                keyCode: configManager.config.hotKey.keyCode
+            )
         )
     }
 
@@ -159,6 +161,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 重新注册所有热键
         setupAllHotkeys()
         // 更新菜单栏的提示信息
-        statusMenuManager?.updateTooltip(with: configManager.getHotKeyDescription())
+        statusMenuManager?.updateTooltip(with: HotKeyUtils.getHotKeyDescription(
+            modifiers: configManager.config.hotKey.modifiers,
+            keyCode: configManager.config.hotKey.keyCode
+        ))
     }
 }

@@ -1,4 +1,3 @@
-import Carbon
 import SwiftUI
 
 // MARK: - 快捷键录制按钮组件
@@ -27,7 +26,7 @@ struct HotKeyRecordButton: View {
                             .font(.system(size: 14, design: .monospaced))
                     } else {
                         Image(systemName: "keyboard")
-                        Text(getHotKeyDescription())
+                        Text(HotKeyUtils.getHotKeyDescription(modifiers: modifiers, keyCode: keyCode))
                             .font(.system(size: 16, weight: .semibold, design: .monospaced))
                     }
                 }
@@ -59,27 +58,6 @@ struct HotKeyRecordButton: View {
                 .buttonStyle(.bordered)
             }
         }
-    }
-
-    private func getHotKeyDescription() -> String {
-        var description = ""
-
-        if modifiers & UInt32(controlKey) != 0 {
-            description += "⌃"
-        }
-        if modifiers & UInt32(optionKey) != 0 {
-            description += "⌥"
-        }
-        if modifiers & UInt32(shiftKey) != 0 {
-            description += "⇧"
-        }
-        if modifiers & UInt32(cmdKey) != 0 {
-            description += "⌘"
-        }
-
-        description += ConfigManager.getKeyName(for: keyCode)
-
-        return description
     }
 }
 
@@ -202,7 +180,7 @@ struct HotKeyPreviewCard: View {
                         Text("快捷键:")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        Text(getHotKeyDescription())
+                        Text(HotKeyUtils.getHotKeyDescription(modifiers: modifiers, keyCode: keyCode))
                             .font(.system(.subheadline, design: .monospaced))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -232,26 +210,5 @@ struct HotKeyPreviewCard: View {
         .padding(20)
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(12)
-    }
-
-    private func getHotKeyDescription() -> String {
-        var description = ""
-
-        if modifiers & UInt32(controlKey) != 0 {
-            description += "⌃"
-        }
-        if modifiers & UInt32(optionKey) != 0 {
-            description += "⌥"
-        }
-        if modifiers & UInt32(shiftKey) != 0 {
-            description += "⇧"
-        }
-        if modifiers & UInt32(cmdKey) != 0 {
-            description += "⌘"
-        }
-
-        description += ConfigManager.getKeyName(for: keyCode)
-
-        return description
     }
 }

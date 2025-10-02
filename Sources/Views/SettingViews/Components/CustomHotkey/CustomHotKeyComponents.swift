@@ -73,7 +73,7 @@ struct CustomHotKeyRow: View {
                     .cornerRadius(4)
             }
 
-            Text(getKeyCodeString())
+            Text(HotKeyUtils.getKeyName(for: hotKey.keyCode))
                 .font(.caption)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
@@ -129,10 +129,6 @@ struct CustomHotKeyRow: View {
         }
 
         return modifiers
-    }
-
-    private func getKeyCodeString() -> String {
-        return ConfigManager.getKeyName(for: hotKey.keyCode)
     }
 }
 
