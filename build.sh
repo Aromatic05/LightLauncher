@@ -22,6 +22,7 @@ mkdir -p LightLauncher.app/Contents/Resources
 
 # 复制可执行文件
 cp .build/release/LightLauncher LightLauncher.app/Contents/MacOS/
+cp .build/release/LightLauncher_LightLauncher.bundle LightLauncher.app/
 
 # 复制应用图标（如果存在）
 if [ -f "Sources/Resources/AppIcon.icns" ]; then
