@@ -142,8 +142,8 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
             }
             .store(in: &cancellables)
         // 启动扫描
-        appScanner.scanForApplications()
-        paneScanner.scanForPreferencePanes()
+        // appScanner.scanForApplications()
+        // paneScanner.scanForPreferencePanes()
     }
 
     func loadUsageData() {

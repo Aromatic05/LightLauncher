@@ -32,6 +32,8 @@ class AppScanner: ObservableObject {
             }
             self.isScanning = false
         }
+
+        print("🔍 开始扫描应用程序...")
     }
 
     private func performScan() async -> [AppInfo] {
