@@ -8,10 +8,29 @@ private func loadIcon(named iconName: String?) -> NSImage? {
             accessibilityDescription: "Default search icon")
     }
 
-    // Helper to load from a resource URL safely
+    // Helper to load from a resource URL safely. Use non-throwing APIs and try?
+    // so any IO/parsing errors are ignored and won't crash the app.
     func image(from url: URL?) -> NSImage? {
         guard let url = url else { return nil }
-        return NSImage(contentsOf: url)
+
+        // If it's a file URL, try the convenient file-based initializers first.
+        if url.isFileURL {
+            if let img = NSImage(contentsOf: url) {
+                return img
+            }
+            // Fallback: try reading data safely and constructing image from data.
+            if let data = try? Data(contentsOf: url), let img = NSImage(data: data) {
+                return img
+            }
+            return nil
+        }
+
+        // For non-file URLs, attempt to read data with try? and build image from data.
+        if let data = try? Data(contentsOf: url), let img = NSImage(data: data) {
+            return img
+        }
+
+        return nil
     }
 
     // 1) Try SPM module bundle if available
