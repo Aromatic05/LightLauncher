@@ -28,6 +28,7 @@ cp -r .build/release/LightLauncher_LightLauncher.bundle LightLauncher.app/
 if [ -f "Sources/Resources/AppIcon.icns" ]; then
     echo "复制应用图标..."
     cp Sources/Resources/AppIcon.icns LightLauncher.app/Contents/Resources/
+    rm LightLauncher.app/LightLauncher_LightLauncher.bundle/AppIcon.icns
 else
     echo "未找到应用图标，请运行 ./set_icon.sh 来设置图标"
 fi
