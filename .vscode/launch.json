@@ -4,6 +4,24 @@
             "type": "swift",
             "request": "launch",
             "args": [],
+            "cwd": "${workspaceFolder:swift-executable}",
+            "name": "Debug swift-executable",
+            "program": "${workspaceFolder:swift-executable}/.build/debug/swift-executable",
+            "preLaunchTask": "swift: Build Debug swift-executable"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:swift-executable}",
+            "name": "Release swift-executable",
+            "program": "${workspaceFolder:swift-executable}/.build/release/swift-executable",
+            "preLaunchTask": "swift: Build Release swift-executable"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
             "cwd": "${workspaceFolder:LightLauncher}",
             "name": "Debug LightLauncher",
             "program": "${workspaceFolder:LightLauncher}/.build/debug/LightLauncher",
