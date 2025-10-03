@@ -1,7 +1,7 @@
 import SwiftUI
 
 // MARK: - 自定义快捷键行视图
-struct CustomHotKeyRow: View {
+struct CustomHotKeyCard: View {
     let hotKey: CustomHotKeyConfig
     let onEdit: () -> Void
     let onDelete: () -> Void

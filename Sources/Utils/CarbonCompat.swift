@@ -57,3 +57,14 @@ public let kVK_ANSI_W: Int32 = 13
 public let kVK_ANSI_X: Int32 = 7
 public let kVK_ANSI_Y: Int32 = 16
 public let kVK_ANSI_Z: Int32 = 6
+
+public let kVK_ANSI_0: Int32 = 29
+public let kVK_ANSI_1: Int32 = 18
+public let kVK_ANSI_2: Int32 = 19
+public let kVK_ANSI_3: Int32 = 20
+public let kVK_ANSI_4: Int32 = 21
+public let kVK_ANSI_5: Int32 = 23
+public let kVK_ANSI_6: Int32 = 22
+public let kVK_ANSI_7: Int32 = 26
+public let kVK_ANSI_8: Int32 = 28
+public let kVK_ANSI_9: Int32 = 25

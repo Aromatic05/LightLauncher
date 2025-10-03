@@ -1,5 +1,4 @@
 import SwiftUI
-import Carbon
 
 // MARK: - 快捷键录制管理器
 /// 负责处理快捷键的录制逻辑，包括事件监听、修饰键转换等
