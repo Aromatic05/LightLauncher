@@ -50,15 +50,15 @@ final class HotkeyManager {
     private static var carbonHotkeys: [(ref: EventHotKeyRef, id: UInt32, isMain: Bool)] = []
     private static var sharedEventHandler: EventHandlerRef?
     
-    // Layer 2: NSEvent 监听的热键（侧别相关）
-    private static var nsEventHotkeys: [(hotkey: HotKey, id: UInt32, isMain: Bool, monitor: Any?)] = []
+    // Layer 2: NSEvent 监听的热键（侧别相关）- 需要 global 和 local 两个 monitor
+    private static var nsEventHotkeys: [(hotkey: HotKey, id: UInt32, isMain: Bool, globalMonitor: Any?, localMonitor: Any?)] = []
     
     // Layer 3: 仅修饰键热键
-    private static var modifierOnlyHotkey: (hotkey: HotKey, id: UInt32, isMain: Bool, monitor: Any?)?
+    private static var modifierOnlyHotkey: (hotkey: HotKey, id: UInt32, isMain: Bool, globalMonitor: Any?, localMonitor: Any?)?
     
-    // 物理按键跟踪（用于侧别检测）
+    // 物理按键跟踪（用于侧别检测）- 需要 global 和 local 两套监听器
     private static var physicalModifierKeys: Set<UInt16> = []
-    private static var physicalKeyTracker: (flags: Any?, keyDown: Any?)?
+    private static var physicalKeyTracker: (globalFlags: Any?, localFlags: Any?, globalKeyDown: Any?, localKeyDown: Any?)?
     
     // 非修饰键按下标记（用于仅修饰键干扰检测）
     private static var hasNonModifierKeyPressed: Bool = false
@@ -99,26 +99,40 @@ final class HotkeyManager {
         carbonHotkeys.removeAll()
         
         // 清理 NSEvent 热键
-        for (_, _, _, monitor) in nsEventHotkeys {
-            if let monitor = monitor {
+        for (_, _, _, globalMonitor, localMonitor) in nsEventHotkeys {
+            if let monitor = globalMonitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            if let monitor = localMonitor {
                 NSEvent.removeMonitor(monitor)
             }
         }
         nsEventHotkeys.removeAll()
         
         // 清理仅修饰键热键
-        if let (_, _, _, monitor) = modifierOnlyHotkey, let monitor = monitor {
-            NSEvent.removeMonitor(monitor)
+        if let (_, _, _, globalMonitor, localMonitor) = modifierOnlyHotkey {
+            if let monitor = globalMonitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            if let monitor = localMonitor {
+                NSEvent.removeMonitor(monitor)
+            }
             modifierOnlyHotkey = nil
         }
         
         // 清理物理按键跟踪
-        if let (flags, keyDown) = physicalKeyTracker {
-            if let flags = flags {
-                NSEvent.removeMonitor(flags)
+        if let (globalFlags, localFlags, globalKeyDown, localKeyDown) = physicalKeyTracker {
+            if let monitor = globalFlags {
+                NSEvent.removeMonitor(monitor)
             }
-            if let keyDown = keyDown {
-                NSEvent.removeMonitor(keyDown)
+            if let monitor = localFlags {
+                NSEvent.removeMonitor(monitor)
+            }
+            if let monitor = globalKeyDown {
+                NSEvent.removeMonitor(monitor)
+            }
+            if let monitor = localKeyDown {
+                NSEvent.removeMonitor(monitor)
             }
             physicalKeyTracker = nil
         }
@@ -199,7 +213,8 @@ final class HotkeyManager {
     // MARK: - Layer 2: NSEvent 监听（侧别组合键）
     
     private static func registerWithNSEvent(hotkey: HotKey, id: UInt32, isMain: Bool) {
-        let monitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+        // 共享的匹配逻辑
+        let matchAndTrigger: (NSEvent) -> Void = { event in
             // 1. 检查 keyCode 是否匹配
             guard UInt32(event.keyCode) == hotkey.keyCode else { return }
             
@@ -214,8 +229,30 @@ final class HotkeyManager {
             triggerHotkey(id: id, isMain: isMain)
         }
         
-        nsEventHotkeys.append((hotkey, id, isMain, monitor))
-        print("[HotkeyManager] ✓ NSEvent registered: \(hotkey.description()) [id=\(id)]")
+        // Global monitor - 监听其他应用的事件
+        let globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+            matchAndTrigger(event)
+        }
+        
+        // Local monitor - 拦截本应用的事件
+        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // 1. 检查 keyCode 是否匹配
+            guard UInt32(event.keyCode) == hotkey.keyCode else { return event }
+            
+            // 2. 从物理按键集合计算当前修饰键（含侧别）
+            let currentHotkey = HotKey.from(event: event, physicalKeys: physicalModifierKeys)
+            
+            // 3. 精确匹配（包括侧别）
+            guard currentHotkey.rawValue == hotkey.rawValue else { return event }
+            
+            // 4. 触发并拦截事件
+            print("[HotkeyManager] ⚡ NSEvent (local) triggered: \(hotkey.description()) [id=\(id)]")
+            triggerHotkey(id: id, isMain: isMain)
+            return nil  // 拦截事件，不让它继续传播
+        }
+        
+        nsEventHotkeys.append((hotkey, id, isMain, globalMonitor, localMonitor))
+        print("[HotkeyManager] ✓ NSEvent registered (global + local): \(hotkey.description()) [id=\(id)]")
     }
     
     // MARK: - Layer 3: 仅修饰键（带干扰检测）
@@ -223,7 +260,8 @@ final class HotkeyManager {
     private static func registerModifierOnly(hotkey: HotKey, id: UInt32, isMain: Bool) {
         var lastMatchedModifiers: HotKey? = nil
         
-        let monitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
+        // 共享的处理逻辑
+        let handleFlagsChanged: (NSEvent) -> Void = { event in
             let currentHotkey = HotKey.from(event: event, physicalKeys: physicalModifierKeys)
             
             // 按下阶段：记录匹配
@@ -253,28 +291,54 @@ final class HotkeyManager {
             }
         }
         
-        modifierOnlyHotkey = (hotkey, id, isMain, monitor)
-        print("[HotkeyManager] ✓ ModifierOnly registered: \(hotkey.description()) [id=\(id)]")
+        // Global monitor
+        let globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
+            handleFlagsChanged(event)
+        }
+        
+        // Local monitor
+        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+            handleFlagsChanged(event)
+            return event  // 不拦截 flagsChanged 事件
+        }
+        
+        modifierOnlyHotkey = (hotkey, id, isMain, globalMonitor, localMonitor)
+        print("[HotkeyManager] ✓ ModifierOnly registered (global + local): \(hotkey.description()) [id=\(id)]")
     }
     
     // MARK: - 物理按键跟踪
     
     private static func setupPhysicalKeyTracker() {
-        // 跟踪 flagsChanged 以维护物理修饰键集合
-        let flagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
+        // Global monitor: 跟踪 flagsChanged 以维护物理修饰键集合
+        let globalFlagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
             updatePhysicalModifierKeys(event: event)
         }
         
-        // 跟踪 keyDown 以检测非修饰键按下（用于干扰检测）
-        let keyDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
+        // Local monitor: 跟踪 flagsChanged
+        let localFlagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
+            updatePhysicalModifierKeys(event: event)
+            return event
+        }
+        
+        // Global monitor: 跟踪 keyDown 以检测非修饰键按下（用于干扰检测）
+        let globalKeyDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
             let code = event.keyCode
             if !isModifierKeyCode(code) {
                 hasNonModifierKeyPressed = true
             }
         }
         
-        physicalKeyTracker = (flagsMonitor, keyDownMonitor)
-        print("[HotkeyManager] ✓ Physical key tracker started")
+        // Local monitor: 跟踪 keyDown
+        let localKeyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            let code = event.keyCode
+            if !isModifierKeyCode(code) {
+                hasNonModifierKeyPressed = true
+            }
+            return event
+        }
+        
+        physicalKeyTracker = (globalFlagsMonitor, localFlagsMonitor, globalKeyDownMonitor, localKeyDownMonitor)
+        print("[HotkeyManager] ✓ Physical key tracker started (global + local)")
     }
     
     private static func updatePhysicalModifierKeys(event: NSEvent) {
