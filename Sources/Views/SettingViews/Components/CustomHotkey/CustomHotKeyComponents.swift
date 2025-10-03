@@ -1,5 +1,4 @@
 import SwiftUI
-import Carbon
 
 // MARK: - 自定义快捷键空状态视图
 struct CustomHotKeyEmptyView: View {

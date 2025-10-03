@@ -1,4 +1,5 @@
-import Carbon
+import AppKit
+import Carbon.HIToolbox
 
 // 输入法管理器
 class InputMethodManager {
@@ -10,27 +11,22 @@ class InputMethodManager {
         previousInputSource = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
 
         // 获取英文输入法列表
-        let filter =
-            [kTISPropertyInputSourceCategory: kTISCategoryKeyboardInputSource] as CFDictionary
+        let filter = [kTISPropertyInputSourceCategory: kTISCategoryKeyboardInputSource] as CFDictionary
         guard let inputSources = TISCreateInputSourceList(filter, false)?.takeRetainedValue() else {
             return
         }
 
-        let count = CFArrayGetCount(inputSources)
-        for i in 0..<count {
-            guard let inputSource = CFArrayGetValueAtIndex(inputSources, i) else { continue }
-            let source = Unmanaged<TISInputSource>.fromOpaque(inputSource).takeUnretainedValue()
+        let sources = inputSources as NSArray
+        for case let source as TISInputSource in sources {
+            // 获取输入法ID（作为 CFString）
+            if let rawProp = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) {
+                let id = (rawProp as! CFString) as String
 
-            // 获取输入法ID
-            guard let sourceID = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else {
-                continue
-            }
-            let id = Unmanaged<CFString>.fromOpaque(sourceID).takeUnretainedValue() as String
-
-            // 查找ABC输入法（美式英语键盘）
-            if id == "com.apple.keylayout.ABC" || id == "com.apple.keylayout.US" {
-                TISSelectInputSource(source)
-                break
+                // 查找 ABC 或 US 输入法（美式英语键盘）
+                if id == "com.apple.keylayout.ABC" || id == "com.apple.keylayout.US" {
+                    TISSelectInputSource(source)
+                    break
+                }
             }
         }
     }

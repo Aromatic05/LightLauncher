@@ -1,5 +1,5 @@
 import AppKit
-import Carbon
+import Carbon.HIToolbox
 import Foundation
 
 // MARK: - 全局 C 回调函数
