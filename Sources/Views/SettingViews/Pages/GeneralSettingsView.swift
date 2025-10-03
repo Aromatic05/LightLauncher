@@ -1,4 +1,3 @@
-import Carbon
 import SwiftUI
 
 // MARK: - 通用设置视图

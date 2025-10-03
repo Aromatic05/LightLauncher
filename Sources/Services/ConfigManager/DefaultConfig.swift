@@ -1,4 +1,3 @@
-import Carbon
 import Foundation
 
 // 默认配置常量

@@ -1,4 +1,3 @@
-import Carbon
 import SwiftUI
 
 // MARK: - 自定义快捷键设置视图
@@ -131,7 +130,7 @@ struct CustomHotKeyEditView: View {
         self._type = State(initialValue: hotKey?.type ?? "query")
         self._text = State(initialValue: hotKey?.text ?? "")
         self._modifiers = State(initialValue: hotKey?.modifiers ?? UInt32(optionKey))
-        self._keyCode = State(initialValue: hotKey?.keyCode ?? UInt32(kVK_Space))
+        self._keyCode = State(initialValue: hotKey?.keyCode ?? 49)
     }
 
     var isValid: Bool {
@@ -254,17 +253,17 @@ struct CustomHotKeyEditView: View {
             let keyCode = UInt32(event.keyCode)
             let modifiers = event.modifierFlags
             let validKeys: [UInt32] = [
-                UInt32(kVK_Space), UInt32(kVK_Return), UInt32(kVK_Escape), UInt32(kVK_Tab),
-                UInt32(kVK_F1), UInt32(kVK_F2), UInt32(kVK_F3), UInt32(kVK_F4),
-                UInt32(kVK_F5), UInt32(kVK_F6), UInt32(kVK_F7), UInt32(kVK_F8),
-                UInt32(kVK_F9), UInt32(kVK_F10), UInt32(kVK_F11), UInt32(kVK_F12),
-                UInt32(kVK_ANSI_A), UInt32(kVK_ANSI_B), UInt32(kVK_ANSI_C), UInt32(kVK_ANSI_D),
-                UInt32(kVK_ANSI_E), UInt32(kVK_ANSI_F), UInt32(kVK_ANSI_G), UInt32(kVK_ANSI_H),
-                UInt32(kVK_ANSI_I), UInt32(kVK_ANSI_J), UInt32(kVK_ANSI_K), UInt32(kVK_ANSI_L),
-                UInt32(kVK_ANSI_M), UInt32(kVK_ANSI_N), UInt32(kVK_ANSI_O), UInt32(kVK_ANSI_P),
-                UInt32(kVK_ANSI_Q), UInt32(kVK_ANSI_R), UInt32(kVK_ANSI_S), UInt32(kVK_ANSI_T),
-                UInt32(kVK_ANSI_U), UInt32(kVK_ANSI_V), UInt32(kVK_ANSI_W), UInt32(kVK_ANSI_X),
-                UInt32(kVK_ANSI_Y), UInt32(kVK_ANSI_Z),
+                49, 36, 53, 48,
+                122, 120, 99, 118,
+                96, 97, 98, 100,
+                101, 109, 103, 111,
+                0, 11, 8, 2,
+                14, 3, 5, 4,
+                34, 38, 40, 37,
+                46, 45, 31, 35,
+                12, 15, 1, 17,
+                32, 9, 13, 7,
+                16, 6,
             ]
             if validKeys.contains(keyCode) || (modifiers.rawValue != 0) {
                 let carbonModifiers = carbonModifiersFromCocoaModifiers(modifiers)

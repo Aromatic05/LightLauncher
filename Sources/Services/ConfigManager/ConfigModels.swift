@@ -1,4 +1,3 @@
-import Carbon
 import Foundation
 
 // 配置数据结构

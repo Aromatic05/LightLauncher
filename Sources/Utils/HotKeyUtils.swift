@@ -11,97 +11,54 @@ class HotKeyUtils {
         static let control = ModifierFlags(rawValue: 1 << 17)    // controlKey (0x20000)
         static let shift   = ModifierFlags(rawValue: 1 << 16)    // shiftKey (0x10000)
     }
-    private enum KeyCode: UInt32 {
-        case space = 49
-        case `return` = 36
-        case escape = 53
-        case tab = 48
-        case delete = 51
-        case f1 = 122
-        case f2 = 120
-        case f3 = 99
-        case f4 = 118
-        case f5 = 96
-        case f6 = 97
-        case f7 = 98
-        case f8 = 100
-        case f9 = 101
-        case f10 = 109
-        case f11 = 103
-        case f12 = 111
-        case ansiA = 0
-        case ansiB = 11
-        case ansiC = 8
-        case ansiD = 2
-        case ansiE = 14
-        case ansiF = 3
-        case ansiG = 5
-        case ansiH = 4
-        case ansiI = 34
-        case ansiJ = 38
-        case ansiK = 40
-        case ansiL = 37
-        case ansiM = 46
-        case ansiN = 45
-        case ansiO = 31
-        case ansiP = 35
-        case ansiQ = 12
-        case ansiR = 15
-        case ansiS = 1
-        case ansiT = 17
-        case ansiU = 32
-        case ansiV = 9
-        case ansiW = 13
-        case ansiX = 7
-        case ansiY = 16
-        case ansiZ = 6
-    }
+    // NOTE: KeyCode enum removed by request — keycodes will be stored as numeric magic numbers.
+    // The getKeyName below maps numeric keycodes to human-readable names.
 
     public static func getKeyName(for keyCode: UInt32) -> String {
         switch keyCode {
-        case KeyCode.space.rawValue: return "Space"
-        case KeyCode.return.rawValue: return "Return"
-        case KeyCode.escape.rawValue: return "Escape"
-        case KeyCode.tab.rawValue: return "Tab"
-        case KeyCode.delete.rawValue: return "Delete"
-        case KeyCode.f1.rawValue: return "F1"
-        case KeyCode.f2.rawValue: return "F2"
-        case KeyCode.f3.rawValue: return "F3"
-        case KeyCode.f4.rawValue: return "F4"
-        case KeyCode.f5.rawValue: return "F5"
-        case KeyCode.f6.rawValue: return "F6"
-        case KeyCode.f7.rawValue: return "F7"
-        case KeyCode.f8.rawValue: return "F8"
-        case KeyCode.f9.rawValue: return "F9"
-        case KeyCode.f10.rawValue: return "F10"
-        case KeyCode.f11.rawValue: return "F11"
-        case KeyCode.f12.rawValue: return "F12"
-        case KeyCode.ansiA.rawValue: return "A"
-        case KeyCode.ansiB.rawValue: return "B"
-        case KeyCode.ansiC.rawValue: return "C"
-        case KeyCode.ansiD.rawValue: return "D"
-        case KeyCode.ansiE.rawValue: return "E"
-        case KeyCode.ansiF.rawValue: return "F"
-        case KeyCode.ansiG.rawValue: return "G"
-        case KeyCode.ansiH.rawValue: return "H"
-        case KeyCode.ansiI.rawValue: return "I"
-        case KeyCode.ansiJ.rawValue: return "J"
-        case KeyCode.ansiK.rawValue: return "K"
-        case KeyCode.ansiL.rawValue: return "L"
-        case KeyCode.ansiM.rawValue: return "M"
-        case KeyCode.ansiN.rawValue: return "N"
-        case KeyCode.ansiO.rawValue: return "O"
-        case KeyCode.ansiP.rawValue: return "P"
-        case KeyCode.ansiQ.rawValue: return "Q"
-        case KeyCode.ansiR.rawValue: return "R"
-        case KeyCode.ansiS.rawValue: return "S"
-        case KeyCode.ansiT.rawValue: return "T"
-        case KeyCode.ansiU.rawValue: return "U"
-        case KeyCode.ansiV.rawValue: return "V"
-        case KeyCode.ansiW.rawValue: return "W"
-        case KeyCode.ansiX.rawValue: return "X"
-        case KeyCode.ansiY.rawValue: return "Y"
-        case KeyCode.ansiZ.rawValue: return "Z"
+        case 49: return "Space"
+        case 36: return "Return"
+        case 53: return "Escape"
+        case 48: return "Tab"
+        case 51: return "Delete"
+        case 122: return "F1"
+        case 120: return "F2"
+        case 99: return "F3"
+        case 118: return "F4"
+        case 96: return "F5"
+        case 97: return "F6"
+        case 98: return "F7"
+        case 100: return "F8"
+        case 101: return "F9"
+        case 109: return "F10"
+        case 103: return "F11"
+        case 111: return "F12"
+        case 0: return "A"
+        case 11: return "B"
+        case 8: return "C"
+        case 2: return "D"
+        case 14: return "E"
+        case 3: return "F"
+        case 5: return "G"
+        case 4: return "H"
+        case 34: return "I"
+        case 38: return "J"
+        case 40: return "K"
+        case 37: return "L"
+        case 46: return "M"
+        case 45: return "N"
+        case 31: return "O"
+        case 35: return "P"
+        case 12: return "Q"
+        case 15: return "R"
+        case 1: return "S"
+        case 17: return "T"
+        case 32: return "U"
+        case 9: return "V"
+        case 13: return "W"
+        case 7: return "X"
+        case 16: return "Y"
+        case 6: return "Z"
         default: return "Key(\(keyCode))"
         }
     }

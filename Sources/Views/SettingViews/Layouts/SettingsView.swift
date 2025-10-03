@@ -1,4 +1,3 @@
-import Carbon
 import SwiftUI
 
 // MARK: - 设置选项卡枚举
