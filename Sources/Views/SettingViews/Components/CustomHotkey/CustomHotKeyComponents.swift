@@ -62,7 +62,7 @@ struct CustomHotKeyRow: View {
 
     private var hotKeyDisplay: some View {
         HStack(spacing: 4) {
-            ForEach(getModifierStrings(), id: \.self) { modifier in
+            ForEach(HotKeyUtils.getModifierStrings(modifiers: hotKey.modifiers), id: \.self) { modifier in
                 Text(modifier)
                     .font(.caption)
                     .padding(.horizontal, 6)
@@ -109,25 +109,6 @@ struct CustomHotKeyRow: View {
             }
             .buttonStyle(PlainButtonStyle())
         }
-    }
-
-    private func getModifierStrings() -> [String] {
-        var modifiers: [String] = []
-
-        if hotKey.modifiers & UInt32(controlKey) != 0 {
-            modifiers.append("⌃")
-        }
-        if hotKey.modifiers & UInt32(optionKey) != 0 {
-            modifiers.append("⌥")
-        }
-        if hotKey.modifiers & UInt32(shiftKey) != 0 {
-            modifiers.append("⇧")
-        }
-        if hotKey.modifiers & UInt32(cmdKey) != 0 {
-            modifiers.append("⌘")
-        }
-
-        return modifiers
     }
 }
 

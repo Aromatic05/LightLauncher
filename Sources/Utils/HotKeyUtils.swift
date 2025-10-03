@@ -1,64 +1,51 @@
 import Foundation
 
 class HotKeyUtils {
-    private struct ModifierFlags: OptionSet {
-        let rawValue: UInt32
-
-        static let command = ModifierFlags(rawValue: 1 << 20)    // matches Carbon's cmdKey (0x100000)
-        static let rightCommand = ModifierFlags(rawValue: 1 << 16) // custom for right-command (0x10000)
-        static let option  = ModifierFlags(rawValue: 1 << 19)    // optionKey (0x80000)
-        static let rightOption = ModifierFlags(rawValue: 1 << 18) // custom for right-option (0x40000)
-        static let control = ModifierFlags(rawValue: 1 << 17)    // controlKey (0x20000)
-        static let shift   = ModifierFlags(rawValue: 1 << 16)    // shiftKey (0x10000)
-    }
-    // NOTE: KeyCode enum removed by request — keycodes will be stored as numeric magic numbers.
-    // The getKeyName below maps numeric keycodes to human-readable names.
-
-    public static func getKeyName(for keyCode: UInt32) -> String {
+    static func getKeyName(for keyCode: UInt32) -> String {
         switch keyCode {
-        case 49: return "Space"
-        case 36: return "Return"
-        case 53: return "Escape"
-        case 48: return "Tab"
-        case 51: return "Delete"
-        case 122: return "F1"
-        case 120: return "F2"
-        case 99: return "F3"
-        case 118: return "F4"
-        case 96: return "F5"
-        case 97: return "F6"
-        case 98: return "F7"
-        case 100: return "F8"
-        case 101: return "F9"
-        case 109: return "F10"
-        case 103: return "F11"
-        case 111: return "F12"
-        case 0: return "A"
-        case 11: return "B"
-        case 8: return "C"
-        case 2: return "D"
-        case 14: return "E"
-        case 3: return "F"
-        case 5: return "G"
-        case 4: return "H"
-        case 34: return "I"
-        case 38: return "J"
-        case 40: return "K"
-        case 37: return "L"
-        case 46: return "M"
-        case 45: return "N"
-        case 31: return "O"
-        case 35: return "P"
-        case 12: return "Q"
-        case 15: return "R"
-        case 1: return "S"
-        case 17: return "T"
-        case 32: return "U"
-        case 9: return "V"
-        case 13: return "W"
-        case 7: return "X"
-        case 16: return "Y"
-        case 6: return "Z"
+        case UInt32(kVK_Space): return "Space"
+        case UInt32(kVK_Return): return "Return"
+        case UInt32(kVK_Escape): return "Escape"
+        case UInt32(kVK_Tab): return "Tab"
+        case UInt32(kVK_Delete): return "Delete"
+        case UInt32(kVK_F1): return "F1"
+        case UInt32(kVK_F2): return "F2"
+        case UInt32(kVK_F3): return "F3"
+        case UInt32(kVK_F4): return "F4"
+        case UInt32(kVK_F5): return "F5"
+        case UInt32(kVK_F6): return "F6"
+        case UInt32(kVK_F7): return "F7"
+        case UInt32(kVK_F8): return "F8"
+        case UInt32(kVK_F9): return "F9"
+        case UInt32(kVK_F10): return "F10"
+        case UInt32(kVK_F11): return "F11"
+        case UInt32(kVK_F12): return "F12"
+        case UInt32(kVK_ANSI_A): return "A"
+        case UInt32(kVK_ANSI_B): return "B"
+        case UInt32(kVK_ANSI_C): return "C"
+        case UInt32(kVK_ANSI_D): return "D"
+        case UInt32(kVK_ANSI_E): return "E"
+        case UInt32(kVK_ANSI_F): return "F"
+        case UInt32(kVK_ANSI_G): return "G"
+        case UInt32(kVK_ANSI_H): return "H"
+        case UInt32(kVK_ANSI_I): return "I"
+        case UInt32(kVK_ANSI_J): return "J"
+        case UInt32(kVK_ANSI_K): return "K"
+        case UInt32(kVK_ANSI_L): return "L"
+        case UInt32(kVK_ANSI_M): return "M"
+        case UInt32(kVK_ANSI_N): return "N"
+        case UInt32(kVK_ANSI_O): return "O"
+        case UInt32(kVK_ANSI_P): return "P"
+        case UInt32(kVK_ANSI_Q): return "Q"
+        case UInt32(kVK_ANSI_R): return "R"
+        case UInt32(kVK_ANSI_S): return "S"
+        case UInt32(kVK_ANSI_T): return "T"
+        case UInt32(kVK_ANSI_U): return "U"
+        case UInt32(kVK_ANSI_V): return "V"
+        case UInt32(kVK_ANSI_W): return "W"
+        case UInt32(kVK_ANSI_X): return "X"
+        case UInt32(kVK_ANSI_Y): return "Y"
+        case UInt32(kVK_ANSI_Z): return "Z"
         default: return "Key(\(keyCode))"
         }
     }
@@ -89,5 +76,24 @@ class HotKeyUtils {
         if keyCode == 0 { return description.isEmpty ? "无" : description }
         description += HotKeyUtils.getKeyName(for: keyCode)
         return description
+    }
+
+    public static func getModifierStrings(modifiers: UInt32) -> [String] {
+        var modifierStrings: [String] = []
+
+        if modifiers & UInt32(controlKey) != 0 {
+            modifierStrings.append("⌃")
+        }
+        if modifiers & UInt32(optionKey) != 0 {
+            modifierStrings.append("⌥")
+        }
+        if modifiers & UInt32(shiftKey) != 0 {
+            modifierStrings.append("⇧")
+        }
+        if modifiers & UInt32(cmdKey) != 0 {
+            modifierStrings.append("⌘")
+        }
+
+        return modifierStrings
     }
 }
