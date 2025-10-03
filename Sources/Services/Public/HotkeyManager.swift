@@ -32,9 +32,7 @@ extension Notification.Name {
 
 /**
  全局热键管理器（三层架构）
- 
  Layer 1: Carbon 注册 - 普通组合键（无侧别要求）
- Layer 2: NSEvent 监听 - 侧别组合键（需要区分左右）
  Layer 3: 专门监听 - 仅修饰键（带干扰检测）
  */
 @MainActor
@@ -262,7 +260,12 @@ final class HotkeyManager {
         
         // 共享的处理逻辑
         let handleFlagsChanged: (NSEvent) -> Void = { event in
+            // 在构建 HotKey 之前更新物理键集合
+            updatePhysicalModifierKeys(event: event)
+            
             let currentHotkey = HotKey.from(event: event, physicalKeys: physicalModifierKeys)
+            
+            // flagsChanged: physical keys updated
             
             // 按下阶段：记录匹配
             if currentHotkey.rawValue == hotkey.rawValue {
@@ -278,6 +281,8 @@ final class HotkeyManager {
                 
                 // 期间没有其他按键按下
                 let noInterference = !hasNonModifierKeyPressed
+                
+                // release check
                 
                 if allModifiersReleased {
                     if noInterference {

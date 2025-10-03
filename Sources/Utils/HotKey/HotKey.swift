@@ -100,12 +100,24 @@ struct HotKey: Codable, Hashable {
     /// 从 NSEvent 和物理按键集合创建
     static func from(event: NSEvent, physicalKeys: Set<UInt16>) -> HotKey {
         let flags = event.modifierFlags
-        let keyCode = UInt32(event.keyCode)
+        let eventKeyCode = UInt16(event.keyCode)
         
         let command = flags.contains(.command)
         let option = flags.contains(.option)
         let control = flags.contains(.control)
         let shift = flags.contains(.shift)
+        
+        // 检测是否为修饰键本身的事件（用于 flagsChanged）
+        let isModifierKey = eventKeyCode == UInt16(kVK_LeftCommand) ||
+                           eventKeyCode == UInt16(kVK_RightCommand) ||
+                           eventKeyCode == UInt16(kVK_LeftOption) ||
+                           eventKeyCode == UInt16(kVK_RightOption) ||
+                           eventKeyCode == UInt16(kVK_LeftShift) ||
+                           eventKeyCode == UInt16(kVK_RightShift) ||
+                           eventKeyCode == UInt16(kVK_Control)
+        
+        // 对于修饰键事件，keyCode 应为 0（表示仅修饰键）
+        let keyCode: UInt32 = isModifierKey ? 0 : UInt32(eventKeyCode)
         
         // 确定侧别
         var side: Side = .any

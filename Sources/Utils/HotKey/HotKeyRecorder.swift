@@ -3,11 +3,9 @@ import SwiftUI
 // MARK: - 快捷键录制管理器
 /// 负责处理快捷键的录制逻辑，使用新的 HotKey 结构
 class HotKeyRecorder: ObservableObject {
-    // MARK: - Published Properties
     @Published var isRecording: Bool = false
     @Published var currentHotKey: HotKey?
     
-    // MARK: - Private Properties
     private var globalMonitor: Any?
     private var localMonitor: Any?
     // 跟踪物理修饰键以区分左右
@@ -16,7 +14,6 @@ class HotKeyRecorder: ObservableObject {
     private var modifierCommitWorkItem: DispatchWorkItem?
     private let modifierCommitDelay: TimeInterval = 0.35
     
-    // MARK: - Callbacks
     var onKeyRecorded: ((HotKey) -> Void)?
     var onRecordingCancelled: (() -> Void)?
     
@@ -63,7 +60,6 @@ class HotKeyRecorder: ObservableObject {
         }
 
         physicalModifierKeys.removeAll()
-        // 取消任何待提交的仅修饰键任务
         modifierCommitWorkItem?.cancel()
         modifierCommitWorkItem = nil
     }
@@ -87,7 +83,6 @@ class HotKeyRecorder: ObservableObject {
         if let work = modifierCommitWorkItem {
             work.cancel()
             modifierCommitWorkItem = nil
-            print("[HotKeyRecorder] cancelled pending modifier-only commit due to keyDown")
         }
 
         let keyCode = UInt16(event.keyCode)
@@ -103,7 +98,6 @@ class HotKeyRecorder: ObservableObject {
         let hasModifiers = hotkey.hasModifiers
         
         if hasModifiers || isFunctionKey {
-            print("[HotKeyRecorder] keyDown recorded: \(hotkey.description())")
             recordKey(hotkey: hotkey)
         }
     }
@@ -145,7 +139,6 @@ class HotKeyRecorder: ObservableObject {
                 modifierCommitWorkItem?.cancel()
                 let work = DispatchWorkItem { [weak self] in
                     guard let self = self else { return }
-                    print("[HotKeyRecorder] modifier-only committed after delay: \(hotkey.description())")
                     self.recordKey(hotkey: hotkey)
                 }
                 modifierCommitWorkItem = work
@@ -162,7 +155,7 @@ class HotKeyRecorder: ObservableObject {
             currentHotKey = nil
         }
 
-        print("[HotKeyRecorder] flagsChanged keyCode=\(code) flags=\(modifiers) physical=\(physicalModifierKeys)")
+    // flagsChanged processed
     }
     
     /// 检查是否为仅修饰键（区分左右）
@@ -190,7 +183,6 @@ class HotKeyRecorder: ObservableObject {
     
     /// 记录快捷键并停止录制
     private func recordKey(hotkey: HotKey) {
-        print("[HotKeyRecorder] recordKey: \(hotkey.description())")
         stopRecording()
         onKeyRecorded?(hotkey)
     }
