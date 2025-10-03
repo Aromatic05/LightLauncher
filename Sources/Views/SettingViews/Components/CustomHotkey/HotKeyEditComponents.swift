@@ -2,12 +2,11 @@ import SwiftUI
 
 // MARK: - 快捷键录制按钮组件
 struct HotKeyRecordButton: View {
-    @Binding var isRecording: Bool
+    @ObservedObject var recorder: HotKeyRecorder
     @Binding var modifiers: UInt32
     @Binding var keyCode: UInt32
     let hasConflict: Bool
-    let onStartRecording: () -> Void
-    let onCancelRecording: () -> Void
+    let onKeyRecorded: (UInt32, UInt32) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -16,10 +15,13 @@ struct HotKeyRecordButton: View {
                 .fontWeight(.medium)
 
             Button(action: {
-                onStartRecording()
+                if !recorder.isRecording {
+                    recorder.onKeyRecorded = onKeyRecorded
+                    recorder.startRecording()
+                }
             }) {
                 HStack(spacing: 8) {
-                    if isRecording {
+                    if recorder.isRecording {
                         ProgressView()
                             .scaleEffect(0.8)
                         Text("按下新的快捷键...")
@@ -34,26 +36,26 @@ struct HotKeyRecordButton: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(
-                    isRecording ? Color.purple.opacity(0.1) : Color(NSColor.windowBackgroundColor)
+                    recorder.isRecording ? Color.purple.opacity(0.1) : Color(NSColor.windowBackgroundColor)
                 )
-                .foregroundColor(isRecording ? .purple : .primary)
+                .foregroundColor(recorder.isRecording ? .purple : .primary)
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(
                             hasConflict
                                 ? Color.red
-                                : (isRecording ? Color.purple : Color.secondary.opacity(0.3)),
+                                : (recorder.isRecording ? Color.purple : Color.secondary.opacity(0.3)),
                             lineWidth: 2
                         )
                 )
             }
             .buttonStyle(PlainButtonStyle())
-            .disabled(isRecording)
+            .disabled(recorder.isRecording)
 
-            if isRecording {
+            if recorder.isRecording {
                 Button("取消录制") {
-                    onCancelRecording()
+                    recorder.cancelRecording()
                 }
                 .buttonStyle(.bordered)
             }
@@ -119,12 +121,11 @@ struct HotKeyBasicInfoForm: View {
 
 // MARK: - 快捷键设置卡片
 struct HotKeySettingsCard: View {
-    @Binding var isRecording: Bool
+    @ObservedObject var recorder: HotKeyRecorder
     @Binding var modifiers: UInt32
     @Binding var keyCode: UInt32
     let hasConflict: Bool
-    let onStartRecording: () -> Void
-    let onCancelRecording: () -> Void
+    let onKeyRecorded: (UInt32, UInt32) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -147,12 +148,11 @@ struct HotKeySettingsCard: View {
             }
 
             HotKeyRecordButton(
-                isRecording: $isRecording,
+                recorder: recorder,
                 modifiers: $modifiers,
                 keyCode: $keyCode,
                 hasConflict: hasConflict,
-                onStartRecording: onStartRecording,
-                onCancelRecording: onCancelRecording
+                onKeyRecorded: onKeyRecorded
             )
         }
         .padding(20)

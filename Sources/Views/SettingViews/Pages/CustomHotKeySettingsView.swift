@@ -110,12 +110,9 @@ struct CustomHotKeyEditView: View {
     @State private var name: String
     @State private var type: String
     @State private var text: String
-    @State private var isRecordingHotKey = false
     @State private var modifiers: UInt32
     @State private var keyCode: UInt32
-    @State private var globalMonitor: Any?
-    @State private var localMonitor: Any?
-    @State private var currentModifiers: UInt32 = 0
+    @StateObject private var hotKeyRecorder = HotKeyRecorder()
 
     @Environment(\.dismiss) private var dismiss
 
@@ -153,7 +150,7 @@ struct CustomHotKeyEditView: View {
         .frame(width: 600, height: 700)
         .background(Color(NSColor.windowBackgroundColor))
         .onDisappear {
-            cancelRecordingHotKey()
+            hotKeyRecorder.stopRecording()
         }
     }
 
@@ -186,12 +183,14 @@ struct CustomHotKeyEditView: View {
                 HotKeyBasicInfoForm(name: $name, type: $type, text: $text)
 
                 HotKeySettingsCard(
-                    isRecording: $isRecordingHotKey,
+                    recorder: hotKeyRecorder,
                     modifiers: $modifiers,
                     keyCode: $keyCode,
                     hasConflict: hasConflict,
-                    onStartRecording: startRecordingHotKey,
-                    onCancelRecording: cancelRecordingHotKey
+                    onKeyRecorded: { newModifiers, newKeyCode in
+                        modifiers = newModifiers
+                        keyCode = newKeyCode
+                    }
                 )
 
                 HotKeyPreviewCard(
@@ -215,92 +214,5 @@ struct CustomHotKeyEditView: View {
         )
         onSave(newHotKey)
         dismiss()
-    }
-
-    private func startRecordingHotKey() {
-        isRecordingHotKey = true
-        currentModifiers = 0
-
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) {
-            event in
-            handleKeyEvent(event)
-        }
-
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) {
-            event in
-            handleKeyEvent(event)
-            return nil
-        }
-    }
-
-    private func cancelRecordingHotKey() {
-        isRecordingHotKey = false
-
-        if let monitor = globalMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalMonitor = nil
-        }
-
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
-            localMonitor = nil
-        }
-    }
-
-    private func handleKeyEvent(_ event: NSEvent) {
-        guard isRecordingHotKey else { return }
-        if event.type == .keyDown {
-            let keyCode = UInt32(event.keyCode)
-            let modifiers = event.modifierFlags
-            let validKeys: [UInt32] = [
-                49, 36, 53, 48,
-                122, 120, 99, 118,
-                96, 97, 98, 100,
-                101, 109, 103, 111,
-                0, 11, 8, 2,
-                14, 3, 5, 4,
-                34, 38, 40, 37,
-                46, 45, 31, 35,
-                12, 15, 1, 17,
-                32, 9, 13, 7,
-                16, 6,
-            ]
-            if validKeys.contains(keyCode) || (modifiers.rawValue != 0) {
-                let carbonModifiers = carbonModifiersFromCocoaModifiers(modifiers)
-                self.modifiers = carbonModifiers
-                self.keyCode = keyCode
-                cancelRecordingHotKey()
-            }
-        } else if event.type == .flagsChanged {
-            let modifiers = event.modifierFlags
-            currentModifiers = carbonModifiersFromCocoaModifiers(modifiers)
-            // 检查是否为单独的右 Command 或右 Option
-            if modifiers.contains(.command) && event.keyCode == 54 {  // 右 Command
-                self.modifiers = 0x100010
-                self.keyCode = 0
-                cancelRecordingHotKey()
-            } else if modifiers.contains(.option) && event.keyCode == 61 {  // 右 Option
-                self.modifiers = 0x100040
-                self.keyCode = 0
-                cancelRecordingHotKey()
-            }
-        }
-    }
-
-    private func carbonModifiersFromCocoaModifiers(_ modifiers: NSEvent.ModifierFlags) -> UInt32 {
-        var carbonModifiers: UInt32 = 0
-        if modifiers.contains(.command) {
-            carbonModifiers |= UInt32(cmdKey)
-        }
-        if modifiers.contains(.option) {
-            carbonModifiers |= UInt32(optionKey)
-        }
-        if modifiers.contains(.control) {
-            carbonModifiers |= UInt32(controlKey)
-        }
-        if modifiers.contains(.shift) {
-            carbonModifiers |= UInt32(shiftKey)
-        }
-        return carbonModifiers
     }
 }

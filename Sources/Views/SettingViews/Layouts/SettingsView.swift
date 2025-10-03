@@ -19,11 +19,6 @@ struct SettingsView: View {
     @ObservedObject var settingsManager = SettingsManager.shared
     @ObservedObject var configManager = ConfigManager.shared
     @State private var selectedTab: SettingsTab = .general
-    @State private var isRecordingHotKey = false
-    @State private var tempHotKeyDescription = ""
-    @State private var globalMonitor: Any?
-    @State private var localMonitor: Any?
-    @State private var currentModifiers: UInt32 = 0
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -236,12 +231,7 @@ struct SettingsView: View {
             case .general:
                 GeneralSettingsView(
                     settingsManager: settingsManager,
-                    configManager: configManager,
-                    isRecordingHotKey: $isRecordingHotKey,
-                    tempHotKeyDescription: $tempHotKeyDescription,
-                    globalMonitor: $globalMonitor,
-                    localMonitor: $localMonitor,
-                    currentModifiers: $currentModifiers
+                    configManager: configManager
                 )
             case .permissions:
                 PermissionSettingsView()
