@@ -49,31 +49,22 @@ struct GeneralSettingsView: View {
                         hasConflict: false,
                         showResetButton: true,
                         onKeyRecorded: { newHotkey in
-                            let legacy = newHotkey.toLegacy()
-                            configManager.updateHotKey(modifiers: legacy.modifiers, keyCode: legacy.keyCode)
+                            // 更新 SettingsManager，并通知 ConfigManager
+                            settingsManager.updateHotKey(newHotkey)
+                            configManager.updateHotKey(newHotkey)
                         },
                         onReset: {
-                            configManager.updateHotKey(modifiers: UInt32(optionKey), keyCode: UInt32(kVK_Space))
+                            let defaultHot = HotKey(keyCode: UInt32(kVK_Space), option: true)
+                            settingsManager.updateHotKey(defaultHot)
+                            configManager.updateHotKey(defaultHot)
                         }
                     )
                     .onAppear {
                         // 从 SettingsManager 同步到本地 state
-                        hotkey = HotKey.from(
-                            modifiers: settingsManager.hotKeyModifiers,
-                            keyCode: settingsManager.hotKeyCode
-                        )
+                        hotkey = settingsManager.hotKey
                     }
-                    .onChange(of: settingsManager.hotKeyModifiers) { _ in
-                        hotkey = HotKey.from(
-                            modifiers: settingsManager.hotKeyModifiers,
-                            keyCode: settingsManager.hotKeyCode
-                        )
-                    }
-                    .onChange(of: settingsManager.hotKeyCode) { _ in
-                        hotkey = HotKey.from(
-                            modifiers: settingsManager.hotKeyModifiers,
-                            keyCode: settingsManager.hotKeyCode
-                        )
+                    .onChange(of: settingsManager.hotKey) { new in
+                        hotkey = new
                     }
 
                     Divider()

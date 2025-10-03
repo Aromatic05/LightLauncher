@@ -7,8 +7,7 @@ class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
 
     @Published var isAutoStartEnabled: Bool = false
-    @Published var hotKeyModifiers: UInt32 = UInt32(optionKey)
-    @Published var hotKeyCode: UInt32 = UInt32(kVK_Space)
+    @Published var hotKey: HotKey = HotKey(keyCode: UInt32(kVK_Space), option: true)
 
     // 模式开关（用字典统一管理）
     @Published var modeEnabled: [String: Bool] = [
@@ -28,8 +27,7 @@ class SettingsManager: ObservableObject {
     // 设置键
     private enum Keys {
         static let autoStart = "autoStart"
-        static let hotKeyModifiers = "hotKeyModifiers"
-        static let hotKeyCode = "hotKeyCode"
+        static let hotKeyRaw = "hotKeyRaw"
         static let modeEnabled = "modeEnabled"
         static let showCommandSuggestions = "showCommandSuggestions"
     }
@@ -42,24 +40,25 @@ class SettingsManager: ObservableObject {
 
     private func loadSettings() {
         isAutoStartEnabled = userDefaults.bool(forKey: Keys.autoStart)
-        hotKeyModifiers = UInt32(userDefaults.integer(forKey: Keys.hotKeyModifiers))
-        hotKeyCode = UInt32(userDefaults.integer(forKey: Keys.hotKeyCode))
+        // Load hotkey raw value
+        let raw = UInt32(userDefaults.integer(forKey: Keys.hotKeyRaw))
+        if raw != 0 {
+            hotKey = HotKey(rawValue: raw)
+        } else {
+            hotKey = HotKey(keyCode: UInt32(kVK_Space), option: true)
+        }
         // 加载模式设置，默认启用
         if let dict = userDefaults.dictionary(forKey: Keys.modeEnabled) as? [String: Bool] {
             modeEnabled.merge(dict) { _, new in new }
         }
         showCommandSuggestions =
             userDefaults.object(forKey: Keys.showCommandSuggestions) as? Bool ?? true
-        if hotKeyModifiers == 0 {
-            hotKeyModifiers = UInt32(optionKey)
-            hotKeyCode = UInt32(kVK_Space)
-        }
+        // nothing else
     }
 
     private func saveSettings() {
         userDefaults.set(isAutoStartEnabled, forKey: Keys.autoStart)
-        userDefaults.set(Int(hotKeyModifiers), forKey: Keys.hotKeyModifiers)
-        userDefaults.set(Int(hotKeyCode), forKey: Keys.hotKeyCode)
+    userDefaults.set(Int(hotKey.rawValue), forKey: Keys.hotKeyRaw)
         userDefaults.set(modeEnabled, forKey: Keys.modeEnabled)
         userDefaults.set(showCommandSuggestions, forKey: Keys.showCommandSuggestions)
     }
@@ -118,9 +117,8 @@ class SettingsManager: ObservableObject {
 
     // MARK: - 热键设置
 
-    func updateHotKey(modifiers: UInt32, keyCode: UInt32) {
-        hotKeyModifiers = modifiers
-        hotKeyCode = keyCode
+    func updateHotKey(_ hotKey: HotKey) {
+        self.hotKey = hotKey
         saveSettings()
 
         // 通知 AppDelegate 更新热键

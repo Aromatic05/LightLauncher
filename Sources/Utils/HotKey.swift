@@ -197,23 +197,6 @@ struct HotKey: Codable, Hashable {
         return mask
     }
     
-    /// 转换为旧的分离式表示（向后兼容）
-    func toLegacy() -> (modifiers: UInt32, keyCode: UInt32) {
-        var mods = toCarbonMask()
-        
-        // 如果有侧别信息，添加旧的侧别 masks
-        if side == .right {
-            if hasCommand {
-                mods |= kVK_RightCommandMask
-            }
-            if hasOption {
-                mods |= kVK_RightOptionMask
-            }
-        }
-        
-        return (mods, keyCode)
-    }
-    
     // MARK: - 描述信息
     /// 生成人类可读的描述
     func description(style: DescriptionStyle = .symbols) -> String {
@@ -248,11 +231,8 @@ struct HotKey: Codable, Hashable {
         }
         
         if keyCode != 0 {
-            if style == .symbols {
-                parts.append(HotKeyUtils.getKeyName(for: keyCode))
-            } else {
-                parts.append(HotKeyUtils.getKeyName(for: keyCode))
-            }
+            let name = HotKey.keyName(for: keyCode)
+            parts.append(name)
         }
         
         let separator = style == .symbols ? "" : " + "
@@ -262,19 +242,6 @@ struct HotKey: Codable, Hashable {
     enum DescriptionStyle {
         case symbols  // R⌥Space
         case text     // Right Option + Space
-    }
-    
-    /// 详细信息（用于调试）
-    func detailedInfo() -> String {
-        return """
-        HotKey Details:
-          Raw Value: 0x\(String(rawValue, radix: 16, uppercase: true).padLeft(toLength: 8, withPad: "0"))
-          KeyCode: \(keyCode) (\(HotKeyUtils.getKeyName(for: keyCode)))
-          Modifiers: \(hasCommand ? "⌘ " : "")\(hasOption ? "⌥ " : "")\(hasControl ? "⌃ " : "")\(hasShift ? "⇧ " : "")
-          Side: \(side)
-          Valid: \(isValid)
-          Modifier Only: \(isModifierOnly)
-        """
     }
 }
 
@@ -298,6 +265,54 @@ extension HotKey {
 }
 
 // MARK: - Helper Extensions
+extension HotKey {
+    /// 返回常用 keyCode 的友好名称（包含字母、数字、功能键和特殊键）
+    static func keyName(for keyCode: UInt32) -> String {
+        switch keyCode {
+        case UInt32(kVK_Space): return "Space"
+        case UInt32(kVK_Return): return "Return"
+        case UInt32(kVK_Escape): return "Escape"
+        case UInt32(kVK_Tab): return "Tab"
+        case UInt32(kVK_Delete): return "Delete"
+        case UInt32(kVK_F1): return "F1"
+        case UInt32(kVK_F2): return "F2"
+        case UInt32(kVK_F3): return "F3"
+        case UInt32(kVK_F4): return "F4"
+        case UInt32(kVK_F5): return "F5"
+        case UInt32(kVK_F6): return "F6"
+        case UInt32(kVK_F7): return "F7"
+        case UInt32(kVK_F8): return "F8"
+        case UInt32(kVK_F9): return "F9"
+        case UInt32(kVK_F10): return "F10"
+        case UInt32(kVK_F11): return "F11"
+        case UInt32(kVK_F12): return "F12"
+        default:
+            // 尝试字母或数字映射（ANSI 0-25 -> A-Z，0-9）
+            let intCode = Int(keyCode)
+            // Letters A-Z mapping by known constants
+            let letterMap: [Int: String] = [
+                Int(kVK_ANSI_A): "A", Int(kVK_ANSI_B): "B", Int(kVK_ANSI_C): "C", Int(kVK_ANSI_D): "D",
+                Int(kVK_ANSI_E): "E", Int(kVK_ANSI_F): "F", Int(kVK_ANSI_G): "G", Int(kVK_ANSI_H): "H",
+                Int(kVK_ANSI_I): "I", Int(kVK_ANSI_J): "J", Int(kVK_ANSI_K): "K", Int(kVK_ANSI_L): "L",
+                Int(kVK_ANSI_M): "M", Int(kVK_ANSI_N): "N", Int(kVK_ANSI_O): "O", Int(kVK_ANSI_P): "P",
+                Int(kVK_ANSI_Q): "Q", Int(kVK_ANSI_R): "R", Int(kVK_ANSI_S): "S", Int(kVK_ANSI_T): "T",
+                Int(kVK_ANSI_U): "U", Int(kVK_ANSI_V): "V", Int(kVK_ANSI_W): "W", Int(kVK_ANSI_X): "X",
+                Int(kVK_ANSI_Y): "Y", Int(kVK_ANSI_Z): "Z",
+                Int(kVK_ANSI_0): "0", Int(kVK_ANSI_1): "1", Int(kVK_ANSI_2): "2", Int(kVK_ANSI_3): "3",
+                Int(kVK_ANSI_4): "4", Int(kVK_ANSI_5): "5", Int(kVK_ANSI_6): "6", Int(kVK_ANSI_7): "7",
+                Int(kVK_ANSI_8): "8", Int(kVK_ANSI_9): "9",
+            ]
+
+            if let s = letterMap[intCode] {
+                return s
+            }
+
+            // Fallback: return numeric representation
+            return "Key_\(keyCode)"
+        }
+    }
+}
+
 private extension String {
     func padLeft(toLength: Int, withPad: String) -> String {
         let padCount = max(0, toLength - self.count)

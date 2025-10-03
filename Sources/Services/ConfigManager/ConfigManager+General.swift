@@ -34,12 +34,11 @@ extension ConfigManager {
     }
 
     // MARK: HotKey
-    func updateHotKey(modifiers: UInt32, keyCode: UInt32) {
-        // 从旧格式创建 HotKey 并更新 config
-        config.hotKey.hotkey = HotKey.from(modifiers: modifiers, keyCode: keyCode)
+    func updateHotKey(_ hotKey: HotKey) {
+        config.hotKey.hotkey = hotKey
         saveConfig()
-        
+
         // 同步更新 SettingsManager（它会发送通知）
-        SettingsManager.shared.updateHotKey(modifiers: modifiers, keyCode: keyCode)
+        SettingsManager.shared.updateHotKey(hotKey)
     }
 }
