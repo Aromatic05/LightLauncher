@@ -51,8 +51,8 @@ final class HotkeyManager {
     // Layer 2: NSEvent 监听的热键（侧别相关）- 需要 global 和 local 两个 monitor
     private static var nsEventHotkeys: [(hotkey: HotKey, id: UInt32, isMain: Bool, globalMonitor: Any?, localMonitor: Any?)] = []
     
-    // Layer 3: 仅修饰键热键
-    private static var modifierOnlyHotkey: (hotkey: HotKey, id: UInt32, isMain: Bool, globalMonitor: Any?, localMonitor: Any?)?
+    // Layer 3: 仅修饰键热键（支持多个）
+    private static var modifierOnlyHotkeys: [(hotkey: HotKey, id: UInt32, isMain: Bool, globalMonitor: Any?, localMonitor: Any?)] = []
     
     // 物理按键跟踪（用于侧别检测）- 需要 global 和 local 两套监听器
     private static var physicalModifierKeys: Set<UInt16> = []
@@ -71,9 +71,18 @@ final class HotkeyManager {
         unregisterAll()
         print("[HotkeyManager] Registering main: \(mainHotkey.description()), custom: \(customHotkeys.count) hotkeys")
         
-        // 启动物理按键跟踪（Layer 2 和 Layer 3 都需要）
-        setupPhysicalKeyTracker()
-        
+        // 判断需要启动的监控：只在需要时开启以提高效率
+        let allHotkeys = [mainHotkey] + customHotkeys.map { $0.hotkey }
+        let needsPhysical = allHotkeys.contains { $0.hasSideSpecification || $0.isModifierOnly }
+        let needsCarbon = allHotkeys.contains { !$0.hasSideSpecification && !$0.isModifierOnly }
+
+        if needsPhysical {
+            setupPhysicalKeyTracker()
+        }
+        if needsCarbon {
+            setupSharedEventHandler()
+        }
+
         // 注册主热键
         registerHotkey(hotkey: mainHotkey, id: 1, isMain: true)
         
@@ -85,7 +94,7 @@ final class HotkeyManager {
             registerHotkey(hotkey: hotkey, id: id, isMain: false)
         }
         
-        print("[HotkeyManager] Registration complete: Carbon=\(carbonHotkeys.count), NSEvent=\(nsEventHotkeys.count), ModifierOnly=\(modifierOnlyHotkey != nil ? 1 : 0)")
+        print("[HotkeyManager] Registration complete: Carbon=\(carbonHotkeys.count), NSEvent=\(nsEventHotkeys.count), ModifierOnly=\(modifierOnlyHotkeys.count)")
     }
     
     /// 注销所有热键
@@ -108,15 +117,11 @@ final class HotkeyManager {
         nsEventHotkeys.removeAll()
         
         // 清理仅修饰键热键
-        if let (_, _, _, globalMonitor, localMonitor) = modifierOnlyHotkey {
-            if let monitor = globalMonitor {
-                NSEvent.removeMonitor(monitor)
-            }
-            if let monitor = localMonitor {
-                NSEvent.removeMonitor(monitor)
-            }
-            modifierOnlyHotkey = nil
+        for (_, _, _, globalMonitor, localMonitor) in modifierOnlyHotkeys {
+            if let monitor = globalMonitor { NSEvent.removeMonitor(monitor) }
+            if let monitor = localMonitor { NSEvent.removeMonitor(monitor) }
         }
+        modifierOnlyHotkeys.removeAll()
         
         // 清理物理按键跟踪
         if let (globalFlags, localFlags, globalKeyDown, localKeyDown) = physicalKeyTracker {
@@ -253,7 +258,7 @@ final class HotkeyManager {
         print("[HotkeyManager] ✓ NSEvent registered (global + local): \(hotkey.description()) [id=\(id)]")
     }
     
-    // MARK: - Layer 3: 仅修饰键（带干扰检测）
+    // MARK: - Layer 3: 仅修饰键
     
     private static func registerModifierOnly(hotkey: HotKey, id: UInt32, isMain: Bool) {
         var lastMatchedModifiers: HotKey? = nil
@@ -307,7 +312,7 @@ final class HotkeyManager {
             return event  // 不拦截 flagsChanged 事件
         }
         
-        modifierOnlyHotkey = (hotkey, id, isMain, globalMonitor, localMonitor)
+        modifierOnlyHotkeys.append((hotkey, id, isMain, globalMonitor, localMonitor))
         print("[HotkeyManager] ✓ ModifierOnly registered (global + local): \(hotkey.description()) [id=\(id)]")
     }
     

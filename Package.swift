@@ -21,5 +21,11 @@ let package = Package(
                 .process("Resources")
             ]
         )
+        ,
+        .testTarget(
+            name: "LightLauncherTests",
+            dependencies: ["LightLauncher"],
+            path: "Tests/LightLauncherTests"
+        )
     ]
 )
