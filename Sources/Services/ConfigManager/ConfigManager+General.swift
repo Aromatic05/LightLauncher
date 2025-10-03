@@ -35,9 +35,12 @@ extension ConfigManager {
 
     // MARK: HotKey
     func updateHotKey(modifiers: UInt32, keyCode: UInt32) {
+        // 更新 config
         config.hotKey.modifiers = modifiers
         config.hotKey.keyCode = keyCode
         saveConfig()
-        NotificationCenter.default.post(name: .hotKeyChanged, object: nil)
+        
+        // 同步更新 SettingsManager（它会发送通知）
+        SettingsManager.shared.updateHotKey(modifiers: modifiers, keyCode: keyCode)
     }
 }

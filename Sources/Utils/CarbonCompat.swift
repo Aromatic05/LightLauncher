@@ -5,10 +5,11 @@
 import Foundation
 
 // Modifier keys (Carbon-style)
-public let cmdKey: Int32 = 0x100000 // 1 << 20
-public let optionKey: Int32 = 0x80000 // 1 << 19
-public let controlKey: Int32 = 0x20000 // 1 << 17
-public let shiftKey: Int32 = 0x10000 // 1 << 16
+// These are the actual Carbon modifier key masks used by RegisterEventHotKey
+public let cmdKey: Int32 = 256       // 0x100 (1 << 8)
+public let optionKey: Int32 = 2048   // 0x800 (1 << 11)
+public let shiftKey: Int32 = 512     // 0x200 (1 << 9)
+public let controlKey: Int32 = 4096  // 0x1000 (1 << 12)
 
 // Common virtual key codes (Apple/Carbon mapping)
 public let kVK_Space: Int32 = 49

@@ -42,8 +42,8 @@ struct GeneralSettingsView: View {
                         icon: "keyboard",
                         iconColor: .blue,
                         recorder: hotKeyRecorder,
-                        modifiers: .constant(settingsManager.hotKeyModifiers),
-                        keyCode: .constant(settingsManager.hotKeyCode),
+                        modifiers: $settingsManager.hotKeyModifiers,
+                        keyCode: $settingsManager.hotKeyCode,
                         hasConflict: false,
                         showResetButton: true,
                         onKeyRecorded: { modifiers, keyCode in

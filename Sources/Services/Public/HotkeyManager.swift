@@ -52,6 +52,7 @@ final class HotkeyManager {
 
     static func registerAll(mainHotkey: HotKey, customHotkeys: [CustomHotKeyConfig]) {
         unregisterAll()
+        print("Registering main hotkey: \(mainHotkey), custom hotkeys: \(customHotkeys)")
 
         if sharedEventHandler == nil {
             setupSharedEventHandler()

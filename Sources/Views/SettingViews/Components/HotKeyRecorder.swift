@@ -75,10 +75,14 @@ class HotKeyRecorder: ObservableObject {
     private func handleKeyDown(_ event: NSEvent) {
         let keyCode = UInt32(event.keyCode)
         let modifiers = event.modifierFlags
+        let carbonModifiers = carbonModifiersFromCocoaModifiers(modifiers)
         
-        // 验证是否为有效按键
-        if isValidKey(keyCode) || modifiers.rawValue != 0 {
-            let carbonModifiers = carbonModifiersFromCocoaModifiers(modifiers)
+        // 必须是有效按键，并且至少有一个修饰键
+        // 注意：对于功能键（F1-F12），可以不需要修饰键
+        let isFunctionKey = keyCode >= UInt32(kVK_F1) && keyCode <= UInt32(kVK_F12)
+        let hasModifiers = carbonModifiers != 0
+        
+        if isValidKey(keyCode) && (hasModifiers || isFunctionKey) {
             recordKey(modifiers: carbonModifiers, keyCode: keyCode)
         }
     }
