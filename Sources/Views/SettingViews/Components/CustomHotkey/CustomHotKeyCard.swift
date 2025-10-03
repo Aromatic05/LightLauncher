@@ -25,9 +25,10 @@ struct CustomHotKeyCard: View {
             Button(action: onEdit) {
                 HStack(spacing: 8) {
                     Image(systemName: "keyboard")
+                    let legacy = hotKey.hotkey.toLegacy()
                     Text(HotKeyUtils.getHotKeyDescription(
-                        modifiers: hotKey.modifiers,
-                        keyCode: hotKey.keyCode
+                        modifiers: legacy.modifiers,
+                        keyCode: legacy.keyCode
                     ))
                     .font(.system(size: 16, weight: .semibold, design: .monospaced))
                 }

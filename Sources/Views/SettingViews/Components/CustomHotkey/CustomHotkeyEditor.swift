@@ -9,8 +9,7 @@ struct CustomHotKeyEditView: View {
     @State private var name: String
     @State private var type: String
     @State private var text: String
-    @State private var modifiers: UInt32
-    @State private var keyCode: UInt32
+    @State private var hotkey: HotKey
     @StateObject private var hotKeyRecorder = HotKeyRecorder()
 
     @Environment(\.dismiss) private var dismiss
@@ -25,8 +24,7 @@ struct CustomHotKeyEditView: View {
         self._name = State(initialValue: hotKey?.name ?? "")
         self._type = State(initialValue: hotKey?.type ?? "query")
         self._text = State(initialValue: hotKey?.text ?? "")
-        self._modifiers = State(initialValue: hotKey?.modifiers ?? UInt32(optionKey))
-        self._keyCode = State(initialValue: hotKey?.keyCode ?? 49)
+        self._hotkey = State(initialValue: hotKey?.hotkey ?? HotKey(keyCode: UInt32(kVK_Space), option: true))
     }
 
     var isValid: Bool {
@@ -36,7 +34,9 @@ struct CustomHotKeyEditView: View {
 
     var hasConflict: Bool {
         existingHotKeys.contains { existing in
-            existing.modifiers == modifiers && existing.keyCode == keyCode
+            // 排除当前编辑项（按 name）
+            if existing.name == name { return false }
+            return existing.hotkey.rawValue == hotkey.rawValue
         }
     }
 
@@ -83,19 +83,16 @@ struct CustomHotKeyEditView: View {
 
                 HotKeySettingsCard(
                     recorder: hotKeyRecorder,
-                    modifiers: $modifiers,
-                    keyCode: $keyCode,
+                    hotkey: $hotkey,
                     hasConflict: hasConflict,
-                    onKeyRecorded: { newModifiers, newKeyCode in
-                        modifiers = newModifiers
-                        keyCode = newKeyCode
+                    onKeyRecorded: { newHotKey in
+                        hotkey = newHotKey
                     }
                 )
 
                 HotKeyPreviewCard(
                     isValid: isValid,
-                    modifiers: modifiers,
-                    keyCode: keyCode,
+                    hotkey: hotkey,
                     text: text
                 )
             }
@@ -106,8 +103,7 @@ struct CustomHotKeyEditView: View {
     private func saveHotKey() {
         let newHotKey = CustomHotKeyConfig(
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            modifiers: modifiers,
-            keyCode: keyCode,
+            hotkey: hotkey,
             type: type,
             text: text
         )

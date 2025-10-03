@@ -35,9 +35,8 @@ extension ConfigManager {
 
     // MARK: HotKey
     func updateHotKey(modifiers: UInt32, keyCode: UInt32) {
-        // 更新 config
-        config.hotKey.modifiers = modifiers
-        config.hotKey.keyCode = keyCode
+        // 从旧格式创建 HotKey 并更新 config
+        config.hotKey.hotkey = HotKey.from(modifiers: modifiers, keyCode: keyCode)
         saveConfig()
         
         // 同步更新 SettingsManager（它会发送通知）

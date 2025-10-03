@@ -18,6 +18,20 @@ public let kVK_Escape: Int32 = 53
 public let kVK_Tab: Int32 = 48
 public let kVK_Delete: Int32 = 51
 
+// Left/Right modifier key virtual keycodes
+// These match the common macOS/USB HID virtual keycodes for physical modifier keys.
+public let kVK_LeftShift: Int32 = 56
+public let kVK_RightShift: Int32 = 60
+
+public let kVK_LeftCommand: Int32 = 55
+public let kVK_RightCommand: Int32 = 54
+
+public let kVK_LeftOption: Int32 = 58
+public let kVK_RightOption: Int32 = 61
+
+// Control keys (macOS doesn't reliably distinguish left/right Control)
+public let kVK_Control: Int32 = 59
+
 public let kVK_F1: Int32 = 122
 public let kVK_F2: Int32 = 120
 public let kVK_F3: Int32 = 99
@@ -68,3 +82,9 @@ public let kVK_ANSI_6: Int32 = 22
 public let kVK_ANSI_7: Int32 = 26
 public let kVK_ANSI_8: Int32 = 28
 public let kVK_ANSI_9: Int32 = 25
+
+// Optional: app-specific masks to represent right-side modifiers when needed by recorder
+// These are not Carbon constants but helper masks used by the app to distinguish
+// right-side modifiers in recorded shortcuts.
+public let kVK_RightCommandMask: UInt32 = 0x100010
+public let kVK_RightOptionMask: UInt32 = 0x100040

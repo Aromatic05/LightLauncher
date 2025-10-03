@@ -45,9 +45,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// 统一设置所有热键。
     private func setupAllHotkeys() {
         // 1. 获取所有热键配置
-        let mainHotkeyConfig = configManager.config.hotKey
-        let mainHotkey = HotKey(
-            keyCode: mainHotkeyConfig.keyCode, modifiers: mainHotkeyConfig.modifiers)
+        let mainHotkey = configManager.config.hotKey.hotkey
         let customHotkeys = configManager.config.customHotKeys
 
         // 2. 调用统一的静态注册方法
@@ -115,11 +113,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             showAbout: { [weak self] in self?.windowManager?.showAboutWindow() },
             quitApp: { NSApplication.shared.terminate(nil) }
         )
+        let hotkeyLegacy = configManager.config.hotKey.hotkey.toLegacy()
         statusMenuManager = StatusMenuManager(
             actions: actions,
             hotkeyDescription: HotKeyUtils.getHotKeyDescription(
-                modifiers: configManager.config.hotKey.modifiers,
-                keyCode: configManager.config.hotKey.keyCode
+                modifiers: hotkeyLegacy.modifiers,
+                keyCode: hotkeyLegacy.keyCode
             )
         )
     }
@@ -161,9 +160,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 重新注册所有热键
         setupAllHotkeys()
         // 更新菜单栏的提示信息
+        let hotkeyLegacy = configManager.config.hotKey.hotkey.toLegacy()
         statusMenuManager?.updateTooltip(with: HotKeyUtils.getHotKeyDescription(
-            modifiers: configManager.config.hotKey.modifiers,
-            keyCode: configManager.config.hotKey.keyCode
+            modifiers: hotkeyLegacy.modifiers,
+            keyCode: hotkeyLegacy.keyCode
         ))
     }
 }

@@ -96,7 +96,12 @@ struct HotKeyCard: View {
                 // 快捷键录制按钮
                 Button(action: {
                     if !recorder.isRecording {
-                        recorder.onKeyRecorded = onKeyRecorded
+                        // 适配新的 HotKey 结构到旧的 (modifiers, keyCode) 回调
+                        recorder.onKeyRecorded = { hotkey in
+                            // 从 HotKey 转回旧格式
+                            let legacy = hotkey.toLegacy()
+                            onKeyRecorded(legacy.modifiers, legacy.keyCode)
+                        }
                         recorder.startRecording()
                     }
                 }) {

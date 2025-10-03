@@ -9,12 +9,10 @@ struct AppConfig: Codable {
     var modes: ModesConfig
 
     struct HotKeyConfig: Codable {
-        var modifiers: UInt32
-        var keyCode: UInt32
+        var hotkey: HotKey
 
-        init(modifiers: UInt32 = UInt32(optionKey), keyCode: UInt32 = UInt32(kVK_Space)) {
-            self.modifiers = modifiers
-            self.keyCode = keyCode
+        init(hotkey: HotKey = HotKey(keyCode: UInt32(kVK_Space), option: true)) {
+            self.hotkey = hotkey
         }
     }
 
@@ -150,19 +148,16 @@ struct KeywordModeConfig: Codable {
 }
 
 struct CustomHotKeyConfig: Codable, Identifiable, Sendable {
-    let id: String  // 将 id 也声明为存储属性，如果 name 是唯一且不变的
+    let id: String
     let name: String
-    let modifiers: UInt32
-    let keyCode: UInt32
+    let hotkey: HotKey
     let type: String
     let text: String
 
-    // 如果 name 是唯一标识符，可以这样初始化
-    init(name: String, modifiers: UInt32, keyCode: UInt32, type: String = "query", text: String) {
-        self.id = name  // 在初始化时赋值
+    init(name: String, hotkey: HotKey, type: String = "query", text: String) {
+        self.id = name
         self.name = name
-        self.modifiers = modifiers
-        self.keyCode = keyCode
+        self.hotkey = hotkey
         self.type = type
         self.text = text
     }

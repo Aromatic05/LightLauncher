@@ -52,29 +52,61 @@ class HotKeyUtils {
 
 
     public static func getHotKeyDescription(modifiers: UInt32, keyCode: UInt32) -> String {
+        print("[HotKeyUtils] getHotKeyDescription called modifiers=\(modifiers) keyCode=\(keyCode)")
         var description = ""
 
-        let rightCommandMask: UInt32 = 0x100010
-        let rightOptionMask: UInt32 = 0x100040
+        // Side-specific masks (defined in CarbonCompat.swift)
+        let rightCommandMask: UInt32 = kVK_RightCommandMask
+        let rightOptionMask: UInt32 = kVK_RightOptionMask
 
-        if modifiers == rightCommandMask {
+        // Common display masks (app-specific)
+        let cmdMask: UInt32 = 1 << 20    // 0x100000
+        let optionMask: UInt32 = 1 << 19 // 0x80000
+        let controlMask: UInt32 = 1 << 17 // 0x20000
+        let shiftMask: UInt32 = 1 << 16  // 0x10000
+
+        // Carbon-style masks from CarbonCompat
+        let carbonCmd: UInt32 = UInt32(cmdKey)
+        let carbonOption: UInt32 = UInt32(optionKey)
+        let carbonControl: UInt32 = UInt32(controlKey)
+        let carbonShift: UInt32 = UInt32(shiftKey)
+
+        // Side-specific first
+        if (modifiers & rightCommandMask) != 0 {
             description += "R⌘"
-        } else if modifiers == rightOptionMask {
+        }
+        if (modifiers & rightOptionMask) != 0 {
             description += "R⌥"
-        } else {
-            let cmdMask: UInt32 = 1 << 20    // 0x100000
-            let optionMask: UInt32 = 1 << 19 // 0x80000
-            let controlMask: UInt32 = 1 << 17 // 0x20000
-            let shiftMask: UInt32 = 1 << 16  // 0x10000
+        }
 
-            if modifiers & cmdMask != 0 { description += "⌘" }
-            if modifiers & optionMask != 0 { description += "⌥" }
-            if modifiers & controlMask != 0 { description += "⌃" }
-            if modifiers & shiftMask != 0 { description += "⇧" }
+        // Generic/Carbon masks (avoid duplicating symbols)
+        // Command
+        if description.contains("R⌘") {
+            // already accounted for right command
+        } else if (modifiers & cmdMask) != 0 || (modifiers & carbonCmd) != 0 {
+            description += "⌘"
+        }
+
+        // Option
+        if description.contains("R⌥") {
+            // already accounted for right option
+        } else if (modifiers & optionMask) != 0 || (modifiers & carbonOption) != 0 {
+            description += "⌥"
+        }
+
+        // Control
+        if (modifiers & controlMask) != 0 || (modifiers & carbonControl) != 0 {
+            description += "⌃"
+        }
+
+        // Shift
+        if (modifiers & shiftMask) != 0 || (modifiers & carbonShift) != 0 {
+            description += "⇧"
         }
 
         if keyCode == 0 { return description.isEmpty ? "无" : description }
         description += HotKeyUtils.getKeyName(for: keyCode)
+        print("[HotKeyUtils] getHotKeyDescription result=\(description)")
         return description
     }
 

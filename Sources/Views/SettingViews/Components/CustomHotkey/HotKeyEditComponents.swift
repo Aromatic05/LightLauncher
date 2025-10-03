@@ -3,10 +3,9 @@ import SwiftUI
 // MARK: - 快捷键录制按钮组件
 struct HotKeyRecordButton: View {
     @ObservedObject var recorder: HotKeyRecorder
-    @Binding var modifiers: UInt32
-    @Binding var keyCode: UInt32
+    @Binding var hotkey: HotKey
     let hasConflict: Bool
-    let onKeyRecorded: (UInt32, UInt32) -> Void
+    let onKeyRecorded: (HotKey) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -16,7 +15,9 @@ struct HotKeyRecordButton: View {
 
             Button(action: {
                 if !recorder.isRecording {
-                    recorder.onKeyRecorded = onKeyRecorded
+                    recorder.onKeyRecorded = { newHotKey in
+                        onKeyRecorded(newHotKey)
+                    }
                     recorder.startRecording()
                 }
             }) {
@@ -28,7 +29,8 @@ struct HotKeyRecordButton: View {
                             .font(.system(size: 14, design: .monospaced))
                     } else {
                         Image(systemName: "keyboard")
-                        Text(HotKeyUtils.getHotKeyDescription(modifiers: modifiers, keyCode: keyCode))
+                        let legacy = hotkey.toLegacy()
+                        Text(HotKeyUtils.getHotKeyDescription(modifiers: legacy.modifiers, keyCode: legacy.keyCode))
                             .font(.system(size: 16, weight: .semibold, design: .monospaced))
                     }
                 }
@@ -122,10 +124,9 @@ struct HotKeyBasicInfoForm: View {
 // MARK: - 快捷键设置卡片
 struct HotKeySettingsCard: View {
     @ObservedObject var recorder: HotKeyRecorder
-    @Binding var modifiers: UInt32
-    @Binding var keyCode: UInt32
+    @Binding var hotkey: HotKey
     let hasConflict: Bool
-    let onKeyRecorded: (UInt32, UInt32) -> Void
+    let onKeyRecorded: (HotKey) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -149,8 +150,7 @@ struct HotKeySettingsCard: View {
 
             HotKeyRecordButton(
                 recorder: recorder,
-                modifiers: $modifiers,
-                keyCode: $keyCode,
+                hotkey: $hotkey,
                 hasConflict: hasConflict,
                 onKeyRecorded: onKeyRecorded
             )
@@ -164,8 +164,7 @@ struct HotKeySettingsCard: View {
 // MARK: - 快捷键预览卡片
 struct HotKeyPreviewCard: View {
     let isValid: Bool
-    let modifiers: UInt32
-    let keyCode: UInt32
+    let hotkey: HotKey
     let text: String
 
     var body: some View {
@@ -180,7 +179,8 @@ struct HotKeyPreviewCard: View {
                         Text("快捷键:")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        Text(HotKeyUtils.getHotKeyDescription(modifiers: modifiers, keyCode: keyCode))
+                        let legacy = hotkey.toLegacy()
+                        Text(HotKeyUtils.getHotKeyDescription(modifiers: legacy.modifiers, keyCode: legacy.keyCode))
                             .font(.system(.subheadline, design: .monospaced))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
