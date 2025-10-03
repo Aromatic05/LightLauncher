@@ -49,12 +49,38 @@ struct CustomHotKeySettingsView: View {
 
     private var hotKeysSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            CustomHotKeyListHeader {
-                showingAddSheet = true
+            // 列表头（添加按钮）
+            HStack {
+                Text("快捷键配置")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Button(action: { showingAddSheet = true }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                        Text("添加快捷键")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
             }
 
             if configManager.config.customHotKeys.isEmpty {
-                CustomHotKeyEmptyView()
+                VStack(spacing: 12) {
+                    Image(systemName: "command.circle")
+                        .font(.system(size: 40))
+                        .foregroundColor(.secondary)
+                    Text("暂无自定义快捷键")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    Text("点击\"添加快捷键\"按钮创建您的第一个自定义快捷键")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
             } else {
                 hotKeysList
             }

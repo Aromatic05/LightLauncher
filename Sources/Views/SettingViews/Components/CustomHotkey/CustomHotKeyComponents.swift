@@ -1,48 +1,5 @@
 import SwiftUI
 
-// MARK: - 自定义快捷键空状态视图
-struct CustomHotKeyEmptyView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "command.circle")
-                .font(.system(size: 40))
-                .foregroundColor(.secondary)
-            Text("暂无自定义快捷键")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            Text("点击\"添加快捷键\"按钮创建您的第一个自定义快捷键")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-    }
-}
-
-// MARK: - 自定义快捷键列表头部
-struct CustomHotKeyListHeader: View {
-    let onAddAction: () -> Void
-
-    var body: some View {
-        HStack {
-            Text("快捷键配置")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Spacer()
-
-            Button(action: onAddAction) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                    Text("添加快捷键")
-                }
-            }
-            .buttonStyle(.borderedProminent)
-        }
-    }
-}
-
 // MARK: - 自定义快捷键行视图
 struct CustomHotKeyRow: View {
     let hotKey: CustomHotKeyConfig
@@ -51,64 +8,63 @@ struct CustomHotKeyRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            hotKeyDisplay
-            contentView
-            actionButtons
-        }
-        .padding(16)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
-    }
-
-    private var hotKeyDisplay: some View {
-        HStack(spacing: 4) {
-            ForEach(HotKeyUtils.getModifierStrings(modifiers: hotKey.modifiers), id: \.self) { modifier in
-                Text(modifier)
+            // 左侧：简要说明
+            VStack(alignment: .leading, spacing: 6) {
+                Text(hotKey.name)
+                    .font(.headline)
+                Text(hotKey.text.count > 40 ? String(hotKey.text.prefix(40)) + "..." : hotKey.text)
                     .font(.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.purple.opacity(0.1))
-                    .foregroundColor(.purple)
-                    .cornerRadius(4)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
             }
-
-            Text(HotKeyUtils.getKeyName(for: hotKey.keyCode))
-                .font(.caption)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.purple.opacity(0.1))
-                .foregroundColor(.purple)
-                .cornerRadius(4)
-        }
-        .frame(width: 120, alignment: .leading)
-    }
-
-    private var contentView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(hotKey.name)
-                .font(.headline)
-
-            Text(hotKey.text.count > 50 ? String(hotKey.text.prefix(50)) + "..." : hotKey.text)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
-        }
-    }
-
-    private var actionButtons: some View {
-        HStack(spacing: 8) {
+            .frame(width: 200, alignment: .leading)
+            
+            Spacer()
+            
+            // 中间：快捷键显示按钮（和 GeneralSettingsView 同款，可点击编辑）
             Button(action: onEdit) {
-                Image(systemName: "pencil")
-                    .foregroundColor(.blue)
+                HStack(spacing: 8) {
+                    Image(systemName: "keyboard")
+                    Text(HotKeyUtils.getHotKeyDescription(
+                        modifiers: hotKey.modifiers,
+                        keyCode: hotKey.keyCode
+                    ))
+                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color(NSColor.controlBackgroundColor))
+                .foregroundColor(.primary)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 2)
+                )
             }
             .buttonStyle(PlainButtonStyle())
+            
+            // 右侧：小号删除编辑图标
+            // 编辑按钮（小号）
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 14))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("编辑此快捷键")
 
+            // 删除按钮（小号）
             Button(action: onDelete) {
                 Image(systemName: "trash")
                     .foregroundColor(.red)
+                    .font(.system(size: 14))
             }
             .buttonStyle(PlainButtonStyle())
+            .help("删除此快捷键")
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
+        .cornerRadius(12)
     }
 }
 
