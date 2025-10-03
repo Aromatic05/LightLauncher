@@ -10,13 +10,12 @@ struct HotKeyCard: View {
     let iconColor: Color
     
     @ObservedObject var recorder: HotKeyRecorder
-    @Binding var modifiers: UInt32
-    @Binding var keyCode: UInt32
+    @Binding var hotkey: HotKey
     
     let hasConflict: Bool
     let showResetButton: Bool
     
-    let onKeyRecorded: (UInt32, UInt32) -> Void
+    let onKeyRecorded: (HotKey) -> Void
     let onReset: (() -> Void)?
     
     // MARK: - Initialization
@@ -26,11 +25,10 @@ struct HotKeyCard: View {
         icon: String = "keyboard",
         iconColor: Color = .blue,
         recorder: HotKeyRecorder,
-        modifiers: Binding<UInt32>,
-        keyCode: Binding<UInt32>,
+        hotkey: Binding<HotKey>,
         hasConflict: Bool = false,
         showResetButton: Bool = true,
-        onKeyRecorded: @escaping (UInt32, UInt32) -> Void,
+        onKeyRecorded: @escaping (HotKey) -> Void,
         onReset: (() -> Void)? = nil
     ) {
         self.title = title
@@ -38,8 +36,7 @@ struct HotKeyCard: View {
         self.icon = icon
         self.iconColor = iconColor
         self.recorder = recorder
-        self._modifiers = modifiers
-        self._keyCode = keyCode
+        self._hotkey = hotkey
         self.hasConflict = hasConflict
         self.showResetButton = showResetButton
         self.onKeyRecorded = onKeyRecorded
@@ -96,11 +93,8 @@ struct HotKeyCard: View {
                 // 快捷键录制按钮
                 Button(action: {
                     if !recorder.isRecording {
-                        // 适配新的 HotKey 结构到旧的 (modifiers, keyCode) 回调
-                        recorder.onKeyRecorded = { hotkey in
-                            // 从 HotKey 转回旧格式
-                            let legacy = hotkey.toLegacy()
-                            onKeyRecorded(legacy.modifiers, legacy.keyCode)
+                        recorder.onKeyRecorded = { newHotkey in
+                            onKeyRecorded(newHotkey)
                         }
                         recorder.startRecording()
                     }
@@ -113,11 +107,8 @@ struct HotKeyCard: View {
                                 .font(.system(size: 14, design: .monospaced))
                         } else {
                             Image(systemName: "keyboard")
-                            Text(HotKeyUtils.getHotKeyDescription(
-                                modifiers: modifiers,
-                                keyCode: keyCode
-                            ))
-                            .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                            Text(hotkey.description())
+                                .font(.system(size: 16, weight: .semibold, design: .monospaced))
                         }
                     }
                     .padding(.horizontal, 20)
@@ -169,23 +160,20 @@ struct HotKeyCard: View {
 // MARK: - 简化版快捷键卡片（用于列表展示）
 struct CompactHotKeyCard: View {
     let title: String
-    let modifiers: UInt32
-    let keyCode: UInt32
+    let hotkey: HotKey
     let hasConflict: Bool
     let onEdit: () -> Void
     let onDelete: (() -> Void)?
     
     init(
         title: String,
-        modifiers: UInt32,
-        keyCode: UInt32,
+        hotkey: HotKey,
         hasConflict: Bool = false,
         onEdit: @escaping () -> Void,
         onDelete: (() -> Void)? = nil
     ) {
         self.title = title
-        self.modifiers = modifiers
-        self.keyCode = keyCode
+        self.hotkey = hotkey
         self.hasConflict = hasConflict
         self.onEdit = onEdit
         self.onDelete = onDelete
@@ -199,16 +187,13 @@ struct CompactHotKeyCard: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                Text(HotKeyUtils.getHotKeyDescription(
-                    modifiers: modifiers,
-                    keyCode: keyCode
-                ))
-                .font(.system(.subheadline, design: .monospaced))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.purple.opacity(0.1))
-                .foregroundColor(.purple)
-                .cornerRadius(6)
+                Text(hotkey.description())
+                    .font(.system(.subheadline, design: .monospaced))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.purple.opacity(0.1))
+                    .foregroundColor(.purple)
+                    .cornerRadius(6)
             }
             
             Spacer()
@@ -251,19 +236,16 @@ struct CompactHotKeyCard: View {
 
 // MARK: - 快捷键预览组件
 struct HotKeyPreview: View {
-    let modifiers: UInt32
-    let keyCode: UInt32
+    let hotkey: HotKey
     let text: String?
     let isValid: Bool
     
     init(
-        modifiers: UInt32,
-        keyCode: UInt32,
+        hotkey: HotKey,
         text: String? = nil,
         isValid: Bool = true
     ) {
-        self.modifiers = modifiers
-        self.keyCode = keyCode
+        self.hotkey = hotkey
         self.text = text
         self.isValid = isValid
     }
@@ -280,16 +262,13 @@ struct HotKeyPreview: View {
                         Text("快捷键:")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        Text(HotKeyUtils.getHotKeyDescription(
-                            modifiers: modifiers,
-                            keyCode: keyCode
-                        ))
-                        .font(.system(.subheadline, design: .monospaced))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.purple.opacity(0.1))
-                        .foregroundColor(.purple)
-                        .cornerRadius(6)
+                        Text(hotkey.description())
+                            .font(.system(.subheadline, design: .monospaced))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.purple.opacity(0.1))
+                            .foregroundColor(.purple)
+                            .cornerRadius(6)
                     }
                     
                     if let text = text, !text.isEmpty {

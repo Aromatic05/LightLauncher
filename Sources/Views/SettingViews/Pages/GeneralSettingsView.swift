@@ -5,6 +5,9 @@ struct GeneralSettingsView: View {
     @ObservedObject var settingsManager: SettingsManager
     @ObservedObject var configManager: ConfigManager
     @StateObject private var hotKeyRecorder = HotKeyRecorder()
+    
+    // 本地 HotKey state，从 SettingsManager 同步
+    @State private var hotkey: HotKey = HotKey(keyCode: UInt32(kVK_Space), option: true)
 
     var body: some View {
         ScrollView {
@@ -42,17 +45,36 @@ struct GeneralSettingsView: View {
                         icon: "keyboard",
                         iconColor: .blue,
                         recorder: hotKeyRecorder,
-                        modifiers: $settingsManager.hotKeyModifiers,
-                        keyCode: $settingsManager.hotKeyCode,
+                        hotkey: $hotkey,
                         hasConflict: false,
                         showResetButton: true,
-                        onKeyRecorded: { modifiers, keyCode in
-                            configManager.updateHotKey(modifiers: modifiers, keyCode: keyCode)
+                        onKeyRecorded: { newHotkey in
+                            let legacy = newHotkey.toLegacy()
+                            configManager.updateHotKey(modifiers: legacy.modifiers, keyCode: legacy.keyCode)
                         },
                         onReset: {
                             configManager.updateHotKey(modifiers: UInt32(optionKey), keyCode: UInt32(kVK_Space))
                         }
                     )
+                    .onAppear {
+                        // 从 SettingsManager 同步到本地 state
+                        hotkey = HotKey.from(
+                            modifiers: settingsManager.hotKeyModifiers,
+                            keyCode: settingsManager.hotKeyCode
+                        )
+                    }
+                    .onChange(of: settingsManager.hotKeyModifiers) { _ in
+                        hotkey = HotKey.from(
+                            modifiers: settingsManager.hotKeyModifiers,
+                            keyCode: settingsManager.hotKeyCode
+                        )
+                    }
+                    .onChange(of: settingsManager.hotKeyCode) { _ in
+                        hotkey = HotKey.from(
+                            modifiers: settingsManager.hotKeyModifiers,
+                            keyCode: settingsManager.hotKeyCode
+                        )
+                    }
 
                     Divider()
 

@@ -113,13 +113,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             showAbout: { [weak self] in self?.windowManager?.showAboutWindow() },
             quitApp: { NSApplication.shared.terminate(nil) }
         )
-        let hotkeyLegacy = configManager.config.hotKey.hotkey.toLegacy()
         statusMenuManager = StatusMenuManager(
             actions: actions,
-            hotkeyDescription: HotKeyUtils.getHotKeyDescription(
-                modifiers: hotkeyLegacy.modifiers,
-                keyCode: hotkeyLegacy.keyCode
-            )
+            hotkeyDescription: configManager.config.hotKey.hotkey.description()
         )
     }
 
@@ -160,10 +156,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 重新注册所有热键
         setupAllHotkeys()
         // 更新菜单栏的提示信息
-        let hotkeyLegacy = configManager.config.hotKey.hotkey.toLegacy()
-        statusMenuManager?.updateTooltip(with: HotKeyUtils.getHotKeyDescription(
-            modifiers: hotkeyLegacy.modifiers,
-            keyCode: hotkeyLegacy.keyCode
-        ))
+        statusMenuManager?.updateTooltip(with: configManager.config.hotKey.hotkey.description())
     }
 }

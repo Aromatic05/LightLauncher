@@ -29,8 +29,7 @@ struct HotKeyRecordButton: View {
                             .font(.system(size: 14, design: .monospaced))
                     } else {
                         Image(systemName: "keyboard")
-                        let legacy = hotkey.toLegacy()
-                        Text(HotKeyUtils.getHotKeyDescription(modifiers: legacy.modifiers, keyCode: legacy.keyCode))
+                        Text(hotkey.description())
                             .font(.system(size: 16, weight: .semibold, design: .monospaced))
                     }
                 }
@@ -179,8 +178,7 @@ struct HotKeyPreviewCard: View {
                         Text("快捷键:")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                        let legacy = hotkey.toLegacy()
-                        Text(HotKeyUtils.getHotKeyDescription(modifiers: legacy.modifiers, keyCode: legacy.keyCode))
+                        Text(hotkey.description())
                             .font(.system(.subheadline, design: .monospaced))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
