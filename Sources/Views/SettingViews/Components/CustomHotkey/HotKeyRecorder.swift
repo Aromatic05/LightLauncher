@@ -12,6 +12,9 @@ class HotKeyRecorder: ObservableObject {
     private var localMonitor: Any?
     // 跟踪物理修饰键以区分左右
     private var physicalModifierKeys: Set<UInt16> = []
+    // 延迟提交仅修饰键的任务
+    private var modifierCommitWorkItem: DispatchWorkItem?
+    private let modifierCommitDelay: TimeInterval = 0.35
     
     // MARK: - Callbacks
     var onKeyRecorded: ((HotKey) -> Void)?
@@ -60,6 +63,9 @@ class HotKeyRecorder: ObservableObject {
         }
 
         physicalModifierKeys.removeAll()
+        // 取消任何待提交的仅修饰键任务
+        modifierCommitWorkItem?.cancel()
+        modifierCommitWorkItem = nil
     }
     
     // MARK: - Private Methods
@@ -77,6 +83,13 @@ class HotKeyRecorder: ObservableObject {
     
     /// 处理按键事件
     private func handleKeyDown(_ event: NSEvent) {
+        // 如果正在等待提交仅修饰键，任何实际按键按下都应取消该等待
+        if let work = modifierCommitWorkItem {
+            work.cancel()
+            modifierCommitWorkItem = nil
+            print("[HotKeyRecorder] cancelled pending modifier-only commit due to keyDown")
+        }
+
         let keyCode = UInt16(event.keyCode)
         
         // 必须是有效按键
@@ -128,8 +141,15 @@ class HotKeyRecorder: ObservableObject {
         if handled && !modifiers.contains([.command, .option, .control, .shift]) {
             // 所有修饰键都被释放，检查是否为仅修饰键热键
             if let hotkey = checkForModifierOnlyKey(code: code) {
-                print("[HotKeyRecorder] modifier-only recorded: \(hotkey.description())")
-                recordKey(hotkey: hotkey)
+                // 使用延迟提交，以便用户有时间在释放修饰键后按下其他键来形成组合键
+                modifierCommitWorkItem?.cancel()
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self = self else { return }
+                    print("[HotKeyRecorder] modifier-only committed after delay: \(hotkey.description())")
+                    self.recordKey(hotkey: hotkey)
+                }
+                modifierCommitWorkItem = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + modifierCommitDelay, execute: work)
                 return
             }
         }
