@@ -8,11 +8,13 @@ extension Notification.Name {
 }
 
 // MARK: - Hotkey Manager (CGEvent Tap Based)
-@MainActor
-final class HotkeyManager {
+final class HotkeyManager: @unchecked Sendable {
     // 1. 使用单例模式
     static let shared = HotkeyManager()
 
+    // 使用锁保护共享状态
+    private let lock = NSRecursiveLock()
+    
     // 将所有 static var 改为实例变量
     private var registeredHotkeys: [UInt32: RegisteredHotkey] = [:]
     private var customHotKeyConfigMap: [UInt32: CustomHotKeyConfig] = [:]
@@ -87,6 +89,9 @@ final class HotkeyManager {
     }
 
     func unregisterAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        
         registeredHotkeys.removeAll()
         customHotKeyConfigMap.removeAll()
         modifierOnlyStates.removeAll()
@@ -126,7 +131,7 @@ final class HotkeyManager {
 
         tapState = .starting
 
-        // 2. 将 self (单例实例) 的指针传递给 userInfo
+    // 将 self (单例实例) 的指针传递给 userInfo
         let userInfo = Unmanaged.passUnretained(self).toOpaque()
 
         guard let tap = CGEvent.tapCreate(
@@ -188,7 +193,7 @@ final class HotkeyManager {
         guard !registeredHotkeys.isEmpty else { return }
 
         reconnectTask = Task {
-            // Task 默认就在 @MainActor 上下文中了
+        // Task 默认在主 actor 上运行
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             if Task.isCancelled { return }
             startEventTapIfNeeded()
@@ -202,24 +207,28 @@ final class HotkeyManager {
     }
 
     // MARK: - Event Handling
-    fileprivate func processEvent(snapshot: TapEventSnapshot) {
-        guard let type = snapshot.type else { return }
+    fileprivate func processEvent(snapshot: TapEventSnapshot) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        guard let type = snapshot.type else { return false }
 
         switch type {
         case .flagsChanged:
             updatePhysicalModifierKeys(flagsRaw: snapshot.flagsRaw, keyCode: snapshot.keyCode)
-            handleFlagsChanged(keyCode: snapshot.keyCode, flagsRaw: snapshot.flagsRaw)
+            return handleFlagsChanged(keyCode: snapshot.keyCode, flagsRaw: snapshot.flagsRaw)
         case .keyDown:
-            handleKeyDown(keyCode: snapshot.keyCode, flagsRaw: snapshot.flagsRaw)
+            return handleKeyDown(keyCode: snapshot.keyCode, flagsRaw: snapshot.flagsRaw)
         default:
-            break
+            return false
         }
     }
 
     // MARK: - Flags Handling (Modifier Only)
-    private func handleFlagsChanged(keyCode: UInt16, flagsRaw: UInt64) {
+    private func handleFlagsChanged(keyCode: UInt16, flagsRaw: UInt64) -> Bool {
         let currentHotkey = HotKey.from(keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
         let hasActiveModifiers = !physicalModifierKeys.isEmpty
+        var shouldBlockEvent = false
 
         for (id, entry) in registeredHotkeys where entry.hotkey.isModifierOnly {
             var state = modifierOnlyStates[id, default: ModifierOnlyState()]
@@ -237,6 +246,7 @@ final class HotkeyManager {
             } else if let matched = state.matchedHotkey {
                 if !state.interferenceDetected {
                     triggerHotkey(id: id, isMain: entry.isMain)
+                    shouldBlockEvent = true
                     print("[HotkeyManager] ⚡ ModifierOnly triggered: \(matched.description()) [id=\(id)]")
                 } else {
                     print("[HotkeyManager] 🚫 ModifierOnly cancelled (interference)")
@@ -246,11 +256,14 @@ final class HotkeyManager {
 
             modifierOnlyStates[id] = state
         }
+        
+        return shouldBlockEvent
     }
 
     // MARK: - Key Down Handling
-    private func handleKeyDown(keyCode: UInt16, flagsRaw: UInt64) {
+    private func handleKeyDown(keyCode: UInt16, flagsRaw: UInt64) -> Bool {
         let hotkey = HotKey.from(keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
+        var shouldBlockEvent = false
 
         for entry in registeredHotkeys.values {
             guard entry.hotkey.keyCode == hotkey.keyCode else { continue }
@@ -266,13 +279,17 @@ final class HotkeyManager {
             if entry.hotkey.hasSideSpecification {
                 if entry.hotkey.rawValue == hotkey.rawValue {
                     triggerHotkey(id: entry.id, isMain: entry.isMain)
+                    shouldBlockEvent = true
                     print("[HotkeyManager] ⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]")
                 }
             } else if entry.hotkey.matchesIgnoringSide(hotkey) {
                 triggerHotkey(id: entry.id, isMain: entry.isMain)
+                shouldBlockEvent = true
                 print("[HotkeyManager] ⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]")
             }
         }
+        
+        return shouldBlockEvent
     }
 
     // MARK: - Modifier Key Tracking
@@ -299,31 +316,30 @@ final class HotkeyManager {
     }
     // MARK: - Trigger
     private func triggerHotkey(id: UInt32, isMain: Bool) {
-        if isMain {
-            NotificationCenter.default.post(name: .mainHotkeyTriggered, object: nil)
-        } else {
-            NotificationCenter.default.post(name: .customHotkeyTriggered, object: nil, userInfo: ["hotkeyID": id])
+        DispatchQueue.main.async {
+            if isMain {
+                NotificationCenter.default.post(name: .mainHotkeyTriggered, object: nil)
+            } else {
+                NotificationCenter.default.post(name: .customHotkeyTriggered, object: nil, userInfo: ["hotkeyID": id])
+            }
         }
     }
 }
 
-// 3. 将回调函数移出类外，并变为一个普通的 private free function
+// CGEventTap 回调
 private func hotkeyManagerTapCallback(
     proxy: CGEventTapProxy,
     type: CGEventType,
     event: CGEvent,
     userInfo: UnsafeMutableRawPointer?
 ) -> Unmanaged<CGEvent>? {
-    // 4. 从 userInfo 恢复 HotkeyManager 实例
     guard let userInfo = userInfo else {
         return Unmanaged.passUnretained(event)
     }
     let manager = Unmanaged<HotkeyManager>.fromOpaque(userInfo).takeUnretainedValue()
 
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-        Task { @MainActor in
-            manager.handleTapDisabled()
-        }
+        manager.handleTapDisabled()
         return Unmanaged.passUnretained(event)
     }
 
@@ -337,69 +353,12 @@ private func hotkeyManagerTapCallback(
         flagsRaw: event.flags.rawValue
     )
 
-    Task { @MainActor in
-        // 5. 在 manager 实例上调用方法
-        manager.processEvent(snapshot: snapshot)
-    }
-
-    return Unmanaged.passUnretained(event)
+    // 同步处理事件并根据结果决定是否拦截
+    let shouldBlock = manager.processEvent(snapshot: snapshot)
+    return shouldBlock ? nil : Unmanaged.passUnretained(event)
 }
 
-// MARK: - CGEvent Utilities
-// 这些辅助函数不依赖 HotkeyManager 的状态，可以保持原样
-private extension HotKey {
-    static func from(keyCode: UInt16, flagsRaw: UInt64, physicalKeys: Set<UInt16>) -> HotKey {
-        let flags = NSEvent.ModifierFlags(rawValue: NSEvent.ModifierFlags.RawValue(truncatingIfNeeded: flagsRaw))
-        let command = flags.contains(.command)
-        let option = flags.contains(.option)
-        let control = flags.contains(.control)
-        let shift = flags.contains(.shift)
-
-        let isModifierKey = HotKey.isModifierKeyCode(keyCode)
-        let hotKeyCode: UInt32 = isModifierKey ? 0 : UInt32(keyCode)
-
-        var side: HotKey.Side = .any
-        if command {
-            if physicalKeys.contains(UInt16(kVK_LeftCommand)) { side = .left }
-            else if physicalKeys.contains(UInt16(kVK_RightCommand)) { side = .right }
-        } else if option {
-            if physicalKeys.contains(UInt16(kVK_LeftOption)) { side = .left }
-            else if physicalKeys.contains(UInt16(kVK_RightOption)) { side = .right }
-        } else if shift {
-            if physicalKeys.contains(UInt16(kVK_LeftShift)) { side = .left }
-            else if physicalKeys.contains(UInt16(kVK_RightShift)) { side = .right }
-        }
-
-        return HotKey(
-            keyCode: hotKeyCode,
-            command: command,
-            option: option,
-            control: control,
-            shift: shift,
-            side: side
-        )
-    }
-
-    func matchesIgnoringSide(_ other: HotKey) -> Bool {
-        let normalizedSelf = HotKey(
-            keyCode: keyCode,
-            command: hasCommand,
-            option: hasOption,
-            control: hasControl,
-            shift: hasShift,
-            side: .any
-        )
-        let normalizedOther = HotKey(
-            keyCode: other.keyCode,
-            command: other.hasCommand,
-            option: other.hasOption,
-            control: other.hasControl,
-            shift: other.hasShift,
-            side: .any
-        )
-        return normalizedSelf.rawValue == normalizedOther.rawValue
-    }
-}
+// CGEvent Utilities are implemented in HotKey.swift
 
 // MARK: - String + FourCharCode
 private extension String {

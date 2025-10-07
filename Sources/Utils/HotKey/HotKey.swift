@@ -94,7 +94,9 @@ struct HotKey: Codable, Hashable {
             side = .right
         }
         
-        return HotKey(keyCode: keyCode, command: command, option: option, control: control, shift: shift, side: side)
+        // If right-side masks are present, prefer that side; otherwise defer to physicalKeys-based detection (not available here)
+        let sideOverride: Side? = ( (modifiers & rightCommandMask) != 0 || (modifiers & rightOptionMask) != 0) ? side : nil
+        return build(keyCode: keyCode, command: command, option: option, control: control, shift: shift, physicalKeys: [], sideOverride: sideOverride)
     }
     
     /// 从 NSEvent 和物理按键集合创建
@@ -119,31 +121,7 @@ struct HotKey: Codable, Hashable {
         // 对于修饰键事件，keyCode 应为 0（表示仅修饰键）
         let keyCode: UInt32 = isModifierKey ? 0 : UInt32(eventKeyCode)
         
-        // 确定侧别
-        var side: Side = .any
-        
-        // 优先级：Command > Option > Shift
-        if command {
-            if physicalKeys.contains(UInt16(kVK_LeftCommand)) {
-                side = .left
-            } else if physicalKeys.contains(UInt16(kVK_RightCommand)) {
-                side = .right
-            }
-        } else if option {
-            if physicalKeys.contains(UInt16(kVK_LeftOption)) {
-                side = .left
-            } else if physicalKeys.contains(UInt16(kVK_RightOption)) {
-                side = .right
-            }
-        } else if shift {
-            if physicalKeys.contains(UInt16(kVK_LeftShift)) {
-                side = .left
-            } else if physicalKeys.contains(UInt16(kVK_RightShift)) {
-                side = .right
-            }
-        }
-        
-        return HotKey(keyCode: keyCode, command: command, option: option, control: control, shift: shift, side: side)
+        return build(keyCode: keyCode, command: command, option: option, control: control, shift: shift, physicalKeys: physicalKeys, sideOverride: nil)
     }
     
     // MARK: - 属性查询
@@ -184,7 +162,7 @@ struct HotKey: Codable, Hashable {
         return side != .any
     }
 
-        // 这个可以保持 static，因为它不依赖任何实例状态
+    // 这个可以保持 static，因为它不依赖任何实例状态
     static func isModifierKeyCode(_ code: UInt16) -> Bool {
         switch Int32(code) {
         case kVK_LeftCommand, kVK_RightCommand,
@@ -195,6 +173,60 @@ struct HotKey: Codable, Hashable {
         default:
             return false
         }
+    }
+
+    // MARK: - CGEvent Utilities (moved from HotkeyManager)
+    static func from(keyCode: UInt16, flagsRaw: UInt64, physicalKeys: Set<UInt16>) -> HotKey {
+        let flags = NSEvent.ModifierFlags(rawValue: NSEvent.ModifierFlags.RawValue(truncatingIfNeeded: flagsRaw))
+        let command = flags.contains(.command)
+        let option = flags.contains(.option)
+        let control = flags.contains(.control)
+        let shift = flags.contains(.shift)
+
+        let isModifierKey = HotKey.isModifierKeyCode(keyCode)
+        let hotKeyCode: UInt32 = isModifierKey ? 0 : UInt32(keyCode)
+
+        return build(keyCode: hotKeyCode, command: command, option: option, control: control, shift: shift, physicalKeys: physicalKeys, sideOverride: nil)
+    }
+
+    // MARK: - Internal builder to consolidate side detection
+    private static func build(keyCode: UInt32, command: Bool, option: Bool, control: Bool, shift: Bool, physicalKeys: Set<UInt16>, sideOverride: Side?) -> HotKey {
+        var side: Side = sideOverride ?? .any
+
+        if sideOverride == nil {
+            if command {
+                if physicalKeys.contains(UInt16(kVK_LeftCommand)) { side = .left }
+                else if physicalKeys.contains(UInt16(kVK_RightCommand)) { side = .right }
+            } else if option {
+                if physicalKeys.contains(UInt16(kVK_LeftOption)) { side = .left }
+                else if physicalKeys.contains(UInt16(kVK_RightOption)) { side = .right }
+            } else if shift {
+                if physicalKeys.contains(UInt16(kVK_LeftShift)) { side = .left }
+                else if physicalKeys.contains(UInt16(kVK_RightShift)) { side = .right }
+            }
+        }
+
+        return HotKey(keyCode: keyCode, command: command, option: option, control: control, shift: shift, side: side)
+    }
+
+    func matchesIgnoringSide(_ other: HotKey) -> Bool {
+        let normalizedSelf = HotKey(
+            keyCode: keyCode,
+            command: hasCommand,
+            option: hasOption,
+            control: hasControl,
+            shift: hasShift,
+            side: .any
+        )
+        let normalizedOther = HotKey(
+            keyCode: other.keyCode,
+            command: other.hasCommand,
+            option: other.hasOption,
+            control: other.hasControl,
+            shift: other.hasShift,
+            side: .any
+        )
+        return normalizedSelf.rawValue == normalizedOther.rawValue
     }
     
     // MARK: - 验证
