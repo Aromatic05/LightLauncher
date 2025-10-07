@@ -1,361 +1,285 @@
 import AppKit
-import Carbon.HIToolbox
 import Foundation
 
-// MARK: - 全局 C 回调函数
-private func sharedHotKeyHandler(
-    nextHandler: EventHandlerCallRef?, event: EventRef?, userData: UnsafeMutableRawPointer?
-) -> OSStatus {
-    guard let event = event else { return noErr }
-
-    var hotKeyId = EventHotKeyID()
-    guard
-        GetEventParameter(
-            event, UInt32(kEventParamDirectObject), UInt32(typeEventHotKeyID), nil,
-            MemoryLayout<EventHotKeyID>.size, nil, &hotKeyId) == noErr
-    else {
-        return noErr
-    }
-
-    DispatchQueue.main.async {
-        HotkeyManager.processHotkey(with: hotKeyId)
-    }
-
-    return noErr
-}
-
-// MARK: - 通知定义
+// MARK: - Notification Definitions
 extension Notification.Name {
     static let mainHotkeyTriggered = Notification.Name("com.lightlauncher.mainHotkeyTriggered")
     static let customHotkeyTriggered = Notification.Name("com.lightlauncher.customHotkeyTriggered")
 }
 
-/**
- 全局热键管理器（三层架构）
- Layer 1: Carbon 注册 - 普通组合键（无侧别要求）
- Layer 3: 专门监听 - 仅修饰键（带干扰检测）
- */
+// MARK: - Hotkey Manager (CGEvent Tap Based)
 @MainActor
 final class HotkeyManager {
+    // 1. 使用单例模式
+    static let shared = HotkeyManager()
+
+    // 将所有 static var 改为实例变量
+    private var registeredHotkeys: [UInt32: RegisteredHotkey] = [:]
+    private var customHotKeyConfigMap: [UInt32: CustomHotKeyConfig] = [:]
+
+    private var tapState: TapState = .stopped
+    private var eventTap: CFMachPort?
+    private var eventTapRunLoopSource: CFRunLoopSource?
+
+    private var physicalModifierKeys: Set<UInt16> = []
+    private var modifierOnlyStates: [UInt32: ModifierOnlyState] = [:]
+
+    private var reconnectTask: Task<Void, Never>?
+
+    // 构造函数私有化，确保单例
     private init() {}
 
-    // MARK: - 静态属性
-    
-    private static let mainHotkeySignature = "mhk1".fourCharCodeValue
-    private static let customHotkeySignature = "cthk".fourCharCodeValue
+    // MARK: - Constants
+    private let tapMask = CGEventMask(
+        (1 << Int(CGEventType.flagsChanged.rawValue)) |
+        (1 << Int(CGEventType.keyDown.rawValue))
+    )
+    private let tapRunLoopMode = CFRunLoopMode.commonModes
 
-    // Layer 1: Carbon 注册的热键
-    private static var carbonHotkeys: [(ref: EventHotKeyRef, id: UInt32, isMain: Bool)] = []
-    private static var sharedEventHandler: EventHandlerRef?
-    
-    // Layer 2: NSEvent 监听的热键（侧别相关）- 需要 global 和 local 两个 monitor
-    private static var nsEventHotkeys: [(hotkey: HotKey, id: UInt32, isMain: Bool, globalMonitor: Any?, localMonitor: Any?)] = []
-    
-    // Layer 3: 仅修饰键热键（支持多个）
-    private static var modifierOnlyHotkeys: [(hotkey: HotKey, id: UInt32, isMain: Bool, globalMonitor: Any?, localMonitor: Any?)] = []
-    
-    // 物理按键跟踪（用于侧别检测）- 需要 global 和 local 两套监听器
-    private static var physicalModifierKeys: Set<UInt16> = []
-    private static var physicalKeyTracker: (globalFlags: Any?, localFlags: Any?, globalKeyDown: Any?, localKeyDown: Any?)?
-    
-    // 非修饰键按下标记（用于仅修饰键干扰检测）
-    private static var hasNonModifierKeyPressed: Bool = false
-    
-    // 配置映射
-    private static var customHotKeyConfigMap: [UInt32: CustomHotKeyConfig] = [:]
-
-    // MARK: - 公共 API
-    
-    /// 注册所有热键
-    static func registerAll(mainHotkey: HotKey, customHotkeys: [CustomHotKeyConfig]) {
-        unregisterAll()
-        print("[HotkeyManager] Registering main: \(mainHotkey.description()), custom: \(customHotkeys.count) hotkeys")
-        
-        // 判断需要启动的监控：只在需要时开启以提高效率
-        let allHotkeys = [mainHotkey] + customHotkeys.map { $0.hotkey }
-        let needsPhysical = allHotkeys.contains { $0.hasSideSpecification || $0.isModifierOnly }
-        let needsCarbon = allHotkeys.contains { !$0.hasSideSpecification && !$0.isModifierOnly }
-
-        if needsPhysical {
-            setupPhysicalKeyTracker()
-        }
-        if needsCarbon {
-            setupSharedEventHandler()
-        }
-
-        // 注册主热键
-        registerHotkey(hotkey: mainHotkey, id: 1, isMain: true)
-        
-        // 注册自定义热键
-        for config in customHotkeys {
-            let hotkey = config.hotkey
-            let id = UInt32(config.name.hashValue & 0xFFFF_FFFF)
-            customHotKeyConfigMap[id] = config
-            registerHotkey(hotkey: hotkey, id: id, isMain: false)
-        }
-        
-        print("[HotkeyManager] Registration complete: Carbon=\(carbonHotkeys.count), NSEvent=\(nsEventHotkeys.count), ModifierOnly=\(modifierOnlyHotkeys.count)")
+    // MARK: - Types
+    private struct RegisteredHotkey {
+        let hotkey: HotKey
+        let id: UInt32
+        let isMain: Bool
     }
-    
-    /// 注销所有热键
-    static func unregisterAll() {
-        // 清理 Carbon 热键
-        for (ref, _, _) in carbonHotkeys {
-            UnregisterEventHotKey(ref)
+
+    private struct ModifierOnlyState {
+        var matchedHotkey: HotKey?
+        var interferenceDetected: Bool = false
+    }
+
+    // Sendable 确保可以跨线程安全传递
+    fileprivate struct TapEventSnapshot: Sendable {
+        let typeRaw: UInt32
+        let keyCode: UInt16
+        let flagsRaw: UInt64
+
+        var type: CGEventType? {
+            CGEventType(rawValue: typeRaw)
         }
-        carbonHotkeys.removeAll()
-        
-        // 清理 NSEvent 热键
-        for (_, _, _, globalMonitor, localMonitor) in nsEventHotkeys {
-            if let monitor = globalMonitor {
-                NSEvent.removeMonitor(monitor)
-            }
-            if let monitor = localMonitor {
-                NSEvent.removeMonitor(monitor)
-            }
+    }
+
+    private enum TapState {
+        case stopped
+        case starting
+        case running
+        case failed
+    }
+
+    private var isAccessibilityTrusted: Bool { AXIsProcessTrusted() }
+
+    // MARK: - Public API (改为实例方法)
+    func registerAll(mainHotkey: HotKey, customHotkeys: [CustomHotKeyConfig]) {
+        unregisterAll()
+
+        let mainId: UInt32 = 1
+        registeredHotkeys[mainId] = RegisteredHotkey(hotkey: mainHotkey, id: mainId, isMain: true)
+
+        for config in customHotkeys {
+            let id = UInt32(truncatingIfNeeded: config.name.hashValue)
+            registeredHotkeys[id] = RegisteredHotkey(hotkey: config.hotkey, id: id, isMain: false)
+            customHotKeyConfigMap[id] = config
         }
-        nsEventHotkeys.removeAll()
-        
-        // 清理仅修饰键热键
-        for (_, _, _, globalMonitor, localMonitor) in modifierOnlyHotkeys {
-            if let monitor = globalMonitor { NSEvent.removeMonitor(monitor) }
-            if let monitor = localMonitor { NSEvent.removeMonitor(monitor) }
-        }
-        modifierOnlyHotkeys.removeAll()
-        
-        // 清理物理按键跟踪
-        if let (globalFlags, localFlags, globalKeyDown, localKeyDown) = physicalKeyTracker {
-            if let monitor = globalFlags {
-                NSEvent.removeMonitor(monitor)
-            }
-            if let monitor = localFlags {
-                NSEvent.removeMonitor(monitor)
-            }
-            if let monitor = globalKeyDown {
-                NSEvent.removeMonitor(monitor)
-            }
-            if let monitor = localKeyDown {
-                NSEvent.removeMonitor(monitor)
-            }
-            physicalKeyTracker = nil
-        }
-        
-        physicalModifierKeys.removeAll()
+
+        startEventTapIfNeeded()
+
+        print("[HotkeyManager] Registered hotkeys: main=\(mainHotkey.description()), custom=\(customHotkeys.count)")
+    }
+
+    func unregisterAll() {
+        registeredHotkeys.removeAll()
         customHotKeyConfigMap.removeAll()
-        hasNonModifierKeyPressed = false
-        
+        modifierOnlyStates.removeAll()
+        physicalModifierKeys.removeAll()
+
+        stopEventTapIfNeeded()
+
         print("[HotkeyManager] All hotkeys unregistered")
     }
-    
-    static func getConfig(for id: UInt32) -> CustomHotKeyConfig? {
-        return customHotKeyConfigMap[id]
+
+    func getConfig(for id: UInt32) -> CustomHotKeyConfig? {
+        customHotKeyConfigMap[id]
     }
 
-    // MARK: - 核心注册逻辑
-    
-    private static func registerHotkey(hotkey: HotKey, id: UInt32, isMain: Bool) {
-        guard hotkey.isValid else {
-            print("[HotkeyManager] ⚠️ Invalid hotkey: \(hotkey.description())")
+    // MARK: - Event Tap Lifecycle (改为实例方法)
+    private func startEventTapIfNeeded() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+
+        guard eventTap == nil else {
+            if tapState != .running {
+                resumeEventTap()
+            }
             return
         }
-        
-        if hotkey.isModifierOnly {
-            // Layer 3: 仅修饰键
-            registerModifierOnly(hotkey: hotkey, id: id, isMain: isMain)
-        } else if hotkey.hasSideSpecification {
-            // Layer 2: 侧别相关组合键
-            registerWithNSEvent(hotkey: hotkey, id: id, isMain: isMain)
+
+        guard isAccessibilityTrusted else {
+            print("[HotkeyManager] ⚠️ Accessibility permission not granted. Hotkeys will not function.")
+            tapState = .failed
+            return
+        }
+
+        guard !registeredHotkeys.isEmpty else {
+            tapState = .stopped
+            return
+        }
+
+        tapState = .starting
+
+        // 2. 将 self (单例实例) 的指针传递给 userInfo
+        let userInfo = Unmanaged.passUnretained(self).toOpaque()
+
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: tapMask,
+            callback: hotkeyManagerTapCallback, // 注意函数名变化
+            userInfo: userInfo
+        ) else {
+            print("[HotkeyManager] ✗ Failed to create event tap")
+            tapState = .failed
+            scheduleReconnect()
+            return
+        }
+
+        eventTap = tap
+        eventTapRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+
+        if let source = eventTapRunLoopSource {
+            CFRunLoopAddSource(CFRunLoopGetMain(), source, tapRunLoopMode)
+            CGEvent.tapEnable(tap: tap, enable: true)
+            tapState = .running
+            print("[HotkeyManager] ✓ Event tap started")
         } else {
-            // Layer 1: 普通组合键
-            registerWithCarbon(hotkey: hotkey, id: id, isMain: isMain)
+            print("[HotkeyManager] ✗ Failed to create run loop source for event tap")
+            tapState = .failed
+            scheduleReconnect()
         }
     }
-    
-    // MARK: - Layer 1: Carbon 注册
-    
-    private static func registerWithCarbon(hotkey: HotKey, id: UInt32, isMain: Bool) {
-        if sharedEventHandler == nil {
-            setupSharedEventHandler()
+
+    private func resumeEventTap() {
+        guard let tap = eventTap else { return }
+        CGEvent.tapEnable(tap: tap, enable: true)
+        tapState = .running
+        print("[HotkeyManager] ℹ️ Event tap resumed")
+    }
+
+    private func stopEventTapIfNeeded() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
         }
-        
-        let signature = isMain ? mainHotkeySignature : customHotkeySignature
-        let hotKeyId = EventHotKeyID(signature: signature, id: id)
-        var hotKeyRef: EventHotKeyRef? = nil
-        
-        let carbonMods = hotkey.toCarbonMask()
-        let status = RegisterEventHotKey(
-            hotkey.keyCode, carbonMods, hotKeyId,
-            GetApplicationEventTarget(), 0, &hotKeyRef
-        )
-        
-        if status == noErr, let ref = hotKeyRef {
-            carbonHotkeys.append((ref, id, isMain))
-            print("[HotkeyManager] ✓ Carbon registered: \(hotkey.description()) [id=\(id)]")
-        } else {
-            print("[HotkeyManager] ✗ Carbon failed: \(hotkey.description()) [status=\(status)]")
+
+        if let source = eventTapRunLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, tapRunLoopMode)
+        }
+
+        eventTap = nil
+        eventTapRunLoopSource = nil
+        tapState = .stopped
+        print("[HotkeyManager] Event tap stopped")
+    }
+
+    private func scheduleReconnect(after delay: TimeInterval = 2.0) {
+        reconnectTask?.cancel()
+        guard !registeredHotkeys.isEmpty else { return }
+
+        reconnectTask = Task {
+            // Task 默认就在 @MainActor 上下文中了
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            if Task.isCancelled { return }
+            startEventTapIfNeeded()
         }
     }
-    
-    private static func setupSharedEventHandler() {
-        var eventTypes = [
-            EventTypeSpec(
-                eventClass: OSType(kEventClassKeyboard),
-                eventKind: OSType(kEventHotKeyPressed)
-            )
-        ]
-        InstallEventHandler(
-            GetApplicationEventTarget(),
-            sharedHotKeyHandler,
-            1,
-            &eventTypes,
-            nil,
-            &sharedEventHandler
-        )
+
+    fileprivate func handleTapDisabled() {
+        guard let tap = eventTap else { return }
+        CGEvent.tapEnable(tap: tap, enable: true)
+        print("[HotkeyManager] ℹ️ Event tap re-enabled after disable signal")
     }
-    
-    // MARK: - Layer 2: NSEvent 监听（侧别组合键）
-    
-    private static func registerWithNSEvent(hotkey: HotKey, id: UInt32, isMain: Bool) {
-        // 共享的匹配逻辑
-        let matchAndTrigger: (NSEvent) -> Void = { event in
-            // 1. 检查 keyCode 是否匹配
-            guard UInt32(event.keyCode) == hotkey.keyCode else { return }
-            
-            // 2. 从物理按键集合计算当前修饰键（含侧别）
-            let currentHotkey = HotKey.from(event: event, physicalKeys: physicalModifierKeys)
-            
-            // 3. 精确匹配（包括侧别）
-            guard currentHotkey.rawValue == hotkey.rawValue else { return }
-            
-            // 4. 触发
-            print("[HotkeyManager] ⚡ NSEvent triggered: \(hotkey.description()) [id=\(id)]")
-            triggerHotkey(id: id, isMain: isMain)
+
+    // MARK: - Event Handling
+    fileprivate func processEvent(snapshot: TapEventSnapshot) {
+        guard let type = snapshot.type else { return }
+
+        switch type {
+        case .flagsChanged:
+            updatePhysicalModifierKeys(flagsRaw: snapshot.flagsRaw, keyCode: snapshot.keyCode)
+            handleFlagsChanged(keyCode: snapshot.keyCode, flagsRaw: snapshot.flagsRaw)
+        case .keyDown:
+            handleKeyDown(keyCode: snapshot.keyCode, flagsRaw: snapshot.flagsRaw)
+        default:
+            break
         }
-        
-        // Global monitor - 监听其他应用的事件
-        let globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
-            matchAndTrigger(event)
-        }
-        
-        // Local monitor - 拦截本应用的事件
-        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // 1. 检查 keyCode 是否匹配
-            guard UInt32(event.keyCode) == hotkey.keyCode else { return event }
-            
-            // 2. 从物理按键集合计算当前修饰键（含侧别）
-            let currentHotkey = HotKey.from(event: event, physicalKeys: physicalModifierKeys)
-            
-            // 3. 精确匹配（包括侧别）
-            guard currentHotkey.rawValue == hotkey.rawValue else { return event }
-            
-            // 4. 触发并拦截事件
-            print("[HotkeyManager] ⚡ NSEvent (local) triggered: \(hotkey.description()) [id=\(id)]")
-            triggerHotkey(id: id, isMain: isMain)
-            return nil  // 拦截事件，不让它继续传播
-        }
-        
-        nsEventHotkeys.append((hotkey, id, isMain, globalMonitor, localMonitor))
-        print("[HotkeyManager] ✓ NSEvent registered (global + local): \(hotkey.description()) [id=\(id)]")
     }
-    
-    // MARK: - Layer 3: 仅修饰键
-    
-    private static func registerModifierOnly(hotkey: HotKey, id: UInt32, isMain: Bool) {
-        var lastMatchedModifiers: HotKey? = nil
-        
-        // 共享的处理逻辑
-        let handleFlagsChanged: (NSEvent) -> Void = { event in
-            // 在构建 HotKey 之前更新物理键集合
-            updatePhysicalModifierKeys(event: event)
-            
-            let currentHotkey = HotKey.from(event: event, physicalKeys: physicalModifierKeys)
-            
-            // flagsChanged: physical keys updated
-            
-            // 按下阶段：记录匹配
-            if currentHotkey.rawValue == hotkey.rawValue {
-                lastMatchedModifiers = currentHotkey
-                hasNonModifierKeyPressed = false  // 重置干扰标记
-                print("[HotkeyManager] 🔽 Modifier pressed: \(currentHotkey.description())")
-            }
-            
-            // 释放阶段：检测触发
-            if let matched = lastMatchedModifiers {
-                // 所有修饰键都释放了
-                let allModifiersReleased = !currentHotkey.hasModifiers
-                
-                // 期间没有其他按键按下
-                let noInterference = !hasNonModifierKeyPressed
-                
-                // release check
-                
-                if allModifiersReleased {
-                    if noInterference {
-                        print("[HotkeyManager] ⚡ ModifierOnly triggered: \(matched.description()) [id=\(id)]")
-                        triggerHotkey(id: id, isMain: isMain)
-                    } else {
-                        print("[HotkeyManager] 🚫 ModifierOnly cancelled: interference detected")
+
+    // MARK: - Flags Handling (Modifier Only)
+    private func handleFlagsChanged(keyCode: UInt16, flagsRaw: UInt64) {
+        let currentHotkey = HotKey.from(keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
+        let hasActiveModifiers = !physicalModifierKeys.isEmpty
+
+        for (id, entry) in registeredHotkeys where entry.hotkey.isModifierOnly {
+            var state = modifierOnlyStates[id, default: ModifierOnlyState()]
+
+            if hasActiveModifiers {
+                if entry.hotkey.rawValue == currentHotkey.rawValue {
+                    if state.matchedHotkey == nil {
+                        state.matchedHotkey = currentHotkey
+                        state.interferenceDetected = false
+                        print("[HotkeyManager] 🔽 Modifier pressed: \(currentHotkey.description()) [id=\(id)]")
                     }
-                    lastMatchedModifiers = nil
+                } else if state.matchedHotkey != nil {
+                    state.interferenceDetected = true
                 }
+            } else if let matched = state.matchedHotkey {
+                if !state.interferenceDetected {
+                    triggerHotkey(id: id, isMain: entry.isMain)
+                    print("[HotkeyManager] ⚡ ModifierOnly triggered: \(matched.description()) [id=\(id)]")
+                } else {
+                    print("[HotkeyManager] 🚫 ModifierOnly cancelled (interference)")
+                }
+                state = ModifierOnlyState()
             }
+
+            modifierOnlyStates[id] = state
         }
-        
-        // Global monitor
-        let globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
-            handleFlagsChanged(event)
-        }
-        
-        // Local monitor
-        let localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
-            handleFlagsChanged(event)
-            return event  // 不拦截 flagsChanged 事件
-        }
-        
-        modifierOnlyHotkeys.append((hotkey, id, isMain, globalMonitor, localMonitor))
-        print("[HotkeyManager] ✓ ModifierOnly registered (global + local): \(hotkey.description()) [id=\(id)]")
     }
-    
-    // MARK: - 物理按键跟踪
-    
-    private static func setupPhysicalKeyTracker() {
-        // Global monitor: 跟踪 flagsChanged 以维护物理修饰键集合
-        let globalFlagsMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { event in
-            updatePhysicalModifierKeys(event: event)
-        }
-        
-        // Local monitor: 跟踪 flagsChanged
-        let localFlagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
-            updatePhysicalModifierKeys(event: event)
-            return event
-        }
-        
-        // Global monitor: 跟踪 keyDown 以检测非修饰键按下（用于干扰检测）
-        let globalKeyDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { event in
-            let code = event.keyCode
-            if !isModifierKeyCode(code) {
-                hasNonModifierKeyPressed = true
+
+    // MARK: - Key Down Handling
+    private func handleKeyDown(keyCode: UInt16, flagsRaw: UInt64) {
+        let hotkey = HotKey.from(keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
+
+        for entry in registeredHotkeys.values {
+            guard entry.hotkey.keyCode == hotkey.keyCode else { continue }
+
+            if entry.hotkey.isModifierOnly {
+                if var state = modifierOnlyStates[entry.id] {
+                    state.interferenceDetected = true
+                    modifierOnlyStates[entry.id] = state
+                }
+                continue
+            }
+
+            if entry.hotkey.hasSideSpecification {
+                if entry.hotkey.rawValue == hotkey.rawValue {
+                    triggerHotkey(id: entry.id, isMain: entry.isMain)
+                    print("[HotkeyManager] ⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]")
+                }
+            } else if entry.hotkey.matchesIgnoringSide(hotkey) {
+                triggerHotkey(id: entry.id, isMain: entry.isMain)
+                print("[HotkeyManager] ⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]")
             }
         }
-        
-        // Local monitor: 跟踪 keyDown
-        let localKeyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            let code = event.keyCode
-            if !isModifierKeyCode(code) {
-                hasNonModifierKeyPressed = true
-            }
-            return event
-        }
-        
-        physicalKeyTracker = (globalFlagsMonitor, localFlagsMonitor, globalKeyDownMonitor, localKeyDownMonitor)
-        print("[HotkeyManager] ✓ Physical key tracker started (global + local)")
     }
-    
-    private static func updatePhysicalModifierKeys(event: NSEvent) {
-        let code = event.keyCode
-        let flags = event.modifierFlags
-        
-        let modifierMapping: [(UInt16, NSEvent.ModifierFlags)] = [
+
+    // MARK: - Modifier Key Tracking
+    private func updatePhysicalModifierKeys(flagsRaw: UInt64, keyCode: UInt16) {
+        let flags = NSEvent.ModifierFlags(rawValue: NSEvent.ModifierFlags.RawValue(truncatingIfNeeded: flagsRaw))
+
+        let mapping: [(UInt16, NSEvent.ModifierFlags)] = [
             (UInt16(kVK_LeftCommand), .command),
             (UInt16(kVK_RightCommand), .command),
             (UInt16(kVK_LeftOption), .option),
@@ -364,51 +288,121 @@ final class HotkeyManager {
             (UInt16(kVK_RightShift), .shift),
             (UInt16(kVK_Control), .control),
         ]
-        
-        for (physCode, flag) in modifierMapping {
-            if code == physCode {
-                if flags.contains(flag) {
-                    physicalModifierKeys.insert(physCode)
-                } else {
-                    physicalModifierKeys.remove(physCode)
-                }
-                break
+
+        for (physCode, flag) in mapping where physCode == keyCode {
+            if flags.contains(flag) {
+                physicalModifierKeys.insert(physCode)
+            } else {
+                physicalModifierKeys.remove(physCode)
             }
         }
     }
-    
-    private static func isModifierKeyCode(_ code: UInt16) -> Bool {
-        return code == UInt16(kVK_LeftCommand) ||
-               code == UInt16(kVK_RightCommand) ||
-               code == UInt16(kVK_LeftOption) ||
-               code == UInt16(kVK_RightOption) ||
-               code == UInt16(kVK_LeftShift) ||
-               code == UInt16(kVK_RightShift) ||
-               code == UInt16(kVK_Control)
-    }
-    
-    // MARK: - 触发逻辑
-    
-    fileprivate static func processHotkey(with id: EventHotKeyID) {
-        // Carbon 回调
-        triggerHotkey(id: id.id, isMain: id.signature == mainHotkeySignature)
-    }
-    
-    private static func triggerHotkey(id: UInt32, isMain: Bool) {
+    // MARK: - Trigger
+    private func triggerHotkey(id: UInt32, isMain: Bool) {
         if isMain {
             NotificationCenter.default.post(name: .mainHotkeyTriggered, object: nil)
         } else {
-            NotificationCenter.default.post(
-                name: .customHotkeyTriggered,
-                object: nil,
-                userInfo: ["hotkeyID": id]
-            )
+            NotificationCenter.default.post(name: .customHotkeyTriggered, object: nil, userInfo: ["hotkeyID": id])
         }
     }
 }
 
-// MARK: - String Extension for Carbon FourCharCode
-extension String {
+// 3. 将回调函数移出类外，并变为一个普通的 private free function
+private func hotkeyManagerTapCallback(
+    proxy: CGEventTapProxy,
+    type: CGEventType,
+    event: CGEvent,
+    userInfo: UnsafeMutableRawPointer?
+) -> Unmanaged<CGEvent>? {
+    // 4. 从 userInfo 恢复 HotkeyManager 实例
+    guard let userInfo = userInfo else {
+        return Unmanaged.passUnretained(event)
+    }
+    let manager = Unmanaged<HotkeyManager>.fromOpaque(userInfo).takeUnretainedValue()
+
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        Task { @MainActor in
+            manager.handleTapDisabled()
+        }
+        return Unmanaged.passUnretained(event)
+    }
+
+    guard type == .flagsChanged || type == .keyDown else {
+        return Unmanaged.passUnretained(event)
+    }
+
+    let snapshot = HotkeyManager.TapEventSnapshot(
+        typeRaw: type.rawValue,
+        keyCode: UInt16(event.getIntegerValueField(.keyboardEventKeycode)),
+        flagsRaw: event.flags.rawValue
+    )
+
+    Task { @MainActor in
+        // 5. 在 manager 实例上调用方法
+        manager.processEvent(snapshot: snapshot)
+    }
+
+    return Unmanaged.passUnretained(event)
+}
+
+// MARK: - CGEvent Utilities
+// 这些辅助函数不依赖 HotkeyManager 的状态，可以保持原样
+private extension HotKey {
+    static func from(keyCode: UInt16, flagsRaw: UInt64, physicalKeys: Set<UInt16>) -> HotKey {
+        let flags = NSEvent.ModifierFlags(rawValue: NSEvent.ModifierFlags.RawValue(truncatingIfNeeded: flagsRaw))
+        let command = flags.contains(.command)
+        let option = flags.contains(.option)
+        let control = flags.contains(.control)
+        let shift = flags.contains(.shift)
+
+        let isModifierKey = HotKey.isModifierKeyCode(keyCode)
+        let hotKeyCode: UInt32 = isModifierKey ? 0 : UInt32(keyCode)
+
+        var side: HotKey.Side = .any
+        if command {
+            if physicalKeys.contains(UInt16(kVK_LeftCommand)) { side = .left }
+            else if physicalKeys.contains(UInt16(kVK_RightCommand)) { side = .right }
+        } else if option {
+            if physicalKeys.contains(UInt16(kVK_LeftOption)) { side = .left }
+            else if physicalKeys.contains(UInt16(kVK_RightOption)) { side = .right }
+        } else if shift {
+            if physicalKeys.contains(UInt16(kVK_LeftShift)) { side = .left }
+            else if physicalKeys.contains(UInt16(kVK_RightShift)) { side = .right }
+        }
+
+        return HotKey(
+            keyCode: hotKeyCode,
+            command: command,
+            option: option,
+            control: control,
+            shift: shift,
+            side: side
+        )
+    }
+
+    func matchesIgnoringSide(_ other: HotKey) -> Bool {
+        let normalizedSelf = HotKey(
+            keyCode: keyCode,
+            command: hasCommand,
+            option: hasOption,
+            control: hasControl,
+            shift: hasShift,
+            side: .any
+        )
+        let normalizedOther = HotKey(
+            keyCode: other.keyCode,
+            command: other.hasCommand,
+            option: other.hasOption,
+            control: other.hasControl,
+            shift: other.hasShift,
+            side: .any
+        )
+        return normalizedSelf.rawValue == normalizedOther.rawValue
+    }
+}
+
+// MARK: - String + FourCharCode
+private extension String {
     var fourCharCodeValue: UInt32 {
         var result: UInt32 = 0
         if let data = self.data(using: .macOSRoman) {

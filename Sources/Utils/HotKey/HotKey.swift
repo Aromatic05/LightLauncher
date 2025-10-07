@@ -183,6 +183,19 @@ struct HotKey: Codable, Hashable {
     var hasSideSpecification: Bool {
         return side != .any
     }
+
+        // 这个可以保持 static，因为它不依赖任何实例状态
+    static func isModifierKeyCode(_ code: UInt16) -> Bool {
+        switch Int32(code) {
+        case kVK_LeftCommand, kVK_RightCommand,
+             kVK_LeftOption, kVK_RightOption,
+             kVK_LeftShift, kVK_RightShift,
+             kVK_Control, kVK_RightControl, kVK_Function, kVK_CapsLock:
+            return true
+        default:
+            return false
+        }
+    }
     
     // MARK: - 验证
     var isValid: Bool {

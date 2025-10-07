@@ -49,7 +49,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let customHotkeys = configManager.config.customHotKeys
 
         // 2. 调用统一的静态注册方法
-        HotkeyManager.registerAll(mainHotkey: mainHotkey, customHotkeys: customHotkeys)
+        HotkeyManager.shared.registerAll(mainHotkey: mainHotkey, customHotkeys: customHotkeys)
     }
 
     private func setupHotkeyObservers() {
@@ -76,7 +76,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let hotkeyID = notification.userInfo?["hotkeyID"] as? UInt32 else { return }
 
         Task { @MainActor in
-            guard let config = HotkeyManager.getConfig(for: hotkeyID) else { return }
+            guard let config = HotkeyManager.shared.getConfig(for: hotkeyID) else { return }
             if config.type == "open" {
                 let filePath = (config.text as NSString).expandingTildeInPath
                 let fileURL = URL(fileURLWithPath: filePath)

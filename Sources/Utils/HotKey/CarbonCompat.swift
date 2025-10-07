@@ -31,6 +31,11 @@ public let kVK_RightOption: Int32 = 61
 
 // Control keys (macOS doesn't reliably distinguish left/right Control)
 public let kVK_Control: Int32 = 59
+public let kVK_RightControl: Int32 = 62
+
+public let kVK_Function: Int32 = 63
+
+public let kVK_CapsLock: Int32 = 57
 
 public let kVK_F1: Int32 = 122
 public let kVK_F2: Int32 = 120
