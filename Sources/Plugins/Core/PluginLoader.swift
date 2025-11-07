@@ -166,8 +166,22 @@ class PluginLoader {
     }
 
     private func isValidCommand(_ command: String) -> Bool {
-        // 命令必须以 / 开头
-        return command.hasPrefix("/") && command.count > 1
+        // 要求：命令非空且以符号（标点或符号字符）开头，不能以字母开头。
+        // 例如: "/open", "!do", "#search" 等被视为合法；而 "test", "123" 则不合法。
+        guard !command.isEmpty else { return false }
+
+        if let firstScalar = command.unicodeScalars.first {
+            let symbolSets = CharacterSet.punctuationCharacters.union(.symbols)
+            // 如果首字符是标点或符号，视为合法
+            if symbolSets.contains(firstScalar) {
+                return true
+            }
+
+            // 否则（首字符不是标点/符号），不合法
+            return false
+        }
+
+        return false
     }
 
     private func isValidPermission(_ permission: PluginPermissionSpec) -> Bool {
