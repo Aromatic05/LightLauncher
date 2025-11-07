@@ -17,7 +17,14 @@ struct SearchBoxView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
 
-            TextField(mode.placeholder, text: $searchText)
+            // 最简单的“不显示超长文本”策略：基于字符数阈值决定是否在输入框中显示文本
+            let maxChars = 60
+            let displayBinding = Binding<String>(
+                get: { self.searchText.count > maxChars ? "" : self.searchText },
+                set: { self.searchText = $0 }
+            )
+
+            TextField(mode.placeholder, text: displayBinding)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 16))
                 .focused($isSearchFieldFocused)  // 绑定焦点
