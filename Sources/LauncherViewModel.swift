@@ -30,7 +30,6 @@ class LauncherViewModel: ObservableObject {
     private var controllerCancellable: AnyCancellable?
     var cancellables = Set<AnyCancellable>()
     private var previousSearchText = ""
-    // 简单防抖：延迟执行输入处理的任务
     private var debounceWorkItem: DispatchWorkItem?
     let focusSearchField = PassthroughSubject<Void, Never>()
 
@@ -232,8 +231,9 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Command Suggestions (UNCHANGED)
     private func updateCommandSuggestions(for text: String, oldText: String) {
-        if SettingsManager.shared.showCommandSuggestions
-            && (text.first != nil && !text.first!.isLetter)
+        if SettingsManager.shared.showCommandSuggestions,
+           let first = text.first,
+           !first.isLetter
         {
             let newSuggestions = LauncherCommand.getSuggestions(for: text)
             if self.commandSuggestions.map({ $0.prefix }) != newSuggestions.map({ $0.prefix }) {
