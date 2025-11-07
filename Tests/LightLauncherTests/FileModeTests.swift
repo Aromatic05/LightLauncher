@@ -60,4 +60,46 @@ final class FileModeTests: XCTestCase {
         XCTAssertNotNil(items)
         XCTAssertTrue(LauncherViewModel.shared.searchText == "/o ")
     }
+
+    func testNavigateThroughSymbolicLink_followsSymlinkAndUpdatesDisplayableItems() {
+        // 创建目标目录并添加文件
+        let targetDir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
+        let targetFile = targetDir.appendingPathComponent("linked.txt")
+        FileManager.default.createFile(atPath: targetFile.path, contents: Data("linked".utf8))
+
+        // 在临时目录创建一个符号链接指向 targetDir
+        let symlink = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + "_link")
+        // 使用 createSymbolicLink(at:withDestinationURL:)，忽略错误以防平台限制
+        try? FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: targetDir)
+
+        // 导航到符号链接路径 — 期望 FileMode 能解析并显示目标目录内容
+        controller.navigateToDirectory(symlink)
+
+        let names = controller.displayableItems.compactMap { ($0 as? FileItem)?.name }
+        XCTAssertTrue(names.contains("linked.txt"), "Expected linked file from symlink target to be listed")
+
+        // 清理
+        try? FileManager.default.removeItem(at: symlink)
+        try? FileManager.default.removeItem(at: targetDir)
+    }
+
+    func testBrokenSymbolicLink_isHandledGracefully_andReturnsNoItems() {
+        // 创建一个指向不存在目标的符号链接
+        let missingTarget = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + "_missing")
+        let brokenLink = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + "_brokenlink")
+        // 确保目标不存在
+        try? FileManager.default.removeItem(at: missingTarget)
+        // 创建符号链接指向不存在的位置
+        try? FileManager.default.createSymbolicLink(at: brokenLink, withDestinationURL: missingTarget)
+
+        // 导航到断开的符号链接，期望控制器不会崩溃并且不列出任何项
+        controller.navigateToDirectory(brokenLink)
+
+        let items = controller.displayableItems
+        XCTAssertTrue(items.isEmpty, "Broken symlink should result in no displayable items")
+
+        // 清理
+        try? FileManager.default.removeItem(at: brokenLink)
+    }
 }
