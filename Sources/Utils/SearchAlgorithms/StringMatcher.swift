@@ -48,8 +48,8 @@ struct StringMatcher {
     /// 计算单词开头匹配分数
     /// 检查查询字符串是否匹配文本中任何单词的开头
     static func calculateWordStartMatch(text: String, query: String) -> Double? {
-        let words = text.components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
+        // split by non-alphanumerics and CamelCase boundaries
+        let words = splitWords(text).filter { !$0.isEmpty }
 
         var bestScore: Double = 0
         var foundMatch = false
@@ -80,6 +80,39 @@ struct StringMatcher {
         }
 
         return foundMatch ? bestScore : nil
+    }
+
+    /// 将文本拆分为单词，支持 CamelCase 拆分和非字母数字分隔符
+    private static func splitWords(_ text: String) -> [String] {
+        let tokens = text.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        var words: [String] = []
+
+        for token in tokens {
+            var current = ""
+            let chars = Array(token)
+            for (i, ch) in chars.enumerated() {
+                if i > 0 {
+                    let prev = chars[i - 1]
+                    if prev.isLowercase && ch.isUppercase {
+                        if !current.isEmpty { words.append(current) }
+                        current = String(ch)
+                        continue
+                    }
+                    if prev.isUppercase && ch.isLowercase {
+                        if current.allSatisfy({ $0.isUppercase }) && current.count > 1 {
+                            let last = current.removeLast()
+                            words.append(current)
+                            current = String(last) + String(ch)
+                            continue
+                        }
+                    }
+                }
+                current.append(ch)
+            }
+            if !current.isEmpty { words.append(current) }
+        }
+
+        return words
     }
 
     /// 计算子序列匹配分数

@@ -23,7 +23,8 @@ struct AppSearchMatcher {
         usageCount: [String: Int],
         commonAbbreviations: [String: [String]]
     ) -> ItemMatch? {
-        let name = item.title.lowercased()
+    let originalName = item.title
+    let name = originalName.lowercased()
         let searchQuery = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !searchQuery.isEmpty else { return nil }
 
@@ -59,7 +60,7 @@ struct AppSearchMatcher {
             }
 
             // 2. 多单词首字母匹配 (acronym)
-            if let acronymScore = calculateAcronymMatch(appName: name, query: searchQuery) {
+            if let acronymScore = calculateAcronymMatch(appName: originalName, query: searchQuery) {
                 let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
                 return ItemMatch(item: item, score: acronymScore + 1000.0 + usageBonus, matchType: .wordStart)
             }
@@ -68,7 +69,7 @@ struct AppSearchMatcher {
             if let abbreviationWords = commonAbbreviations[searchQuery] {
                 var bestPartial: Double = 0
                 for word in abbreviationWords {
-                    if let m = calculateDirectMatch(appName: name, query: word.lowercased()) {
+                    if let m = calculateDirectMatch(appName: name, originalAppName: originalName, query: word.lowercased()) {
                         bestPartial = max(bestPartial, m.score)
                     }
                     if name.contains(word.lowercased()) {
@@ -109,7 +110,7 @@ struct AppSearchMatcher {
             }
 
             // 4. 单词内部前缀匹配
-            if let wordInternalScore = calculateWordInternalMatch(appName: name, query: searchQuery) {
+            if let wordInternalScore = calculateWordInternalMatch(appName: originalName, query: searchQuery) {
                 let usageBonusInternal = calculateUsageBonus(appName: app.name, usageCount: usageCount)
                 return ItemMatch(item: item, score: wordInternalScore + 700.0 + usageBonusInternal, matchType: .wordStart)
             }
@@ -166,7 +167,7 @@ struct AppSearchMatcher {
     }
 
     /// 计算直接匹配（英文匹配）
-    private static func calculateDirectMatch(appName: String, query: String) -> (
+    private static func calculateDirectMatch(appName: String, originalAppName: String, query: String) -> (
         score: Double, matchType: AppMatch.MatchType
     )? {
         // 1. 完全匹配开头 - 最高优先级
@@ -177,7 +178,7 @@ struct AppSearchMatcher {
         }
 
         // 2. 首字母缩写匹配 (如 "vsc" 匹配 "Visual Studio Code")
-        if let acronymScore = calculateAcronymMatch(appName: appName, query: query) {
+        if let acronymScore = calculateAcronymMatch(appName: originalAppName, query: query) {
             return (score: acronymScore + 900.0, matchType: .wordStart)
         }
 
@@ -187,7 +188,7 @@ struct AppSearchMatcher {
         }
 
         // 4. 单词内部前缀匹配 (如 "studio" 匹配 "Visual Studio Code")
-        if let wordInternalScore = calculateWordInternalMatch(appName: appName, query: query) {
+        if let wordInternalScore = calculateWordInternalMatch(appName: originalAppName, query: query) {
             return (score: wordInternalScore + 700.0, matchType: .wordStart)
         }
 
@@ -217,10 +218,8 @@ struct AppSearchMatcher {
 
     /// 计算首字母缩写匹配分数 (如 "vsc" 匹配 "Visual Studio Code")
     private static func calculateAcronymMatch(appName: String, query: String) -> Double? {
-        let words = appName.components(
-            separatedBy: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
-        )
-        .filter { !$0.isEmpty }
+        // split words, honoring CamelCase and non-alphanumerics
+        let words = splitWords(appName).filter { !$0.isEmpty }
 
         guard words.count >= query.count else { return nil }
 
@@ -266,10 +265,7 @@ struct AppSearchMatcher {
 
     /// 计算单词内部匹配分数 (如 "studio" 匹配 "Visual Studio Code")
     private static func calculateWordInternalMatch(appName: String, query: String) -> Double? {
-        let words = appName.components(
-            separatedBy: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
-        )
-        .filter { !$0.isEmpty }
+        let words = splitWords(appName).filter { !$0.isEmpty }
 
         for (index, word) in words.enumerated() {
             if word.lowercased().hasPrefix(query.lowercased()) {
@@ -282,6 +278,49 @@ struct AppSearchMatcher {
         }
 
         return nil
+    }
+
+    /// 将文本拆分为单词，支持 CamelCase 拆分和非字母数字分隔符
+    private static func splitWords(_ text: String) -> [String] {
+        // 先按非字母数字分割
+        let tokens = text.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        var words: [String] = []
+
+        for token in tokens {
+            var current = ""
+            let chars = Array(token)
+            for (i, ch) in chars.enumerated() {
+                if i > 0 {
+                    let prev = chars[i - 1]
+                    // 如果从小写到大写，视为新单词边界 (e.g. PowerPoint -> Power Point)
+                    if prev.isLowercase && ch.isUppercase {
+                        if !current.isEmpty {
+                            words.append(current)
+                        }
+                        current = String(ch)
+                        continue
+                    }
+                    // 如果前为大写且当前为大写，继续累积 (支持缩写如 PDF)
+                    // 如果前为大写且当前为小写，并且前面的序列长度>1，将前面的大写序列作为单词
+                    if prev.isUppercase && ch.isLowercase {
+                        // 如果 current 是全部大写且长度>1, split before last uppercase
+                        if current.allSatisfy({ $0.isUppercase }) && current.count > 1 {
+                            // move last char to new current
+                            let last = current.removeLast()
+                            words.append(current)
+                            current = String(last) + String(ch)
+                            continue
+                        }
+                    }
+                }
+                current.append(ch)
+            }
+            if !current.isEmpty {
+                words.append(current)
+            }
+        }
+
+        return words
     }
 
     /// 计算使用频率加分
