@@ -8,9 +8,11 @@ import UserNotifications
 class APIManager {
     weak var pluginInstance: PluginInstance?
     private let permissionManager = PluginPermissionManager.shared
+    private var pluginAPI: PluginAPI?
 
     init(pluginInstance: PluginInstance) {
         self.pluginInstance = pluginInstance
+        self.pluginAPI = PluginAPI(pluginInstance: pluginInstance, permissionManager: permissionManager)
     }
 
     /// 将 API 注入到 JavaScript 上下文
@@ -54,7 +56,7 @@ class APIManager {
         // 显示结果
         let displayBlock: @convention(block) (JSValue?) -> Void = { [weak self] items in
             Task { @MainActor in
-                self?.handleDisplayItems(items, pluginInstance: pluginInstance)
+                self?.pluginAPI?.handleDisplayItems(items)
             }
         }
         lightlauncher?.setObject(displayBlock, forKeyedSubscript: "display" as NSString)
@@ -81,7 +83,7 @@ class APIManager {
 
         // 获取插件数据目录
         let getDataPathBlock: @convention(block) () -> String = { [weak self] in
-            return self?.getPluginDataPath(for: pluginInstance.plugin) ?? ""
+            return self?.pluginAPI?.getPluginDataPath() ?? ""
         }
         lightlauncher?.setObject(getDataPathBlock, forKeyedSubscript: "getDataPath" as NSString)
 
@@ -107,19 +109,16 @@ class APIManager {
     ) {
         // 读取文件
         let readFileBlock: @convention(block) (String) -> String? = { [weak self] path in
-            return self?.readFile(path: path, pluginInstance: pluginInstance)
+            return self?.pluginAPI?.readFile(path: path)
         }
         lightlauncher?.setObject(readFileBlock, forKeyedSubscript: "readFile" as NSString)
 
-        // 写入文件
-        let writeFileBlock: @convention(block) ([String: Any]) -> Bool = { [weak self] params in
-            guard let path = params["path"] as? String,
-                let content = params["content"] as? String
-            else {
-                return false
-            }
-            return self?.writeFile(path: path, content: content, pluginInstance: pluginInstance)
-                ?? false
+        // 写入文件（接受 JSValue，内部做安全转换以避免桥接异常）
+        let writeFileBlock: @convention(block) (JSValue?) -> Bool = { [weak self] paramsJS in
+            guard let strong = self else { return false }
+            guard let dict = strong.pluginAPI?.jsDictionary(from: paramsJS, in: context) else { return false }
+            guard let path = dict["path"] as? String, let content = dict["content"] as? String else { return false }
+            return strong.pluginAPI?.writeFile(path: path, content: content) ?? false
         }
         lightlauncher?.setObject(writeFileBlock, forKeyedSubscript: "writeFile" as NSString)
     }
@@ -131,13 +130,13 @@ class APIManager {
     ) {
         // 读取剪贴板
         let readClipboardBlock: @convention(block) () -> String? = { [weak self] in
-            return self?.readClipboard(pluginInstance: pluginInstance)
+            return self?.pluginAPI?.readClipboard()
         }
         lightlauncher?.setObject(readClipboardBlock, forKeyedSubscript: "readClipboard" as NSString)
 
         // 写入剪贴板
         let writeClipboardBlock: @convention(block) (String) -> Bool = { [weak self] text in
-            return self?.writeClipboard(text: text, pluginInstance: pluginInstance) ?? false
+            return self?.pluginAPI?.writeClipboard(text: text) ?? false
         }
         lightlauncher?.setObject(
             writeClipboardBlock, forKeyedSubscript: "writeClipboard" as NSString)
@@ -148,14 +147,11 @@ class APIManager {
     private func injectNetworkAPIs(
         lightlauncher: JSValue?, context: JSContext, pluginInstance: PluginInstance
     ) {
-        // HTTP 请求
-        let networkRequestBlock: @convention(block) ([String: Any], JSValue?) -> Void = {
-            [weak self] params, callback in
-            self?.makeNetworkRequest(
-                params: params, callback: callback, pluginInstance: pluginInstance)
+        // HTTP 请求（接受 JSValue 参数，内部安全转换）
+        let networkRequestBlock: @convention(block) (JSValue?, JSValue?) -> Void = { [weak self] paramsJS, callback in
+            self?.pluginAPI?.makeNetworkRequest(paramsJS: paramsJS, callback: callback, context: context)
         }
-        lightlauncher?.setObject(
-            networkRequestBlock, forKeyedSubscript: "networkRequest" as NSString)
+        lightlauncher?.setObject(networkRequestBlock, forKeyedSubscript: "networkRequest" as NSString)
     }
 
     // MARK: - 系统 API
@@ -164,22 +160,19 @@ class APIManager {
         lightlauncher: JSValue?, context: JSContext, pluginInstance: PluginInstance
     ) {
         // 执行系统命令
-        let executeCommandBlock: @convention(block) (String) -> [String: Any] = {
-            [weak self] command in
-            return self?.executeSystemCommand(command: command, pluginInstance: pluginInstance) ?? [
-                "error": "API not available"
-            ]
+        let executeCommandBlock: @convention(block) (String) -> [String: Any] = { [weak self] command in
+            return self?.pluginAPI?.executeSystemCommand(command: command) ?? ["error": "API not available"]
         }
         lightlauncher?.setObject(
             executeCommandBlock, forKeyedSubscript: "executeCommand" as NSString)
 
         // 显示通知
-        let showNotificationBlock: @convention(block) ([String: Any]) -> Bool = {
-            [weak self] params in
-            return self?.showNotification(params: params, pluginInstance: pluginInstance) ?? false
+        let showNotificationBlock: @convention(block) (JSValue?) -> Bool = { [weak self] paramsJS in
+            guard let strong = self else { return false }
+            let params = strong.pluginAPI?.jsDictionary(from: paramsJS, in: context)
+            return strong.pluginAPI?.showNotification(params: params) ?? false
         }
-        lightlauncher?.setObject(
-            showNotificationBlock, forKeyedSubscript: "showNotification" as NSString)
+        lightlauncher?.setObject(showNotificationBlock, forKeyedSubscript: "showNotification" as NSString)
     }
 
     // MARK: - 权限 API
@@ -212,207 +205,5 @@ class APIManager {
             hasClipboardPermissionBlock, forKeyedSubscript: "hasClipboardPermission" as NSString)
     }
 
-    // MARK: - API 实现
-
-    private func handleDisplayItems(_ items: JSValue?, pluginInstance: PluginInstance) {
-        guard let items = items,
-            let itemsArray = items.toArray() as? [[String: Any]]
-        else {
-            return
-        }
-
-        let pluginItems = itemsArray.compactMap { itemDict -> PluginItem? in
-            guard let title = itemDict["title"] as? String else { return nil }
-
-            let subtitle = itemDict["subtitle"] as? String
-            let iconName = itemDict["icon"] as? String
-            let action = itemDict["action"] as? String
-
-            return PluginItem(title: title, subtitle: subtitle, iconName: iconName, action: action)
-        }
-
-        pluginInstance.currentItems = pluginItems
-    }
-
-    private func getPluginDataPath(for plugin: Plugin) -> String {
-        let homeDir = URL(fileURLWithPath: NSHomeDirectory())
-        let dataDir = homeDir.appendingPathComponent(".config/LightLauncher/data/\(plugin.name)")
-
-        // 确保目录存在
-        try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
-
-        return dataDir.path
-    }
-
-    private func readFile(path: String, pluginInstance: PluginInstance) -> String? {
-        // 检查权限
-        if !isPathInPluginDataDirectory(path, plugin: pluginInstance.plugin) {
-            guard permissionManager.hasPermission(plugin: pluginInstance.plugin, type: .fileRead)
-            else {
-                print("插件 \(pluginInstance.plugin.name) 没有文件读取权限")
-                return nil
-            }
-        }
-
-        do {
-            return try String(contentsOfFile: path, encoding: .utf8)
-        } catch {
-            print("读取文件失败: \(error.localizedDescription)")
-            return nil
-        }
-    }
-
-    private func writeFile(path: String, content: String, pluginInstance: PluginInstance) -> Bool {
-        // 检查权限
-        if !isPathInPluginDataDirectory(path, plugin: pluginInstance.plugin) {
-            guard permissionManager.hasPermission(plugin: pluginInstance.plugin, type: .fileWrite)
-            else {
-                print("插件 \(pluginInstance.plugin.name) 没有文件写入权限")
-                return false
-            }
-        }
-
-        do {
-            // 确保目录存在
-            let url = URL(fileURLWithPath: path)
-            try FileManager.default.createDirectory(
-                at: url.deletingLastPathComponent(),
-                withIntermediateDirectories: true)
-
-            try content.write(toFile: path, atomically: true, encoding: .utf8)
-            return true
-        } catch {
-            print("写入文件失败: \(error.localizedDescription)")
-            return false
-        }
-    }
-
-    private func readClipboard(pluginInstance: PluginInstance) -> String? {
-        guard permissionManager.hasPermission(plugin: pluginInstance.plugin, type: .clipboard)
-        else {
-            print("插件 \(pluginInstance.plugin.name) 没有剪贴板权限")
-            return nil
-        }
-
-        return NSPasteboard.general.string(forType: .string)
-    }
-
-    private func writeClipboard(text: String, pluginInstance: PluginInstance) -> Bool {
-        guard permissionManager.hasPermission(plugin: pluginInstance.plugin, type: .clipboard)
-        else {
-            print("插件 \(pluginInstance.plugin.name) 没有剪贴板权限")
-            return false
-        }
-
-        NSPasteboard.general.clearContents()
-        return NSPasteboard.general.setString(text, forType: .string)
-    }
-
-    private func makeNetworkRequest(
-        params: [String: Any], callback: JSValue?, pluginInstance: PluginInstance
-    ) {
-        guard permissionManager.hasPermission(plugin: pluginInstance.plugin, type: .network) else {
-            print("插件 \(pluginInstance.plugin.name) 没有网络权限")
-            return
-        }
-
-        guard let urlString = params["url"] as? String,
-            let url = URL(string: urlString)
-        else {
-            return
-        }
-
-        let method = params["method"] as? String ?? "GET"
-        let headers = params["headers"] as? [String: String]
-        let body = params["body"] as? String
-
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-
-        headers?.forEach { key, value in
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-
-        if let body = body {
-            request.httpBody = body.data(using: .utf8)
-        }
-
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            Task { @MainActor in
-                var result: [String: Any] = [:]
-
-                if let error = error {
-                    result["error"] = error.localizedDescription
-                } else {
-                    if let data = data {
-                        result["data"] = String(data: data, encoding: .utf8) ?? ""
-                    }
-                    if let httpResponse = response as? HTTPURLResponse {
-                        result["status"] = httpResponse.statusCode
-                        result["headers"] = httpResponse.allHeaderFields
-                    }
-                }
-
-                callback?.call(withArguments: [result])
-            }
-        }.resume()
-    }
-
-    private func executeSystemCommand(command: String, pluginInstance: PluginInstance) -> [String:
-        Any]
-    {
-        guard permissionManager.hasPermission(plugin: pluginInstance.plugin, type: .systemCommand)
-        else {
-            return ["error": "插件 \(pluginInstance.plugin.name) 没有系统命令权限"]
-        }
-
-        let process = Process()
-        process.launchPath = "/bin/sh"
-        process.arguments = ["-c", command]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-
-            return [
-                "exitCode": process.terminationStatus,
-                "output": output,
-            ]
-        } catch {
-            return ["error": error.localizedDescription]
-        }
-    }
-
-    private func showNotification(params: [String: Any], pluginInstance: PluginInstance) -> Bool {
-        guard let title = params["title"] as? String else { return false }
-        let subtitle = params["subtitle"] as? String
-        let body = params["body"] as? String
-
-        let content = UNMutableNotificationContent()
-        content.title = title
-        if let subtitle = subtitle { content.subtitle = subtitle }
-        if let body = body { content.body = body }
-
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString, content: content, trigger: nil)
-        let center = UNUserNotificationCenter.current()
-        center.add(request) { error in
-            if let error = error {
-                print("通知发送失败: \(error.localizedDescription)")
-            }
-        }
-        return true
-    }
-
-    private func isPathInPluginDataDirectory(_ path: String, plugin: Plugin) -> Bool {
-        let pluginDataPath = getPluginDataPath(for: plugin)
-        return path.hasPrefix(pluginDataPath)
-    }
+    // API 的具体实现已移动到 PluginAPI，APIManager 作为注入/委托层保留简洁接口。
 }
