@@ -62,26 +62,26 @@ class TodoPlugin {
         const text = action.substring(4).trim();
         if (text) {
           this.addTodo(text);
-          return true;
+          return false;
         }
       } else if (action.startsWith("toggle:")) {
         // 切换完成状态
         const id = parseInt(action.substring(7));
         this.toggleTodo(id);
-        return true;
+        return false;
       } else if (action.startsWith("delete:")) {
         // 删除待办事项
         const id = parseInt(action.substring(7));
         this.deleteTodo(id);
-        return true;
+        return false;
       } else if (action === "show_all") {
         // 显示所有待办事项
         this.displayTodos();
-        return true;
+        return false;
       } else if (action === "clear_completed") {
         // 清除已完成的待办事项
         this.clearCompleted();
-        return true;
+        return false;
       }
     } catch (error) {
       lightlauncher.log(`Action error: ${error.message}`);

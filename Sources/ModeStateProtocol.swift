@@ -11,7 +11,7 @@ protocol DisplayableItem: Hashable, Identifiable {
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView
     @MainActor
-    func executeAction() -> Bool
+    func executeAction() -> Bool // 返回结果确定是否隐藏启动器
 }
 
 // MARK: - 模式状态控制器协议（清晰版）
