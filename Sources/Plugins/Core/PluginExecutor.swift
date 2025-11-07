@@ -19,18 +19,18 @@ class PluginExecutor {
             return existingInstance
         }
 
-        do {
-            let instance = PluginInstance(plugin: plugin)
-            try setupInstance(instance)
+        let instance = PluginInstance(plugin: plugin)
 
-            instances[plugin.name] = instance
-            print("插件实例已创建: \(plugin.name)")
-
-            return instance
-        } catch {
-            print("创建插件实例失败 (\(plugin.name)): \(error.localizedDescription)")
+        // 尝试设置实例，若无法创建 JSContext 则视为失败
+        guard setupInstance(instance) else {
+            print("创建插件实例失败 (\(plugin.name)): 无法创建 JavaScript 上下文")
             return nil
         }
+
+        instances[plugin.name] = instance
+        print("插件实例已创建: \(plugin.name)")
+
+        return instance
     }
 
     /// 获取插件实例
@@ -81,14 +81,14 @@ class PluginExecutor {
 
     // MARK: - 私有方法
 
-    private func setupInstance(_ instance: PluginInstance) throws {
+    private func setupInstance(_ instance: PluginInstance) -> Bool {
         // 创建 JavaScript 上下文
         let context = JSContext()
         guard let context = context else {
-            throw PluginError.executionFailed("无法创建 JavaScript 上下文")
+            return false
         }
 
-        // 设置异常处理
+        // 设置异常处理（记录但不阻止实例创建）
         context.exceptionHandler = { context, exception in
             print("插件 JavaScript 异常 (\(instance.plugin.name)): \(exception?.toString() ?? "未知异常")")
         }
@@ -101,20 +101,17 @@ class PluginExecutor {
         instance.context = context
         instance.apiManager = apiManager
 
-        // 执行插件脚本
+        // 执行插件脚本（脚本返回 undefined 或抛异常不应阻止实例创建）
         let script = instance.plugin.script
-        let result = context.evaluateScript(script)
+        let _ = context.evaluateScript(script)
 
         if let exception = context.exception {
-            throw PluginError.scriptEvaluationFailed(
-                "脚本执行失败: \(String(describing: exception.toString()))")
+            // 记录异常，但继续：测试期望即使脚本抛异常也能创建实例
+            print("插件 JavaScript 异常 (\(instance.plugin.name)): \(String(describing: exception.toString()))")
         }
 
-        if result?.isUndefined == true {
-            throw PluginError.scriptEvaluationFailed("脚本执行没有返回值")
-        }
-
-        print("插件脚本执行成功: \(instance.plugin.name)")
+        print("插件脚本执行完成: \(instance.plugin.name)")
+        return true
     }
 
     /// 获取实例统计信息
