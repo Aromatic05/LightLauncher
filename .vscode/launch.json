@@ -24,8 +24,9 @@
             "args": [],
             "cwd": "${workspaceFolder:LightLauncher}",
             "name": "Debug LightLauncher",
-            "program": "${workspaceFolder:LightLauncher}/.build/debug/LightLauncher",
-            "preLaunchTask": "swift: Build Debug LightLauncher"
+            "preLaunchTask": "swift: Build Debug LightLauncher",
+            "target": "LightLauncher",
+            "configuration": "debug"
         },
         {
             "type": "swift",
@@ -33,8 +34,9 @@
             "args": [],
             "cwd": "${workspaceFolder:LightLauncher}",
             "name": "Release LightLauncher",
-            "program": "${workspaceFolder:LightLauncher}/.build/release/LightLauncher",
-            "preLaunchTask": "swift: Build Release LightLauncher"
+            "preLaunchTask": "swift: Build Release LightLauncher",
+            "target": "LightLauncher",
+            "configuration": "release"
         }
     ]
 }
