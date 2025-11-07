@@ -11,6 +11,9 @@ class BrowserDataManager {
     private var allItems: [PreScoredItem] = []
     private var lastLoadTime: Date?
     private var enabledBrowsers: Set<BrowserType>
+    // 前缀桶索引（仅用于短查询路径）: key -> indices into allItems
+    private var prefixBuckets: [String: [Int]] = [:]
+    private let PREFIX_KEY_LENGTH = 3
 
     private let URL_SEGMENT_MAX_LENGTH = 35
     // 新增：定义分层搜索的阈值
@@ -23,6 +26,7 @@ class BrowserDataManager {
     func setEnabledBrowsers(_ browsers: Set<BrowserType>) {
         enabledBrowsers = browsers
         lastLoadTime = nil
+        prefixBuckets = [:]
     }
 
     func getEnabledBrowsers() -> Set<BrowserType> {
@@ -60,8 +64,26 @@ class BrowserDataManager {
             await MainActor.run { [weak self] in
                 self?.allItems = preScoredItems
                 self?.lastLoadTime = Date()
+                // 构建短查询用的前缀桶索引（在主线程更新引用）
+                self?.buildPrefixBuckets()
             }
         }
+    }
+
+    private func buildPrefixBuckets() {
+        var map: [String: [Int]] = [:]
+        for (idx, pre) in allItems.enumerated() {
+            let s = pre.searchableUrl
+            let key = String(s.prefix(PREFIX_KEY_LENGTH))
+            map[key, default: []].append(idx)
+        }
+        // 将每个桶内按 baseScore 降序排序，便于后续快速 top-k
+        for (k, list) in map {
+            map[k] = list.sorted { a, b in
+                return allItems[a].baseScore > allItems[b].baseScore
+            }
+        }
+        prefixBuckets = map
     }
 
     private struct SearchWeights {
@@ -139,23 +161,45 @@ class BrowserDataManager {
         // 核心优化：根据查询长度选择不同策略
         if queryLower.count <= SHORT_QUERY_THRESHOLD {
             // --- 快速路径：仅限前缀匹配，保证极速响应 ---
-            searchResults = allItems.compactMap {
-                preScoredItem -> (item: BrowserItem, score: Double)? in
-                var queryScore: Double = 0.0
+            // 使用 prefix-bucket 加速短查询
+            let key = String(queryLower.prefix(PREFIX_KEY_LENGTH))
+            if let indices = prefixBuckets[key], !indices.isEmpty {
+                searchResults = indices.compactMap { idx -> (item: BrowserItem, score: Double)? in
+                    let pre = allItems[idx]
+                    var queryScore: Double = 0.0
 
-                if preScoredItem.searchableUrl.hasPrefix(queryLower) {
-                    queryScore += SearchWeights.urlMatch + SearchWeights.hostMatchBonus
+                    if pre.searchableUrl.hasPrefix(queryLower) {
+                        queryScore += SearchWeights.urlMatch + SearchWeights.hostMatchBonus
+                    }
+
+                    if pre.lowercasedTitle.hasPrefix(queryLower) {
+                        queryScore += SearchWeights.titleMatch
+                    }
+
+                    if queryScore == 0 { return nil }
+
+                    let finalScore = pre.baseScore + queryScore + SearchWeights.prefixMatchBonus
+                    return (item: pre.item, score: finalScore)
                 }
+            } else {
+                // 回退到线性扫描以保证正确性（极少见）
+                searchResults = allItems.compactMap {
+                    preScoredItem -> (item: BrowserItem, score: Double)? in
+                    var queryScore: Double = 0.0
 
-                if preScoredItem.lowercasedTitle.hasPrefix(queryLower) {
-                    queryScore += SearchWeights.titleMatch
+                    if preScoredItem.searchableUrl.hasPrefix(queryLower) {
+                        queryScore += SearchWeights.urlMatch + SearchWeights.hostMatchBonus
+                    }
+
+                    if preScoredItem.lowercasedTitle.hasPrefix(queryLower) {
+                        queryScore += SearchWeights.titleMatch
+                    }
+
+                    if queryScore == 0 { return nil }
+
+                    let finalScore = preScoredItem.baseScore + queryScore + SearchWeights.prefixMatchBonus
+                    return (item: preScoredItem.item, score: finalScore)
                 }
-
-                if queryScore == 0 { return nil }
-
-                let finalScore =
-                    preScoredItem.baseScore + queryScore + SearchWeights.prefixMatchBonus
-                return (item: preScoredItem.item, score: finalScore)
             }
         } else {
             // --- 完整路径：执行高精度加权搜索 ---
