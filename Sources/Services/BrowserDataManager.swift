@@ -3,6 +3,59 @@ import Foundation
 import SQLite3
 import SwiftUI
 
+// 简单的有界最小堆（用于 top-k）
+fileprivate struct BoundedMinHeap {
+    private var heap: [(score: Double, idx: Int)] = []
+    private let capacity: Int
+
+    init(capacity: Int) { self.capacity = max(1, capacity) }
+
+    var count: Int { heap.count }
+
+    mutating func push(score: Double, idx: Int) {
+        if heap.count < capacity {
+            heap.append((score: score, idx: idx))
+            siftUp(heap.count - 1)
+            return
+        }
+        // heap[0] is the minimum
+        if let minScore = heap.first?.score, score <= minScore { return }
+        heap[0] = (score: score, idx: idx)
+        siftDown(0)
+    }
+
+    func sortedDescending() -> [(score: Double, idx: Int)] {
+        return heap.sorted { $0.score > $1.score }
+    }
+
+    // MARK: - heap helpers
+    private mutating func siftUp(_ i: Int) {
+        var child = i
+        while child > 0 {
+            let parent = (child - 1) / 2
+            if heap[child].score < heap[parent].score {
+                heap.swapAt(child, parent)
+                child = parent
+            } else { break }
+        }
+    }
+
+    private mutating func siftDown(_ i: Int) {
+        var parent = i
+        let n = heap.count
+        while true {
+            let left = parent * 2 + 1
+            let right = left + 1
+            var smallest = parent
+            if left < n && heap[left].score < heap[smallest].score { smallest = left }
+            if right < n && heap[right].score < heap[smallest].score { smallest = right }
+            if smallest == parent { break }
+            heap.swapAt(parent, smallest)
+            parent = smallest
+        }
+    }
+}
+
 // MARK: - 浏览器数据管理器 (已优化)
 @MainActor
 class BrowserDataManager {
@@ -14,6 +67,8 @@ class BrowserDataManager {
     // 前缀桶索引（仅用于短查询路径）: key -> indices into allItems
     private var prefixBuckets: [String: [Int]] = [:]
     private let PREFIX_KEY_LENGTH = 3
+    // 在 short-query 中使用 top-k 堆最多返回的候选数（假设值，可再调）
+    private let TOP_K_RESULTS = 100
 
     private let URL_SEGMENT_MAX_LENGTH = 35
     // 新增：定义分层搜索的阈值
@@ -77,12 +132,7 @@ class BrowserDataManager {
             let key = String(s.prefix(PREFIX_KEY_LENGTH))
             map[key, default: []].append(idx)
         }
-        // 将每个桶内按 baseScore 降序排序，便于后续快速 top-k
-        for (k, list) in map {
-            map[k] = list.sorted { a, b in
-                return allItems[a].baseScore > allItems[b].baseScore
-            }
-        }
+        // 不对桶做全量排序（避免构建时昂贵的排序），搜索时使用 top-k 堆进行合并
         prefixBuckets = map
     }
 
@@ -164,7 +214,9 @@ class BrowserDataManager {
             // 使用 prefix-bucket 加速短查询
             let key = String(queryLower.prefix(PREFIX_KEY_LENGTH))
             if let indices = prefixBuckets[key], !indices.isEmpty {
-                searchResults = indices.compactMap { idx -> (item: BrowserItem, score: Double)? in
+                // 使用有界最小堆选出 top-k，避免对整个桶排序
+                var heap = BoundedMinHeap(capacity: TOP_K_RESULTS)
+                for idx in indices {
                     let pre = allItems[idx]
                     var queryScore: Double = 0.0
 
@@ -176,11 +228,14 @@ class BrowserDataManager {
                         queryScore += SearchWeights.titleMatch
                     }
 
-                    if queryScore == 0 { return nil }
+                    if queryScore == 0 { continue }
 
                     let finalScore = pre.baseScore + queryScore + SearchWeights.prefixMatchBonus
-                    return (item: pre.item, score: finalScore)
+                    heap.push(score: finalScore, idx: idx)
                 }
+
+                let top = heap.sortedDescending()
+                searchResults = top.map { (item: allItems[$0.idx].item, score: $0.score) }
             } else {
                 // 回退到线性扫描以保证正确性（极少见）
                 searchResults = allItems.compactMap {
