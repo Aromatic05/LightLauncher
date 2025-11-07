@@ -29,44 +29,114 @@ struct AppSearchMatcher {
 
         // AppInfo 专用匹配
         if let app = item as? AppInfo {
-            // 检查自定义缩写配置
+            // 优先级调整说明（实现顺序按优先级从高到低）:
+            // 1) 前缀匹配 或 commonAbbreviations 的“完整缩写匹配”
+            // 2) 多单词首字母匹配 (acronym) 或 commonAbbreviations 的部分匹配
+            // 3) 多单词部分前缀匹配
+            // 4) 内部连续子串匹配 (contains)
+            // 5) 非连续子序列匹配 (subsequence)
+            // 6) 模糊匹配
+
+            // 1. 前缀匹配（最高优先级）
+            if name.hasPrefix(searchQuery) {
+                let completeness = Double(searchQuery.count) / Double(name.count)
+                let score = 1200.0 + completeness * 200.0
+                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                return ItemMatch(item: item, score: score + usageBonus, matchType: .exactStart)
+            }
+
+            // 1b. commonAbbreviations 的“完整缩写匹配”视为与前缀匹配相同的优先级
             if let abbreviationWords = commonAbbreviations[searchQuery] {
-                var bestAbbrevMatch: (score: Double, matchType: AppMatch.MatchType)?
                 for word in abbreviationWords {
-                    if let match = calculateDirectMatch(appName: name, query: word.lowercased()) {
-                        if bestAbbrevMatch == nil || match.score > bestAbbrevMatch!.score {
-                            bestAbbrevMatch = match
-                        }
+                    let w = word.lowercased()
+                    // 如果应用名等于缩写映射的词、或以该词为单词开头、或包含该词，则视为完整缩写匹配
+                    if name == w || name.hasPrefix(w) || name.contains(" " + w) || name.contains(w) {
+                        let score = 1200.0 + 100.0
+                        let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                        return ItemMatch(item: item, score: score + usageBonus, matchType: .contains)
+                    }
+                }
+            }
+
+            // 2. 多单词首字母匹配 (acronym)
+            if let acronymScore = calculateAcronymMatch(appName: name, query: searchQuery) {
+                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                return ItemMatch(item: item, score: acronymScore + 1000.0 + usageBonus, matchType: .wordStart)
+            }
+
+            // 2b. commonAbbreviations 的部分匹配：尝试把映射的词作为查询去匹配，分数略低于 acronym
+            if let abbreviationWords = commonAbbreviations[searchQuery] {
+                var bestPartial: Double = 0
+                for word in abbreviationWords {
+                    if let m = calculateDirectMatch(appName: name, query: word.lowercased()) {
+                        bestPartial = max(bestPartial, m.score)
                     }
                     if name.contains(word.lowercased()) {
-                        let containsScore =
-                            150.0 + (1.0 - Double(word.count) / Double(name.count)) * 50.0
-                        if bestAbbrevMatch == nil || containsScore > bestAbbrevMatch!.score {
-                            bestAbbrevMatch = (score: containsScore, matchType: .contains)
-                        }
+                        // 给一个稳定的基础分数以保证优先级在 wordStart 之后
+                        let containsScore = 550.0 + (1.0 - Double(word.count) / Double(name.count)) * 50.0
+                        bestPartial = max(bestPartial, containsScore)
                     }
                 }
-                if let match = bestAbbrevMatch {
-                    let boostedScore = match.score + 500.0
+                if bestPartial > 0 {
                     let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                    return ItemMatch(
-                        item: item, score: boostedScore + usageBonus, matchType: match.matchType)
+                    return ItemMatch(item: item, score: bestPartial + 900.0 + usageBonus, matchType: .contains)
                 }
             }
-            // 直接匹配
-            if let match = calculateDirectMatch(appName: name, query: searchQuery) {
-                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                let finalScore = match.score + usageBonus
-                return ItemMatch(item: item, score: finalScore, matchType: match.matchType)
+
+            // 3. 多单词部分前缀匹配 与 拼音匹配 放在同一优先级，比较后返回更高分
+            let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+            let wordStartScoreOpt = StringMatcher.calculateWordStartMatch(text: name, query: searchQuery)
+            let pinyinMatchOpt = PinyinMatcher.calculatePinyinMatch(appName: name, query: searchQuery)
+
+            if wordStartScoreOpt != nil || pinyinMatchOpt != nil {
+                var bestScore: Double = 0
+                var bestType: AppMatch.MatchType = .wordStart
+
+                if let ws = wordStartScoreOpt {
+                    bestScore = ws + 800.0
+                    bestType = .wordStart
+                }
+
+                if let p = pinyinMatchOpt {
+                    let pScore = p.score + 800.0
+                    if pScore > bestScore {
+                        bestScore = pScore
+                        bestType = p.matchType
+                    }
+                }
+
+                return ItemMatch(item: item, score: bestScore + usageBonus, matchType: bestType)
             }
-            // 拼音匹配
-            if let pinyinMatch = PinyinMatcher.calculatePinyinMatch(
-                appName: name, query: searchQuery)
-            {
-                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                let finalScore = pinyinMatch.score + usageBonus
-                return ItemMatch(item: item, score: finalScore, matchType: pinyinMatch.matchType)
+
+            // 4. 单词内部前缀匹配
+            if let wordInternalScore = calculateWordInternalMatch(appName: name, query: searchQuery) {
+                let usageBonusInternal = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                return ItemMatch(item: item, score: wordInternalScore + 700.0 + usageBonusInternal, matchType: .wordStart)
             }
+
+            // 5. 内部连续子串匹配 (contains) - 优先于非连续子序列
+            if name.contains(searchQuery) {
+                let position = Double(
+                    name.distance(from: name.startIndex, to: name.range(of: searchQuery)!.lowerBound))
+                let positionScore = max(0, 150.0 - position * 2.0)
+                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                return ItemMatch(item: item, score: positionScore + 600.0 + usageBonus, matchType: .contains)
+            }
+
+            // 6. 非连续子序列匹配
+            if let subsequenceScore = StringMatcher.calculateSubsequenceMatch(text: name, query: searchQuery) {
+                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                return ItemMatch(item: item, score: subsequenceScore + 500.0 + usageBonus, matchType: .subsequence)
+            }
+
+            // (已在上方与多单词前缀比较并处理过拼音匹配)
+
+            // 8. 模糊匹配（最低优先级）
+            if let fuzzyScore = StringMatcher.calculateFuzzyMatch(text: name, query: searchQuery) {
+                let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
+                return ItemMatch(item: item, score: fuzzyScore + 300.0 + usageBonus, matchType: .fuzzy)
+            }
+
             return nil
         }
 
@@ -121,25 +191,25 @@ struct AppSearchMatcher {
             return (score: wordInternalScore + 700.0, matchType: .wordStart)
         }
 
-        // 5. 子序列匹配
-        if let subsequenceScore = StringMatcher.calculateSubsequenceMatch(
-            text: appName, query: query)
-        {
-            return (score: subsequenceScore + 600.0, matchType: .subsequence)
-        }
-
-        // 6. 模糊匹配
-        if let fuzzyScore = StringMatcher.calculateFuzzyMatch(text: appName, query: query) {
-            return (score: fuzzyScore + 400.0, matchType: .fuzzy)
-        }
-
-        // 7. 包含匹配 - 最低优先级
+        // 5. 包含匹配（连续子串） - 优先于非连续子序列
         if appName.contains(query) {
             let position = Double(
                 appName.distance(from: appName.startIndex, to: appName.range(of: query)!.lowerBound)
             )
-            let positionScore = max(0, 100.0 - position * 2.0)  // 越靠前分数越高
-            return (score: positionScore + 200.0, matchType: .contains)
+            let positionScore = max(0, 150.0 - position * 2.0)  // 越靠前分数越高
+            return (score: positionScore + 600.0, matchType: .contains)
+        }
+
+        // 6. 非连续子序列匹配
+        if let subsequenceScore = StringMatcher.calculateSubsequenceMatch(
+            text: appName, query: query)
+        {
+            return (score: subsequenceScore + 500.0, matchType: .subsequence)
+        }
+
+        // 7. 模糊匹配
+        if let fuzzyScore = StringMatcher.calculateFuzzyMatch(text: appName, query: query) {
+            return (score: fuzzyScore + 300.0, matchType: .fuzzy)
         }
 
         return nil
