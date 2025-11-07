@@ -29,6 +29,8 @@ class LauncherViewModel: ObservableObject {
     private var controllerCancellable: AnyCancellable?
     var cancellables = Set<AnyCancellable>()
     private var previousSearchText = ""
+    // 简单防抖：延迟执行输入处理的任务
+    private var debounceWorkItem: DispatchWorkItem?
     let focusSearchField = PassthroughSubject<Void, Never>()
 
     var displayableItems: [any DisplayableItem] {
@@ -134,14 +136,34 @@ class LauncherViewModel: ObservableObject {
             .sink { [weak self] newText in
                 guard let self = self else { return }
                 self.handleSearchTextChange(newText: newText, oldText: self.previousSearchText)
-                self.previousSearchText = newText
             }
             .store(in: &cancellables)
     }
 
     private func handleSearchTextChange(newText: String, oldText: String) {
-        updateCommandSuggestions(for: newText, oldText: oldText)
-        processInput(newText)
+        // 仅在 file 模式下启用额外的防抖；其他模式立即处理。
+        if self.mode == .file {
+            // 取消之前的延迟任务
+            debounceWorkItem?.cancel()
+
+            // 创建一个新的延迟任务，最简单的防抖逻辑：在 150ms 后执行（如果期间没有新的输入）
+            let work = DispatchWorkItem { [weak self] in
+                guard let self = self else { return }
+                self.updateCommandSuggestions(for: newText, oldText: oldText)
+                self.processInput(newText)
+                // 只有在实际处理后才更新 previousSearchText，避免竞态
+                self.previousSearchText = newText
+            }
+
+            debounceWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(150), execute: work)
+        } else {
+            // 非 file 模式直接处理，并取消任何遗留的延迟任务
+            debounceWorkItem?.cancel()
+            self.updateCommandSuggestions(for: newText, oldText: oldText)
+            self.processInput(newText)
+            self.previousSearchText = newText
+        }
     }
 
     private func processInput(_ text: String) {
