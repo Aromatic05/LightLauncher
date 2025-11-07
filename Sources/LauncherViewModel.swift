@@ -22,6 +22,7 @@ class LauncherViewModel: ObservableObject {
             setupControllerSubscription()
             let rules = activeController?.interceptedKeys ?? []
             KeyboardEventHandler.shared.updateInterceptionRules(for: rules)
+            refreshID = UUID()
         }
     }
 
@@ -48,12 +49,8 @@ class LauncherViewModel: ObservableObject {
     private init() {
         setupControllersAndRegisterCommands()
         self.activeController = controllers[.launch]
-        setupControllerSubscription()
         bindSearchText()
-        // 新增：启动时开始订阅键盘事件
         setupKeyboardSubscription()
-        let initialRules = self.activeController?.interceptedKeys ?? []
-        KeyboardEventHandler.shared.updateInterceptionRules(for: initialRules)
     }
 
     private func setupControllersAndRegisterCommands() {
@@ -131,22 +128,22 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Input Handling
     private func bindSearchText() {
+        // 取消通用的 Combine 防抖，改用手动控制（file 模式内已有特殊防抖逻辑）
         $searchText
-            .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
+            .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
             .sink { [weak self] newText in
-                guard let self = self else { return }
-                self.handleSearchTextChange(newText: newText, oldText: self.previousSearchText)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.handleSearchTextChange(newText: newText, oldText: self.previousSearchText)
+                }
             }
             .store(in: &cancellables)
     }
 
     private func handleSearchTextChange(newText: String, oldText: String) {
-        // 仅在 file 模式下启用额外的防抖；其他模式立即处理。
         if self.mode == .file {
-            // 取消之前的延迟任务
             debounceWorkItem?.cancel()
 
-            // 创建一个新的延迟任务，最简单的防抖逻辑：在 150ms 后执行（如果期间没有新的输入）
             let work = DispatchWorkItem { [weak self] in
                 guard let self = self else { return }
                 self.updateCommandSuggestions(for: newText, oldText: oldText)
@@ -156,7 +153,7 @@ class LauncherViewModel: ObservableObject {
             }
 
             debounceWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(150), execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100), execute: work)
         } else {
             // 非 file 模式直接处理，并取消任何遗留的延迟任务
             debounceWorkItem?.cancel()
@@ -220,7 +217,6 @@ class LauncherViewModel: ObservableObject {
             .sink { [weak self] in
                 self?.refreshID = UUID()
             }
-        refreshID = UUID()
     }
 
     func updateQuery(newQuery text: String) {
@@ -246,6 +242,7 @@ class LauncherViewModel: ObservableObject {
             let shouldShow = !newSuggestions.isEmpty
             if self.showCommandSuggestions != shouldShow {
                 self.showCommandSuggestions = shouldShow
+                self.selectedIndex = 0
             }
 
             if newSuggestions.count == 1, let suggestion = newSuggestions.first {
@@ -256,7 +253,7 @@ class LauncherViewModel: ObservableObject {
                 }
             }
         } else {
-            if showCommandSuggestions { showCommandSuggestions = false }
+            if showCommandSuggestions { showCommandSuggestions = false; selectedIndex = 0 }
             if !commandSuggestions.isEmpty { commandSuggestions = [] }
         }
     }
