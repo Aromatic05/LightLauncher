@@ -5,6 +5,9 @@ struct SearchBoxView: View {
     @Binding var searchText: String
     @FocusState private var isSearchFieldFocused: Bool
     let mode: LauncherMode
+    @State private var hideLongText: Bool = false
+    @State private var debounceWorkItem: DispatchWorkItem?
+    @State private var debouncedDisplayText: String = ""
 
     // 接收来自父视图 LauncherView 的窗口状态
     let isWindowKey: Bool
@@ -17,10 +20,8 @@ struct SearchBoxView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
 
-            // 最简单的“不显示超长文本”策略：基于字符数阈值决定是否在输入框中显示文本
-            let maxChars = 60
             let displayBinding = Binding<String>(
-                get: { self.searchText.count > maxChars ? "" : self.searchText },
+                get: { self.debouncedDisplayText },
                 set: { self.searchText = $0 }
             )
 
@@ -59,6 +60,21 @@ struct SearchBoxView: View {
                     isSearchFieldFocused = true
                 }
             }
+        }
+        .onChange(of: searchText) { newText in
+            // 取消之前的任务，重新安排防抖更新
+            debounceWorkItem?.cancel()
+            let work = DispatchWorkItem {
+                if newText.count > 60 {
+                    self.debouncedDisplayText = ""
+                    self.hideLongText = true
+                } else {
+                    self.debouncedDisplayText = newText
+                    self.hideLongText = false
+                }
+            }
+            debounceWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50), execute: work)
         }
         .onReceive(viewModel.focusSearchField) { _ in
             self.isSearchFieldFocused = true
