@@ -7,15 +7,14 @@ class PluginConfigManager {
     static let shared = PluginConfigManager()
 
     private let configDirectory: URL
+    // 使用 actor 隔离或 @MainActor 保护缓存
     private var configCache: [String: PluginConfig] = [:]
 
     private init() {
-        // 创建配置目录
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!
-        configDirectory = appSupport.appendingPathComponent("LightLauncher/configs")
+        // 使用 ~/.config/LightLauncher/configs 目录，与文档保持一致
+        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        let configRoot = homeDirectory.appendingPathComponent(".config/LightLauncher")
+        configDirectory = configRoot.appendingPathComponent("configs")
 
         // 确保配置目录存在
         try? FileManager.default.createDirectory(
