@@ -49,7 +49,7 @@ class ScheduledTaskManager {
         let scheduledTask = ScheduledTask(id: id, interval: interval, task: task, timer: timer)
         tasks[id] = scheduledTask
         
-        print("✅ 已添加定时任务: \(id), 间隔: \(interval)秒")
+    Logger.shared.info("✅ 已添加定时任务: \(id), 间隔: \(interval)秒", owner: self)
     }
     
     /// 移除一个定时任务
@@ -58,7 +58,7 @@ class ScheduledTaskManager {
         guard let task = tasks[id] else { return }
         task.timer?.invalidate()
         tasks.removeValue(forKey: id)
-        print("🗑️ 已移除定时任务: \(id)")
+    Logger.shared.info("🗑️ 已移除定时任务: \(id)", owner: self)
     }
     
     /// 暂停一个定时任务
@@ -69,7 +69,7 @@ class ScheduledTaskManager {
         task.timer = nil
         task.isPaused = true
         tasks[id] = task
-        print("⏸️ 已暂停定时任务: \(id)")
+    Logger.shared.info("⏸️ 已暂停定时任务: \(id)", owner: self)
     }
     
     /// 恢复一个定时任务
@@ -90,7 +90,7 @@ class ScheduledTaskManager {
         task.timer = timer
         task.isPaused = false
         tasks[id] = task
-        print("▶️ 已恢复定时任务: \(id)")
+    Logger.shared.info("▶️ 已恢复定时任务: \(id)", owner: self)
     }
     
     /// 移除所有定时任务
@@ -99,7 +99,7 @@ class ScheduledTaskManager {
             task.timer?.invalidate()
         }
         tasks.removeAll()
-        print("🗑️ 已移除所有定时任务")
+    Logger.shared.info("🗑️ 已移除所有定时任务", owner: self)
     }
     
     /// 获取所有任务的 ID 列表

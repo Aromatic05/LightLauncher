@@ -132,7 +132,7 @@ class ClipboardManager {
             try FileManager.default.createDirectory(
                 at: archiveDirectory, withIntermediateDirectories: true)
         } catch {
-            print("删除所有历史（包括归档）失败：\(error)")
+                    Logger.shared.error("删除所有历史（包括归档）失败：\(error)", owner: self)
         }
     }
 
@@ -157,7 +157,7 @@ class ClipboardManager {
             try FileManager.default.createDirectory(
                 at: archiveDirectory, withIntermediateDirectories: true)
         } catch {
-            print("创建归档目录失败: \(error)")
+            Logger.shared.error("创建归档目录失败: \(error)", owner: self)
             return
         }
 
@@ -178,7 +178,7 @@ class ClipboardManager {
                     let encoded = try JSONEncoder().encode(decoded)
                     try encoded.write(to: lastPageURL)
                 } catch {
-                    print("向最后归档页追加失败: \(error)")
+                        Logger.shared.error("向最后归档页追加失败: \(error)", owner: self)
                 }
                 if remaining.count <= space {
                     return
@@ -201,7 +201,7 @@ class ClipboardManager {
                 let encoded = try JSONEncoder().encode(take)
                 try encoded.write(to: url)
             } catch {
-                print("创建新的归档页失败: \(error)")
+                    Logger.shared.error("创建新的归档页失败: \(error)", owner: self)
             }
         }
     }
@@ -276,7 +276,7 @@ class ClipboardManager {
             let decoded = try JSONDecoder().decode([ClipboardItem].self, from: data)
             return decoded
         } catch {
-            print("加载归档页 \(page) 失败: \(error)")
+                Logger.shared.error("加载归档页 \(page) 失败: \(error)", owner: self)
             return []
         }
     }
@@ -291,7 +291,7 @@ class ClipboardManager {
                 normalizeArchivePageIndices(startingFrom: page + 1)
             }
         } catch {
-            print("删除归档页 \(page) 失败: \(error)")
+                Logger.shared.error("删除归档页 \(page) 失败: \(error)", owner: self)
         }
     }
 
@@ -323,7 +323,7 @@ class ClipboardManager {
                 }
                 try FileManager.default.moveItem(at: currentURL, to: targetURL)
             } catch {
-                print("重命名归档页 \(current) -> \(targetIndex) 失败: \(error)")
+                    Logger.shared.error("重命名归档页 \(current) -> \(targetIndex) 失败: \(error)", owner: self)
                 break
             }
             current += 1
@@ -348,7 +348,7 @@ class ClipboardManager {
                 self.history = []
             }
         } catch {
-            print("剪切板历史加载失败: \(error)")
+                Logger.shared.error("剪切板历史加载失败: \(error)", owner: self)
             self.history = []
         }
     }
@@ -362,7 +362,7 @@ class ClipboardManager {
             let data = try JSONEncoder().encode(toSave)
             try data.write(to: historyFileURL)
         } catch {
-            print("剪切板历史保存失败: \(error)")
+                Logger.shared.error("剪切板历史保存失败: \(error)", owner: self)
         }
     }
 
@@ -433,7 +433,7 @@ class ClipboardManager {
                 try encoded.write(to: url)
             }
         } catch {
-            print("从归档页删除项失败: \(error)")
+                Logger.shared.error("从归档页删除项失败: \(error)", owner: self)
         }
     }
 }

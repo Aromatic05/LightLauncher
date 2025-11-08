@@ -85,7 +85,7 @@ final class HotkeyManager: @unchecked Sendable {
 
         startEventTapIfNeeded()
 
-        print("[HotkeyManager] Registered hotkeys: main=\(mainHotkey.description()), custom=\(customHotkeys.count)")
+    Logger.shared.info("Registered hotkeys: main=\(mainHotkey.description()), custom=\(customHotkeys.count)", owner: self)
     }
 
     func unregisterAll() {
@@ -99,7 +99,7 @@ final class HotkeyManager: @unchecked Sendable {
 
         stopEventTapIfNeeded()
 
-        print("[HotkeyManager] All hotkeys unregistered")
+    Logger.shared.info("All hotkeys unregistered", owner: self)
     }
 
     func getConfig(for id: UInt32) -> CustomHotKeyConfig? {
@@ -119,7 +119,7 @@ final class HotkeyManager: @unchecked Sendable {
         }
 
         guard isAccessibilityTrusted else {
-            print("[HotkeyManager] ⚠️ Accessibility permission not granted. Hotkeys will not function.")
+            Logger.shared.warning("⚠️ Accessibility permission not granted. Hotkeys will not function.", owner: self)
             tapState = .failed
             return
         }
@@ -142,7 +142,7 @@ final class HotkeyManager: @unchecked Sendable {
             callback: hotkeyManagerTapCallback, // 注意函数名变化
             userInfo: userInfo
         ) else {
-            print("[HotkeyManager] ✗ Failed to create event tap")
+            Logger.shared.error("[HotkeyManager] ✗ Failed to create event tap")
             tapState = .failed
             scheduleReconnect()
             return
@@ -155,9 +155,9 @@ final class HotkeyManager: @unchecked Sendable {
             CFRunLoopAddSource(CFRunLoopGetMain(), source, tapRunLoopMode)
             CGEvent.tapEnable(tap: tap, enable: true)
             tapState = .running
-            print("[HotkeyManager] ✓ Event tap started")
+            Logger.shared.info("✓ Event tap started", owner: self)
         } else {
-            print("[HotkeyManager] ✗ Failed to create run loop source for event tap")
+            Logger.shared.error("✗ Failed to create run loop source for event tap", owner: self)
             tapState = .failed
             scheduleReconnect()
         }
@@ -167,7 +167,7 @@ final class HotkeyManager: @unchecked Sendable {
         guard let tap = eventTap else { return }
         CGEvent.tapEnable(tap: tap, enable: true)
         tapState = .running
-        print("[HotkeyManager] ℹ️ Event tap resumed")
+        Logger.shared.info("ℹ️ Event tap resumed", owner: self)
     }
 
     private func stopEventTapIfNeeded() {
@@ -185,7 +185,7 @@ final class HotkeyManager: @unchecked Sendable {
         eventTap = nil
         eventTapRunLoopSource = nil
         tapState = .stopped
-        print("[HotkeyManager] Event tap stopped")
+        Logger.shared.info("Event tap stopped", owner: self)
     }
 
     private func scheduleReconnect(after delay: TimeInterval = 2.0) {
@@ -203,7 +203,7 @@ final class HotkeyManager: @unchecked Sendable {
     fileprivate func handleTapDisabled() {
         guard let tap = eventTap else { return }
         CGEvent.tapEnable(tap: tap, enable: true)
-        print("[HotkeyManager] ℹ️ Event tap re-enabled after disable signal")
+        Logger.shared.info("ℹ️ Event tap re-enabled after disable signal", owner: self)
     }
 
     // MARK: - Event Handling
@@ -238,7 +238,7 @@ final class HotkeyManager: @unchecked Sendable {
                     if state.matchedHotkey == nil {
                         state.matchedHotkey = currentHotkey
                         state.interferenceDetected = false
-                        print("[HotkeyManager] 🔽 Modifier pressed: \(currentHotkey.description()) [id=\(id)]")
+                        Logger.shared.debug("🔽 Modifier pressed: \(currentHotkey.description()) [id=\(id)]", owner: self)
                     }
                 } else if state.matchedHotkey != nil {
                     state.interferenceDetected = true
@@ -247,9 +247,9 @@ final class HotkeyManager: @unchecked Sendable {
                 if !state.interferenceDetected {
                     triggerHotkey(id: id, isMain: entry.isMain)
                     shouldBlockEvent = true
-                    print("[HotkeyManager] ⚡ ModifierOnly triggered: \(matched.description()) [id=\(id)]")
+                    Logger.shared.debug("⚡ ModifierOnly triggered: \(matched.description()) [id=\(id)]", owner: self)
                 } else {
-                    print("[HotkeyManager] 🚫 ModifierOnly cancelled (interference)")
+                    Logger.shared.debug("🚫 ModifierOnly cancelled (interference)", owner: self)
                 }
                 state = ModifierOnlyState()
             }
@@ -280,12 +280,12 @@ final class HotkeyManager: @unchecked Sendable {
                 if entry.hotkey.rawValue == hotkey.rawValue {
                     triggerHotkey(id: entry.id, isMain: entry.isMain)
                     shouldBlockEvent = true
-                    print("[HotkeyManager] ⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]")
+                    Logger.shared.debug("⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]", owner: self)
                 }
             } else if entry.hotkey.matchesIgnoringSide(hotkey) {
                 triggerHotkey(id: entry.id, isMain: entry.isMain)
                 shouldBlockEvent = true
-                print("[HotkeyManager] ⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]")
+                Logger.shared.debug("⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]", owner: self)
             }
         }
         

@@ -55,7 +55,7 @@ class PluginConfigManager {
 
             return config
         } catch {
-            print("加载插件配置失败 (\(pluginName)): \(error.localizedDescription)")
+            Logger.shared.error("加载插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
 
             // 返回默认配置
             let defaultConfig = PluginConfig()
@@ -81,10 +81,10 @@ class PluginConfigManager {
             // 更新缓存
             configCache[pluginName] = config
 
-            print("插件配置已保存: \(pluginName)")
+            Logger.shared.info("插件配置已保存: \(pluginName)", owner: self)
             return true
         } catch {
-            print("保存插件配置失败 (\(pluginName)): \(error.localizedDescription)")
+            Logger.shared.error("保存插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
             return false
         }
     }
@@ -162,10 +162,10 @@ class PluginConfigManager {
         do {
             try FileManager.default.removeItem(at: configPath)
             configCache.removeValue(forKey: pluginName)
-            print("插件配置已删除: \(pluginName)")
+            Logger.shared.info("插件配置已删除: \(pluginName)", owner: self)
             return true
         } catch {
-            print("删除插件配置失败 (\(pluginName)): \(error.localizedDescription)")
+            Logger.shared.error("删除插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
             return false
         }
     }
@@ -182,7 +182,7 @@ class PluginConfigManager {
                 .filter { $0.pathExtension == "yaml" }
                 .map { $0.deletingPathExtension().lastPathComponent }
         } catch {
-            print("获取配置文件列表失败: \(error.localizedDescription)")
+            Logger.shared.error("获取配置文件列表失败: \(error.localizedDescription)", owner: self)
             return []
         }
     }
@@ -201,7 +201,7 @@ class PluginConfigManager {
     private func createDefaultConfig(for plugin: Plugin) {
         let defaultConfig = PluginConfig()
         _ = saveConfig(defaultConfig, for: plugin.name)
-        print("为插件 \(plugin.name) 创建了默认配置")
+        Logger.shared.info("为插件 \(plugin.name) 创建了默认配置", owner: self)
     }
 
     private func parseConfig(from yaml: Any?) -> PluginConfig {

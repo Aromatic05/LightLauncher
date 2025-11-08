@@ -33,7 +33,7 @@ class AppScanner: ObservableObject {
             self.isScanning = false
         }
 
-        print("🔍 开始扫描应用程序...")
+        Logger.shared.info("🔍 开始扫描应用程序...", owner: self)
     }
 
     private func performScan() async -> [AppInfo] {

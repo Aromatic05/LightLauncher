@@ -109,7 +109,7 @@ class SearchHistoryManager: ObservableObject {
             history = try JSONDecoder().decode([String: [SearchHistoryItem]].self, from: data)
         } catch {
             history = [:] // 加载失败则使用空字典
-            print("Failed to load search history (this is normal on first launch): \(error)")
+            Logger.shared.info("Failed to load search history (this is normal on first launch): \(error)", owner: self)
         }
     }
     
@@ -122,7 +122,7 @@ class SearchHistoryManager: ObservableObject {
             let data = try JSONEncoder().encode(history)
             try data.write(to: historyFileURL, options: .atomic)
         } catch {
-            print("Failed to save search history: \(error)")
+            Logger.shared.error("Failed to save search history: \(error)", owner: self)
         }
     }
 }

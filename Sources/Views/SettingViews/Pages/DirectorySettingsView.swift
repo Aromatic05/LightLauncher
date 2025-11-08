@@ -109,7 +109,7 @@ struct DirectorySettingsView: View {
                     newDirectory = url.path
                 }
             case .failure(let error):
-                print("选择目录失败: \(error)")
+                        Logger.shared.error("选择目录失败: \(error)")
             }
         }
     }

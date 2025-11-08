@@ -9,7 +9,7 @@ class ChromeDataLoader: BrowserDataLoader {
             "Library/Application Support/Google/Chrome/Default/Bookmarks")
 
         guard BrowserDataUtils.fileExists(at: bookmarksPath.path) else {
-            print("Chrome bookmarks file not found")
+            Logger.shared.info("Chrome bookmarks file not found")
             return []
         }
 
@@ -32,7 +32,7 @@ class ChromeDataLoader: BrowserDataLoader {
 
             return bookmarks
         } catch {
-            print("Error loading Chrome bookmarks: \(error)")
+            Logger.shared.error("Error loading Chrome bookmarks: \(error)")
             return []
         }
     }
@@ -42,7 +42,7 @@ class ChromeDataLoader: BrowserDataLoader {
             "Library/Application Support/Google/Chrome/Default/History")
 
         guard BrowserDataUtils.fileExists(at: historyPath.path) else {
-            print("Chrome history database not found")
+            Logger.shared.info("Chrome history database not found")
             return []
         }
 

@@ -9,7 +9,7 @@ class SafariDataLoader: BrowserDataLoader {
             "Library/Safari/Bookmarks.plist")
 
         guard BrowserDataUtils.fileExists(at: bookmarksPath.path) else {
-            print("Safari bookmarks file not found")
+            Logger.shared.info("Safari bookmarks file not found")
             return []
         }
 
@@ -25,7 +25,7 @@ class SafariDataLoader: BrowserDataLoader {
 
             return parseBookmarkChildren(children)
         } catch {
-            print("Error loading Safari bookmarks: \(error)")
+            Logger.shared.error("Error loading Safari bookmarks: \(error)")
             return []
         }
     }
@@ -35,7 +35,7 @@ class SafariDataLoader: BrowserDataLoader {
             "Library/Safari/History.db")
 
         guard BrowserDataUtils.fileExists(at: historyPath.path) else {
-            print("Safari history database not found")
+            Logger.shared.info("Safari history database not found")
             return []
         }
 

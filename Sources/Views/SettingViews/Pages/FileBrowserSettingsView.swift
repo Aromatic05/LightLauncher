@@ -113,7 +113,9 @@ struct FileBrowserPathSettingsView: View {
                     newPath = url.path
                 }
             case .failure(let error):
-                print("File picker error: \(error)")
+                    Logger.shared.error("File picker error: \(error)")
+                    // Handle the error appropriately
+                    // You might want to show an alert or some UI feedback here
             }
         }
     }

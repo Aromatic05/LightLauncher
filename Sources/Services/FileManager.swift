@@ -116,7 +116,7 @@ class FileManager_LightLauncher {
             }
             
         } catch {
-            print("Error reading directory: \(error)")
+            Logger.shared.error("Error reading directory: \(error)", owner: self)
             
             // 如果读取失败，可能是权限问题，显示更具体的错误信息
             Task { @MainActor in

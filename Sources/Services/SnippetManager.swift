@@ -127,7 +127,7 @@ class SnippetManager: ObservableObject {
                 }
             }
         } catch {
-            print("Snippet 加载失败: \(error)")
+            Logger.shared.error("Snippet 加载失败: \(error)")
         }
     }
     
@@ -152,7 +152,7 @@ class SnippetManager: ObservableObject {
             let data = try JSONEncoder().encode(Array(snippets.prefix(maxSnippetsCount)))
             try data.write(to: snippetsFileURL)
         } catch {
-            print("Snippet 保存失败: \(error)")
+            Logger.shared.error("Snippet 保存失败: \(error)")
         }
     }
 }

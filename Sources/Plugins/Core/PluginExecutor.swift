@@ -23,12 +23,12 @@ class PluginExecutor {
 
         // 尝试设置实例，若无法创建 JSContext 则视为失败
         guard setupInstance(instance) else {
-            print("创建插件实例失败 (\(plugin.name)): 无法创建 JavaScript 上下文")
+            Logger.shared.error("创建插件实例失败 (\(plugin.name)): 无法创建 JavaScript 上下文", owner: self)
             return nil
         }
 
-        instances[plugin.name] = instance
-        print("插件实例已创建: \(plugin.name)")
+    instances[plugin.name] = instance
+    Logger.shared.info("插件实例已创建: \(plugin.name)", owner: self)
 
         return instance
     }
@@ -45,7 +45,7 @@ class PluginExecutor {
     func destroyInstance(for pluginName: String) {
         if let instance = instances.removeValue(forKey: pluginName) {
             instance.cleanup()
-            print("插件实例已销毁: \(pluginName)")
+            Logger.shared.info("插件实例已销毁: \(pluginName)", owner: self)
         }
     }
 
@@ -53,7 +53,7 @@ class PluginExecutor {
     func destroyAllInstances() {
         for (name, instance) in instances {
             instance.cleanup()
-            print("插件实例已销毁: \(name)")
+            Logger.shared.info("插件实例已销毁: \(name)", owner: self)
         }
         instances.removeAll()
     }
@@ -90,7 +90,8 @@ class PluginExecutor {
 
         // 设置异常处理（记录但不阻止实例创建）
         context.exceptionHandler = { context, exception in
-            print("插件 JavaScript 异常 (\(instance.plugin.name)): \(exception?.toString() ?? "未知异常")")
+            let exText = exception?.toString() ?? "未知异常"
+            Logger.shared.error("插件 JavaScript 异常 (\(instance.plugin.name)): \(exText)", owner: instance)
         }
 
         // 创建并注入 API 管理器
@@ -107,10 +108,10 @@ class PluginExecutor {
 
         if let exception = context.exception {
             // 记录异常，但继续：测试期望即使脚本抛异常也能创建实例
-            print("插件 JavaScript 异常 (\(instance.plugin.name)): \(String(describing: exception.toString()))")
+            Logger.shared.error("插件 JavaScript 异常 (\(instance.plugin.name)): \(String(describing: exception.toString()))", owner: instance)
         }
 
-        print("插件脚本执行完成: \(instance.plugin.name)")
+        Logger.shared.info("插件脚本执行完成: \(instance.plugin.name)", owner: instance)
         return true
     }
 
@@ -146,7 +147,7 @@ class PluginExecutor {
     func enableInstance(for pluginName: String) {
         if let instance = instances[pluginName] {
             instance.isEnabled = true
-            print("插件实例已启用: \(pluginName)")
+            Logger.shared.info("插件实例已启用: \(pluginName)", owner: self)
         }
     }
 
@@ -155,7 +156,7 @@ class PluginExecutor {
     func disableInstance(for pluginName: String) {
         if let instance = instances[pluginName] {
             instance.isEnabled = false
-            print("插件实例已禁用: \(pluginName)")
+            Logger.shared.info("插件实例已禁用: \(pluginName)", owner: self)
         }
     }
 }

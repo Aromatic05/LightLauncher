@@ -55,7 +55,7 @@ class PluginInstance {
     /// 设置并准备 JS 环境。
     func setupContext() {
         guard context == nil else { return }
-        print("为插件 '\(plugin.name)' 创建 JSContext...")
+        Logger.shared.info("为插件 '\(plugin.name)' 创建 JSContext...", owner: self)
         self.context = JSContext()
         // ... 在这里注入 host 对象、配置等
         context?.evaluateScript(plugin.script)
@@ -63,7 +63,7 @@ class PluginInstance {
 
     /// 释放资源。
     func cleanup() {
-        print("清理插件 '\(plugin.name)' 的资源...")
+        Logger.shared.info("清理插件 '\(plugin.name)' 的资源...", owner: self)
         self.context = nil
         self.apiManager = nil
         self.searchCallback = nil

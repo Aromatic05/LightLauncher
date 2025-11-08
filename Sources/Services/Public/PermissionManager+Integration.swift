@@ -153,6 +153,6 @@ extension PermissionManager {
 
     /// 打印权限诊断信息到控制台
     func printPermissionDiagnostics() {
-        print(generatePermissionDiagnostics())
+        Logger.shared.info(generatePermissionDiagnostics(), owner: self)
     }
 }

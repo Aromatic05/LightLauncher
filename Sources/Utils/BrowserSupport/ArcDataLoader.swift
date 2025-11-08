@@ -9,7 +9,7 @@ class ArcDataLoader: BrowserDataLoader {
             "Library/Application Support/Arc/User Data/Default/Bookmarks")
 
         guard BrowserDataUtils.fileExists(at: bookmarksPath.path) else {
-            print("Arc bookmarks file not found")
+            Logger.shared.info("Arc bookmarks file not found")
             return []
         }
 
@@ -31,7 +31,7 @@ class ArcDataLoader: BrowserDataLoader {
 
             return bookmarks
         } catch {
-            print("Error loading Arc bookmarks: \(error)")
+            Logger.shared.error("Error loading Arc bookmarks: \(error)")
             return []
         }
     }
@@ -41,7 +41,7 @@ class ArcDataLoader: BrowserDataLoader {
             "Library/Application Support/Arc/User Data/Default/History")
 
         guard BrowserDataUtils.fileExists(at: historyPath.path) else {
-            print("Arc history database not found")
+            Logger.shared.info("Arc history database not found")
             return []
         }
 

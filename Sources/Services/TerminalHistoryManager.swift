@@ -76,7 +76,7 @@ class TerminalHistoryManager: ObservableObject {
         } catch {
             // 如果加载失败，使用空数组
             commandHistory = []
-            print("Failed to load terminal history: \(error)")
+            Logger.shared.error("Failed to load terminal history: \(error)", owner: self)
         }
     }
     
@@ -89,7 +89,7 @@ class TerminalHistoryManager: ObservableObject {
             let data = try JSONEncoder().encode(commandHistory)
             try data.write(to: historyFileURL)
         } catch {
-            print("Failed to save terminal history: \(error)")
+            Logger.shared.error("Failed to save terminal history: \(error)", owner: self)
         }
     }
 }

@@ -7,7 +7,7 @@ extension ConfigManager {
             _ = try String(contentsOf: url, encoding: .utf8)
             _ = YAMLDecoder()
         } catch {
-            print("加载插件配置文件失败: \(error)")
+            Logger.shared.error("加载插件配置文件失败: \(error)")
             return nil
         }
         let fileManager = FileManager.default
@@ -23,9 +23,9 @@ extension ConfigManager {
                     \(yamlString)
                     """
                 try commentedYaml.write(to: url, atomically: true, encoding: .utf8)
-                print("插件配置文件不存在，已创建默认配置: \(url.path)")
+                Logger.shared.info("插件配置文件不存在，已创建默认配置: \(url.path)")
             } catch let err {
-                print("创建默认插件配置文件失败: \(err)")
+                Logger.shared.error("创建默认插件配置文件失败: \(err)")
             }
             return defaultConfig
         }
@@ -34,7 +34,7 @@ extension ConfigManager {
             let decoder = YAMLDecoder()
             return try decoder.decode(PluginsConfig.self, from: yamlString)
         } catch let err {
-            print("加载插件配置文件失败: \(err)")
+            Logger.shared.error("加载插件配置文件失败: \(err)")
             return nil
         }
     }
@@ -49,9 +49,9 @@ extension ConfigManager {
                 \(yamlString)
                 """
             try commentedYaml.write(to: pluginsConfigURL, atomically: true, encoding: .utf8)
-            print("插件配置已保存到: \(pluginsConfigURL.path)")
+            Logger.shared.info("插件配置已保存到: \(pluginsConfigURL.path)", owner: self)
         } catch {
-            print("保存插件配置文件失败: \(error)")
+            Logger.shared.error("保存插件配置文件失败: \(error)", owner: self)
         }
     }
     func enablePlugin(_ name: String) {

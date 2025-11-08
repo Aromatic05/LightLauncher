@@ -9,7 +9,7 @@ class FirefoxDataLoader: BrowserDataLoader {
             "Library/Application Support/Firefox/Profiles")
 
         guard BrowserDataUtils.fileExists(at: profilesPath.path) else {
-            print("Firefox profiles directory not found")
+                Logger.shared.info("Firefox profiles directory not found")
             return []
         }
 
@@ -26,7 +26,7 @@ class FirefoxDataLoader: BrowserDataLoader {
                 }
             }
         } catch {
-            print("Error accessing Firefox profiles: \(error)")
+                Logger.shared.error("Error accessing Firefox profiles: \(error)")
         }
 
         return []
@@ -37,7 +37,7 @@ class FirefoxDataLoader: BrowserDataLoader {
             "Library/Application Support/Firefox/Profiles")
 
         guard BrowserDataUtils.fileExists(at: profilesPath.path) else {
-            print("Firefox profiles directory not found")
+                Logger.shared.info("Firefox profiles directory not found")
             return []
         }
 
@@ -53,7 +53,7 @@ class FirefoxDataLoader: BrowserDataLoader {
                 }
             }
         } catch {
-            print("Error accessing Firefox profiles: \(error)")
+                Logger.shared.error("Error accessing Firefox profiles: \(error)")
         }
 
         return []

@@ -21,7 +21,7 @@ class ConfigManager: ObservableObject {
             try FileManager.default.createDirectory(
                 at: configDirectory, withIntermediateDirectories: true, attributes: nil)
         } catch {
-            print("无法创建配置目录: \(error)")
+            Logger.shared.error("无法创建配置目录: \(error)")
         }
 
         self.configURL = configDirectory.appendingPathComponent("config.yaml")
@@ -66,7 +66,7 @@ class ConfigManager: ObservableObject {
             config = migrateConfig(config)
             return config
         } catch {
-            print("加载配置文件失败: \(error)")
+            Logger.shared.error("加载配置文件失败: \(error)")
             return tryMigrateOldConfig(from: url)
         }
     }
@@ -95,7 +95,7 @@ class ConfigManager: ObservableObject {
                 modes: AppConfig.ModesConfig()
             )
         } catch {
-            print("迁移旧配置失败: \(error)")
+            Logger.shared.error("迁移旧配置失败: \(error)")
             return nil
         }
     }
@@ -126,16 +126,16 @@ class ConfigManager: ObservableObject {
                 \(yamlString)
                 """
             try commentedYaml.write(to: configURL, atomically: true, encoding: .utf8)
-            print("配置已保存到: \(configURL.path)")
+            Logger.shared.info("配置已保存到: \(configURL.path)", owner: self)
         } catch {
-            print("保存配置文件失败: \(error)")
+            Logger.shared.error("保存配置文件失败: \(error)", owner: self)
         }
     }
 
     func reloadConfig() {
         if let loadedConfig = Self.loadConfig(from: configURL) {
             self.config = loadedConfig
-            print("配置已重新加载")
+            Logger.shared.info("配置已重新加载", owner: self)
         }
     }
 

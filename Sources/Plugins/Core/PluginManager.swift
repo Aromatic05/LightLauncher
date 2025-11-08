@@ -38,7 +38,7 @@ class PluginManager: ObservableObject {
         }
 
         guard !allPluginDirs.isEmpty else {
-            print("未找到任何插件")
+            Logger.shared.info("未找到任何插件", owner: self)
             return
         }
 
@@ -50,9 +50,9 @@ class PluginManager: ObservableObject {
                 let plugin = try loader.load(from: pluginDirectory)
                 // 检查是否已存在同名插件
                 if let existingPlugin = plugins[plugin.name] {
-                    print("警告: 插件 '\(plugin.name)' 已存在，将被替换")
-                    print("  现有版本: \(existingPlugin.version)")
-                    print("  新版本: \(plugin.version)")
+                    Logger.shared.warning("警告: 插件 '\(plugin.name)' 已存在，将被替换", owner: self)
+                    Logger.shared.info("  现有版本: \(existingPlugin.version)", owner: self)
+                    Logger.shared.info("  新版本: \(plugin.version)", owner: self)
                 }
                 plugins[plugin.name] = plugin
                 // ✅ 新增：加载成功后，立即注册命令
@@ -61,16 +61,15 @@ class PluginManager: ObservableObject {
                 }
                 loadedCount += 1
                 loadingProgress = Double(loadedCount) / Double(totalCount)
-                print("成功加载插件: \(plugin.name) v\(plugin.version)")
+                Logger.shared.info("成功加载插件: \(plugin.name) v\(plugin.version)", owner: self)
             } catch {
-                print(
-                    "加载插件失败 (\(pluginDirectory.lastPathComponent)): \(error.localizedDescription)")
+                Logger.shared.error("加载插件失败 (\(pluginDirectory.lastPathComponent)): \(error.localizedDescription)", owner: self)
                 loadedCount += 1
                 loadingProgress = Double(loadedCount) / Double(totalCount)
             }
         }
 
-        print("插件加载完成: 成功加载 \(plugins.count) 个插件")
+        Logger.shared.info("插件加载完成: 成功加载 \(plugins.count) 个插件", owner: self)
     }
 
     /// 重新加载所有插件
@@ -85,20 +84,20 @@ class PluginManager: ObservableObject {
     /// - Parameter plugin: 要注册的插件
     func register(_ plugin: Plugin) {
         if let existingPlugin = plugins[plugin.name] {
-            print("警告: 插件 '\(plugin.name)' 已存在，将被替换")
-            print("  现有版本: \(existingPlugin.version)")
-            print("  新版本: \(plugin.version)")
+            Logger.shared.warning("警告: 插件 '\(plugin.name)' 已存在，将被替换", owner: self)
+            Logger.shared.info("  现有版本: \(existingPlugin.version)", owner: self)
+            Logger.shared.info("  新版本: \(plugin.version)", owner: self)
         }
 
         plugins[plugin.name] = plugin
-        print("插件已注册: \(plugin.name) v\(plugin.version)")
+        Logger.shared.info("插件已注册: \(plugin.name) v\(plugin.version)", owner: self)
     }
 
     /// 注销插件
     /// - Parameter name: 插件名称
     func unregister(_ name: String) {
         if let plugin = plugins.removeValue(forKey: name) {
-            print("插件已注销: \(plugin.name)")
+            Logger.shared.info("插件已注销: \(plugin.name)", owner: self)
         }
     }
 
@@ -136,7 +135,7 @@ class PluginManager: ObservableObject {
             plugins[name] = plugin
             // ✅ 新增：启用插件时，向注册表添加其命令
             commandRegistry.register(plugin: plugin, with: PluginModeController.shared)
-            print("插件已启用: \(name)")
+            Logger.shared.info("插件已启用: \(name)", owner: self)
         }
     }
 
@@ -148,7 +147,7 @@ class PluginManager: ObservableObject {
             plugins[name] = plugin
             // ✅ 新增：禁用插件时，从注册表移除其命令
             commandRegistry.unregister(prefix: plugin.command)
-            print("插件已禁用: \(name)")
+            Logger.shared.info("插件已禁用: \(name)", owner: self)
         }
     }
 
@@ -212,7 +211,7 @@ class PluginManager: ObservableObject {
     /// 清理所有插件
     func cleanup() {
         plugins.removeAll()
-        print("所有插件已清理")
+        Logger.shared.info("所有插件已清理", owner: self)
     }
 
     /// 搜索插件

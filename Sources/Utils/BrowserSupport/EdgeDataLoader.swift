@@ -9,7 +9,7 @@ class EdgeDataLoader: BrowserDataLoader {
             "Library/Application Support/Microsoft Edge/Default/Bookmarks")
 
         guard BrowserDataUtils.fileExists(at: bookmarksPath.path) else {
-            print("Edge bookmarks file not found")
+            Logger.shared.info("Edge bookmarks file not found")
             return []
         }
 
@@ -31,7 +31,7 @@ class EdgeDataLoader: BrowserDataLoader {
 
             return bookmarks
         } catch {
-            print("Error loading Edge bookmarks: \(error)")
+            Logger.shared.error("Error loading Edge bookmarks: \(error)")
             return []
         }
     }
@@ -41,7 +41,7 @@ class EdgeDataLoader: BrowserDataLoader {
             "Library/Application Support/Microsoft Edge/Default/History")
 
         guard BrowserDataUtils.fileExists(at: historyPath.path) else {
-            print("Edge history database not found")
+            Logger.shared.info("Edge history database not found")
             return []
         }
 
@@ -148,7 +148,7 @@ class EdgeDataLoader: BrowserDataLoader {
 
             return historyItems
         } catch {
-            print("Edge: Failed to create temporary copy: \(error)")
+            Logger.shared.error("Edge: Failed to create temporary copy: \(error)")
             return []
         }
     }

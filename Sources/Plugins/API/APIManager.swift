@@ -63,7 +63,7 @@ class APIManager {
 
         // 日志输出
         let logBlock: @convention(block) (String) -> Void = { message in
-            print("[Plugin \(pluginInstance.plugin.name)]: \(message)")
+            Logger.shared.info("[Plugin \(pluginInstance.plugin.name)]: \(message)", owner: pluginInstance)
         }
         lightlauncher?.setObject(logBlock, forKeyedSubscript: "log" as NSString)
 
