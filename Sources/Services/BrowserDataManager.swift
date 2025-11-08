@@ -4,7 +4,7 @@ import SQLite3
 import SwiftUI
 
 // 简单的有界最小堆（用于 top-k）
-fileprivate struct BoundedMinHeap {
+private struct BoundedMinHeap {
     private var heap: [(score: Double, idx: Int)] = []
     private let capacity: Int
 
@@ -36,7 +36,9 @@ fileprivate struct BoundedMinHeap {
             if heap[child].score < heap[parent].score {
                 heap.swapAt(child, parent)
                 child = parent
-            } else { break }
+            } else {
+                break
+            }
         }
     }
 
@@ -252,7 +254,8 @@ class BrowserDataManager {
 
                     if queryScore == 0 { return nil }
 
-                    let finalScore = preScoredItem.baseScore + queryScore + SearchWeights.prefixMatchBonus
+                    let finalScore =
+                        preScoredItem.baseScore + queryScore + SearchWeights.prefixMatchBonus
                     return (item: preScoredItem.item, score: finalScore)
                 }
             }

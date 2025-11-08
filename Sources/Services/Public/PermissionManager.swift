@@ -153,7 +153,7 @@ final class PermissionManager: ObservableObject {
     @MainActor
     func promptPermissionGuide(for type: AppPermissionType) {
         // 防重复弹窗检查
-    Logger.shared.debug("[DEBUG] 请求权限弹窗: promptPermissionGuide(for: \(type))", owner: self)
+        Logger.shared.debug("[DEBUG] 请求权限弹窗: promptPermissionGuide(for: \(type))", owner: self)
         if shouldSkipPermissionAlert(for: type) {
             Logger.shared.debug("[DEBUG] promptPermissionGuide skipped for: \(type)", owner: self)
             return
@@ -172,7 +172,9 @@ final class PermissionManager: ObservableObject {
         let response = alert.runModal()
         isShowingPermissionAlert = false
 
-    Logger.shared.debug("[DEBUG] promptPermissionGuide finished for: \(type), response: \(response.rawValue)", owner: self)
+        Logger.shared.debug(
+            "[DEBUG] promptPermissionGuide finished for: \(type), response: \(response.rawValue)",
+            owner: self)
         if response == .alertFirstButtonReturn {
             openSystemPreferences(for: type)
         }

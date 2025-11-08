@@ -55,7 +55,8 @@ class PluginConfigManager {
 
             return config
         } catch {
-            Logger.shared.error("加载插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
+            Logger.shared.error(
+                "加载插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
 
             // 返回默认配置
             let defaultConfig = PluginConfig()
@@ -84,7 +85,8 @@ class PluginConfigManager {
             Logger.shared.info("插件配置已保存: \(pluginName)", owner: self)
             return true
         } catch {
-            Logger.shared.error("保存插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
+            Logger.shared.error(
+                "保存插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
             return false
         }
     }
@@ -165,7 +167,8 @@ class PluginConfigManager {
             Logger.shared.info("插件配置已删除: \(pluginName)", owner: self)
             return true
         } catch {
-            Logger.shared.error("删除插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
+            Logger.shared.error(
+                "删除插件配置失败 (\(pluginName)): \(error.localizedDescription)", owner: self)
             return false
         }
     }

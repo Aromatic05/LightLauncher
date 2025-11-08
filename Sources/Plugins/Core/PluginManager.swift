@@ -63,7 +63,9 @@ class PluginManager: ObservableObject {
                 loadingProgress = Double(loadedCount) / Double(totalCount)
                 Logger.shared.info("成功加载插件: \(plugin.name) v\(plugin.version)", owner: self)
             } catch {
-                Logger.shared.error("加载插件失败 (\(pluginDirectory.lastPathComponent)): \(error.localizedDescription)", owner: self)
+                Logger.shared.error(
+                    "加载插件失败 (\(pluginDirectory.lastPathComponent)): \(error.localizedDescription)",
+                    owner: self)
                 loadedCount += 1
                 loadingProgress = Double(loadedCount) / Double(totalCount)
             }

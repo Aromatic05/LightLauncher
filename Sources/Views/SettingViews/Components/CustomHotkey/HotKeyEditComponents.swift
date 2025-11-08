@@ -37,7 +37,8 @@ struct HotKeyRecordButton: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
                 .background(
-                    recorder.isRecording ? Color.purple.opacity(0.1) : Color(NSColor.windowBackgroundColor)
+                    recorder.isRecording
+                        ? Color.purple.opacity(0.1) : Color(NSColor.windowBackgroundColor)
                 )
                 .foregroundColor(recorder.isRecording ? .purple : .primary)
                 .cornerRadius(10)
@@ -46,7 +47,8 @@ struct HotKeyRecordButton: View {
                         .stroke(
                             hasConflict
                                 ? Color.red
-                                : (recorder.isRecording ? Color.purple : Color.secondary.opacity(0.3)),
+                                : (recorder.isRecording
+                                    ? Color.purple : Color.secondary.opacity(0.3)),
                             lineWidth: 2
                         )
                 )

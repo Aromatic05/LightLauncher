@@ -5,7 +5,7 @@ struct GeneralSettingsView: View {
     @ObservedObject var settingsManager: SettingsManager
     @ObservedObject var configManager: ConfigManager
     @StateObject private var hotKeyRecorder = HotKeyRecorder()
-    
+
     // 本地 HotKey state，从 SettingsManager 同步
     @State private var hotkey: HotKey = HotKey(keyCode: UInt32(kVK_Space), option: true)
 

@@ -84,7 +84,9 @@ struct StringMatcher {
 
     /// 将文本拆分为单词，支持 CamelCase 拆分和非字母数字分隔符
     private static func splitWords(_ text: String) -> [String] {
-        let tokens = text.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        let tokens = text.components(separatedBy: CharacterSet.alphanumerics.inverted).filter {
+            !$0.isEmpty
+        }
         var words: [String] = []
 
         for token in tokens {

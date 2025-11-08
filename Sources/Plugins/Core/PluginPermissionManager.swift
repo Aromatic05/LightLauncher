@@ -53,7 +53,8 @@ class PluginPermissionManager {
 
             // 完全相等或 file 的路径以 dir 路径加 '/' 为前缀
             if fileURL.path == dirURL.path { return true }
-            return fileURL.path.hasPrefix(dirURL.path.hasSuffix("/") ? dirURL.path : dirURL.path + "/")
+            return fileURL.path.hasPrefix(
+                dirURL.path.hasSuffix("/") ? dirURL.path : dirURL.path + "/")
         }
     }
 

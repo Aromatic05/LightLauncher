@@ -58,7 +58,7 @@ class SettingsManager: ObservableObject {
 
     private func saveSettings() {
         userDefaults.set(isAutoStartEnabled, forKey: Keys.autoStart)
-    userDefaults.set(Int(hotKey.rawValue), forKey: Keys.hotKeyRaw)
+        userDefaults.set(Int(hotKey.rawValue), forKey: Keys.hotKeyRaw)
         userDefaults.set(modeEnabled, forKey: Keys.modeEnabled)
         userDefaults.set(showCommandSuggestions, forKey: Keys.showCommandSuggestions)
     }

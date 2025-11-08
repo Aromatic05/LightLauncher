@@ -9,20 +9,20 @@ struct PluginManifest: Decodable {
     let description: String?
     let command: String
     let author: String?
-    let main: String? // 主入口文件，默认为 main.js
-    
+    let main: String?  // 主入口文件，默认为 main.js
+
     // UI 相关（可选）
     let placeholder: String?
     let iconName: String?
     let shouldHideWindowAfterAction: Bool?
-    
+
     // 帮助和文档（可选）
     let help: [String]?
     let interface: String?
-    
+
     // 权限声明（可选）
     let permissions: [PluginPermissionSpec]?
-    
+
     // 高级配置（可选）
     let minLightLauncherVersion: String?
     let maxLightLauncherVersion: String?
@@ -30,7 +30,7 @@ struct PluginManifest: Decodable {
     let keywords: [String]?
     let homepage: String?
     let repository: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case name, version, displayName, description, command, author, main
         case placeholder, iconName, shouldHideWindowAfterAction
@@ -66,18 +66,18 @@ class Plugin: Identifiable {
     let manifest: PluginManifest
     let script: String
     let effectiveConfig: [String: Any]
-    
+
     // MARK: - 基本信息
     var name: String { manifest.name }
     var version: String { manifest.version }
     var description: String { manifest.description ?? "" }
     var command: String { manifest.command }
     var permissions: [String] { manifest.permissions?.map { $0.type.rawValue } ?? [] }
-    
+
     // MARK: - 运行时状态
     var isEnabled: Bool = true
     var context: JSContext?
-    
+
     // MARK: - 初始化
     init(url: URL, manifest: PluginManifest, script: String, effectiveConfig: [String: Any]) {
         self.id = manifest.name

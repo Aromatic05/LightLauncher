@@ -29,7 +29,8 @@ final class PluginAPI {
 
         if let ctx = pluginInstance.context {
             if let arrayConstructor = ctx.objectForKeyedSubscript("Array"),
-               let isArrayFunc = arrayConstructor.objectForKeyedSubscript("isArray") {
+                let isArrayFunc = arrayConstructor.objectForKeyedSubscript("isArray")
+            {
                 let isArray = isArrayFunc.call(withArguments: [items])?.toBool() ?? false
                 if isArray {
                     if let arr = items.toArray() {
@@ -177,7 +178,9 @@ final class PluginAPI {
         }
 
         guard let params = jsDictionary(from: paramsJS, in: context) else { return }
-        guard let urlString = params["url"] as? String, let url = URL(string: urlString) else { return }
+        guard let urlString = params["url"] as? String, let url = URL(string: urlString) else {
+            return
+        }
 
         let method = params["method"] as? String ?? "GET"
         let headers = params["headers"] as? [String: String]
@@ -191,9 +194,12 @@ final class PluginAPI {
         URLSession.shared.dataTask(with: request) { data, response, error in
             Task { @MainActor in
                 var result: [String: Any] = [:]
-                if let error = error { result["error"] = error.localizedDescription }
-                else {
-                    if let data = data { result["data"] = String(data: data, encoding: .utf8) ?? "" }
+                if let error = error {
+                    result["error"] = error.localizedDescription
+                } else {
+                    if let data = data {
+                        result["data"] = String(data: data, encoding: .utf8) ?? ""
+                    }
                     if let httpResponse = response as? HTTPURLResponse {
                         result["status"] = httpResponse.statusCode
                         result["headers"] = httpResponse.allHeaderFields
@@ -240,7 +246,8 @@ final class PluginAPI {
         if let subtitle = subtitle { content.subtitle = subtitle }
         if let body = body { content.body = body }
 
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString, content: content, trigger: nil)
         let center = UNUserNotificationCenter.current()
         center.add(request) { error in
             if let error = error { print("通知发送失败: \(error.localizedDescription)") }

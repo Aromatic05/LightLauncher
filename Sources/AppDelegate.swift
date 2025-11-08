@@ -21,12 +21,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 使用定时任务管理器定期扫描应用程序（每5分钟扫描一次）
         ScheduledTaskManager.shared.addTask(
             id: "AppScanner",
-            interval: 300, // 5分钟
+            interval: 300,  // 5分钟
             executeImmediately: true
         ) {
             AppScanner.shared.scanForApplications()
         }
-        
+
         PreferencePaneScanner.shared.scanForPreferencePanes()
         NSApp.setActivationPolicy(.accessory)
         _ = ClipboardManager.shared

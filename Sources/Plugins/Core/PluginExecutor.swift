@@ -27,8 +27,8 @@ class PluginExecutor {
             return nil
         }
 
-    instances[plugin.name] = instance
-    Logger.shared.info("插件实例已创建: \(plugin.name)", owner: self)
+        instances[plugin.name] = instance
+        Logger.shared.info("插件实例已创建: \(plugin.name)", owner: self)
 
         return instance
     }
@@ -91,7 +91,8 @@ class PluginExecutor {
         // 设置异常处理（记录但不阻止实例创建）
         context.exceptionHandler = { context, exception in
             let exText = exception?.toString() ?? "未知异常"
-            Logger.shared.error("插件 JavaScript 异常 (\(instance.plugin.name)): \(exText)", owner: instance)
+            Logger.shared.error(
+                "插件 JavaScript 异常 (\(instance.plugin.name)): \(exText)", owner: instance)
         }
 
         // 创建并注入 API 管理器
@@ -108,7 +109,9 @@ class PluginExecutor {
 
         if let exception = context.exception {
             // 记录异常，但继续：测试期望即使脚本抛异常也能创建实例
-            Logger.shared.error("插件 JavaScript 异常 (\(instance.plugin.name)): \(String(describing: exception.toString()))", owner: instance)
+            Logger.shared.error(
+                "插件 JavaScript 异常 (\(instance.plugin.name)): \(String(describing: exception.toString()))",
+                owner: instance)
         }
 
         Logger.shared.info("插件脚本执行完成: \(instance.plugin.name)", owner: instance)

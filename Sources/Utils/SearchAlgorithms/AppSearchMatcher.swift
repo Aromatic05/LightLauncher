@@ -23,8 +23,8 @@ struct AppSearchMatcher {
         usageCount: [String: Int],
         commonAbbreviations: [String: [String]]
     ) -> ItemMatch? {
-    let originalName = item.title
-    let name = originalName.lowercased()
+        let originalName = item.title
+        let name = originalName.lowercased()
         let searchQuery = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !searchQuery.isEmpty else { return nil }
 
@@ -51,10 +51,13 @@ struct AppSearchMatcher {
                 for word in abbreviationWords {
                     let w = word.lowercased()
                     // 如果应用名等于缩写映射的词、或以该词为单词开头、或包含该词，则视为完整缩写匹配
-                    if name == w || name.hasPrefix(w) || name.contains(" " + w) || name.contains(w) {
+                    if name == w || name.hasPrefix(w) || name.contains(" " + w) || name.contains(w)
+                    {
                         let score = 1200.0 + 100.0
-                        let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                        return ItemMatch(item: item, score: score + usageBonus, matchType: .contains)
+                        let usageBonus = calculateUsageBonus(
+                            appName: app.name, usageCount: usageCount)
+                        return ItemMatch(
+                            item: item, score: score + usageBonus, matchType: .contains)
                     }
                 }
             }
@@ -62,32 +65,39 @@ struct AppSearchMatcher {
             // 2. 多单词首字母匹配 (acronym)
             if let acronymScore = calculateAcronymMatch(appName: originalName, query: searchQuery) {
                 let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                return ItemMatch(item: item, score: acronymScore + 1000.0 + usageBonus, matchType: .wordStart)
+                return ItemMatch(
+                    item: item, score: acronymScore + 1000.0 + usageBonus, matchType: .wordStart)
             }
 
             // 2b. commonAbbreviations 的部分匹配：尝试把映射的词作为查询去匹配，分数略低于 acronym
             if let abbreviationWords = commonAbbreviations[searchQuery] {
                 var bestPartial: Double = 0
                 for word in abbreviationWords {
-                    if let m = calculateDirectMatch(appName: name, originalAppName: originalName, query: word.lowercased()) {
+                    if let m = calculateDirectMatch(
+                        appName: name, originalAppName: originalName, query: word.lowercased())
+                    {
                         bestPartial = max(bestPartial, m.score)
                     }
                     if name.contains(word.lowercased()) {
                         // 给一个稳定的基础分数以保证优先级在 wordStart 之后
-                        let containsScore = 550.0 + (1.0 - Double(word.count) / Double(name.count)) * 50.0
+                        let containsScore =
+                            550.0 + (1.0 - Double(word.count) / Double(name.count)) * 50.0
                         bestPartial = max(bestPartial, containsScore)
                     }
                 }
                 if bestPartial > 0 {
                     let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                    return ItemMatch(item: item, score: bestPartial + 900.0 + usageBonus, matchType: .contains)
+                    return ItemMatch(
+                        item: item, score: bestPartial + 900.0 + usageBonus, matchType: .contains)
                 }
             }
 
             // 3. 多单词部分前缀匹配 与 拼音匹配 放在同一优先级，比较后返回更高分
             let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-            let wordStartScoreOpt = StringMatcher.calculateWordStartMatch(text: name, query: searchQuery)
-            let pinyinMatchOpt = PinyinMatcher.calculatePinyinMatch(appName: name, query: searchQuery)
+            let wordStartScoreOpt = StringMatcher.calculateWordStartMatch(
+                text: name, query: searchQuery)
+            let pinyinMatchOpt = PinyinMatcher.calculatePinyinMatch(
+                appName: name, query: searchQuery)
 
             if wordStartScoreOpt != nil || pinyinMatchOpt != nil {
                 var bestScore: Double = 0
@@ -110,24 +120,35 @@ struct AppSearchMatcher {
             }
 
             // 4. 单词内部前缀匹配
-            if let wordInternalScore = calculateWordInternalMatch(appName: originalName, query: searchQuery) {
-                let usageBonusInternal = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                return ItemMatch(item: item, score: wordInternalScore + 700.0 + usageBonusInternal, matchType: .wordStart)
+            if let wordInternalScore = calculateWordInternalMatch(
+                appName: originalName, query: searchQuery)
+            {
+                let usageBonusInternal = calculateUsageBonus(
+                    appName: app.name, usageCount: usageCount)
+                return ItemMatch(
+                    item: item, score: wordInternalScore + 700.0 + usageBonusInternal,
+                    matchType: .wordStart)
             }
 
             // 5. 内部连续子串匹配 (contains) - 优先于非连续子序列
             if name.contains(searchQuery) {
                 let position = Double(
-                    name.distance(from: name.startIndex, to: name.range(of: searchQuery)!.lowerBound))
+                    name.distance(
+                        from: name.startIndex, to: name.range(of: searchQuery)!.lowerBound))
                 let positionScore = max(0, 150.0 - position * 2.0)
                 let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                return ItemMatch(item: item, score: positionScore + 600.0 + usageBonus, matchType: .contains)
+                return ItemMatch(
+                    item: item, score: positionScore + 600.0 + usageBonus, matchType: .contains)
             }
 
             // 6. 非连续子序列匹配
-            if let subsequenceScore = StringMatcher.calculateSubsequenceMatch(text: name, query: searchQuery) {
+            if let subsequenceScore = StringMatcher.calculateSubsequenceMatch(
+                text: name, query: searchQuery)
+            {
                 let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                return ItemMatch(item: item, score: subsequenceScore + 500.0 + usageBonus, matchType: .subsequence)
+                return ItemMatch(
+                    item: item, score: subsequenceScore + 500.0 + usageBonus,
+                    matchType: .subsequence)
             }
 
             // (已在上方与多单词前缀比较并处理过拼音匹配)
@@ -135,7 +156,8 @@ struct AppSearchMatcher {
             // 8. 模糊匹配（最低优先级）
             if let fuzzyScore = StringMatcher.calculateFuzzyMatch(text: name, query: searchQuery) {
                 let usageBonus = calculateUsageBonus(appName: app.name, usageCount: usageCount)
-                return ItemMatch(item: item, score: fuzzyScore + 300.0 + usageBonus, matchType: .fuzzy)
+                return ItemMatch(
+                    item: item, score: fuzzyScore + 300.0 + usageBonus, matchType: .fuzzy)
             }
 
             return nil
@@ -167,7 +189,9 @@ struct AppSearchMatcher {
     }
 
     /// 计算直接匹配（英文匹配）
-    private static func calculateDirectMatch(appName: String, originalAppName: String, query: String) -> (
+    private static func calculateDirectMatch(
+        appName: String, originalAppName: String, query: String
+    ) -> (
         score: Double, matchType: AppMatch.MatchType
     )? {
         // 1. 完全匹配开头 - 最高优先级
@@ -188,7 +212,9 @@ struct AppSearchMatcher {
         }
 
         // 4. 单词内部前缀匹配 (如 "studio" 匹配 "Visual Studio Code")
-        if let wordInternalScore = calculateWordInternalMatch(appName: originalAppName, query: query) {
+        if let wordInternalScore = calculateWordInternalMatch(
+            appName: originalAppName, query: query)
+        {
             return (score: wordInternalScore + 700.0, matchType: .wordStart)
         }
 
@@ -283,7 +309,9 @@ struct AppSearchMatcher {
     /// 将文本拆分为单词，支持 CamelCase 拆分和非字母数字分隔符
     private static func splitWords(_ text: String) -> [String] {
         // 先按非字母数字分割
-        let tokens = text.components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }
+        let tokens = text.components(separatedBy: CharacterSet.alphanumerics.inverted).filter {
+            !$0.isEmpty
+        }
         var words: [String] = []
 
         for token in tokens {

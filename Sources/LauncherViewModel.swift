@@ -232,8 +232,8 @@ class LauncherViewModel: ObservableObject {
     // MARK: - Command Suggestions (UNCHANGED)
     private func updateCommandSuggestions(for text: String, oldText: String) {
         if SettingsManager.shared.showCommandSuggestions,
-           let first = text.first,
-           !first.isLetter
+            let first = text.first,
+            !first.isLetter
         {
             let newSuggestions = LauncherCommand.getSuggestions(for: text)
             if self.commandSuggestions.map({ $0.prefix }) != newSuggestions.map({ $0.prefix }) {
@@ -253,7 +253,10 @@ class LauncherViewModel: ObservableObject {
                 }
             }
         } else {
-            if showCommandSuggestions { showCommandSuggestions = false; selectedIndex = 0 }
+            if showCommandSuggestions {
+                showCommandSuggestions = false
+                selectedIndex = 0
+            }
             if !commandSuggestions.isEmpty { commandSuggestions = [] }
         }
     }

@@ -14,7 +14,7 @@ final class HotkeyManager: @unchecked Sendable {
 
     // 使用锁保护共享状态
     private let lock = NSRecursiveLock()
-    
+
     // 将所有 static var 改为实例变量
     private var registeredHotkeys: [UInt32: RegisteredHotkey] = [:]
     private var customHotKeyConfigMap: [UInt32: CustomHotKeyConfig] = [:]
@@ -33,8 +33,7 @@ final class HotkeyManager: @unchecked Sendable {
 
     // MARK: - Constants
     private let tapMask = CGEventMask(
-        (1 << Int(CGEventType.flagsChanged.rawValue)) |
-        (1 << Int(CGEventType.keyDown.rawValue))
+        (1 << Int(CGEventType.flagsChanged.rawValue)) | (1 << Int(CGEventType.keyDown.rawValue))
     )
     private let tapRunLoopMode = CFRunLoopMode.commonModes
 
@@ -85,13 +84,15 @@ final class HotkeyManager: @unchecked Sendable {
 
         startEventTapIfNeeded()
 
-    Logger.shared.info("Registered hotkeys: main=\(mainHotkey.description()), custom=\(customHotkeys.count)", owner: self)
+        Logger.shared.info(
+            "Registered hotkeys: main=\(mainHotkey.description()), custom=\(customHotkeys.count)",
+            owner: self)
     }
 
     func unregisterAll() {
         lock.lock()
         defer { lock.unlock() }
-        
+
         registeredHotkeys.removeAll()
         customHotKeyConfigMap.removeAll()
         modifierOnlyStates.removeAll()
@@ -99,7 +100,7 @@ final class HotkeyManager: @unchecked Sendable {
 
         stopEventTapIfNeeded()
 
-    Logger.shared.info("All hotkeys unregistered", owner: self)
+        Logger.shared.info("All hotkeys unregistered", owner: self)
     }
 
     func getConfig(for id: UInt32) -> CustomHotKeyConfig? {
@@ -119,7 +120,8 @@ final class HotkeyManager: @unchecked Sendable {
         }
 
         guard isAccessibilityTrusted else {
-            Logger.shared.warning("⚠️ Accessibility permission not granted. Hotkeys will not function.", owner: self)
+            Logger.shared.warning(
+                "⚠️ Accessibility permission not granted. Hotkeys will not function.", owner: self)
             tapState = .failed
             return
         }
@@ -131,17 +133,19 @@ final class HotkeyManager: @unchecked Sendable {
 
         tapState = .starting
 
-    // 将 self (单例实例) 的指针传递给 userInfo
+        // 将 self (单例实例) 的指针传递给 userInfo
         let userInfo = Unmanaged.passUnretained(self).toOpaque()
 
-        guard let tap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: tapMask,
-            callback: hotkeyManagerTapCallback, // 注意函数名变化
-            userInfo: userInfo
-        ) else {
+        guard
+            let tap = CGEvent.tapCreate(
+                tap: .cgSessionEventTap,
+                place: .headInsertEventTap,
+                options: .defaultTap,
+                eventsOfInterest: tapMask,
+                callback: hotkeyManagerTapCallback,  // 注意函数名变化
+                userInfo: userInfo
+            )
+        else {
             Logger.shared.error("[HotkeyManager] ✗ Failed to create event tap")
             tapState = .failed
             scheduleReconnect()
@@ -193,7 +197,7 @@ final class HotkeyManager: @unchecked Sendable {
         guard !registeredHotkeys.isEmpty else { return }
 
         reconnectTask = Task {
-        // Task 默认在主 actor 上运行
+            // Task 默认在主 actor 上运行
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             if Task.isCancelled { return }
             startEventTapIfNeeded()
@@ -210,7 +214,7 @@ final class HotkeyManager: @unchecked Sendable {
     fileprivate func processEvent(snapshot: TapEventSnapshot) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        
+
         guard let type = snapshot.type else { return false }
 
         switch type {
@@ -226,7 +230,8 @@ final class HotkeyManager: @unchecked Sendable {
 
     // MARK: - Flags Handling (Modifier Only)
     private func handleFlagsChanged(keyCode: UInt16, flagsRaw: UInt64) -> Bool {
-        let currentHotkey = HotKey.from(keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
+        let currentHotkey = HotKey.from(
+            keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
         let hasActiveModifiers = !physicalModifierKeys.isEmpty
         var shouldBlockEvent = false
 
@@ -238,7 +243,9 @@ final class HotkeyManager: @unchecked Sendable {
                     if state.matchedHotkey == nil {
                         state.matchedHotkey = currentHotkey
                         state.interferenceDetected = false
-                        Logger.shared.debug("🔽 Modifier pressed: \(currentHotkey.description()) [id=\(id)]", owner: self)
+                        Logger.shared.debug(
+                            "🔽 Modifier pressed: \(currentHotkey.description()) [id=\(id)]",
+                            owner: self)
                     }
                 } else if state.matchedHotkey != nil {
                     state.interferenceDetected = true
@@ -247,7 +254,9 @@ final class HotkeyManager: @unchecked Sendable {
                 if !state.interferenceDetected {
                     triggerHotkey(id: id, isMain: entry.isMain)
                     shouldBlockEvent = true
-                    Logger.shared.debug("⚡ ModifierOnly triggered: \(matched.description()) [id=\(id)]", owner: self)
+                    Logger.shared.debug(
+                        "⚡ ModifierOnly triggered: \(matched.description()) [id=\(id)]", owner: self
+                    )
                 } else {
                     Logger.shared.debug("🚫 ModifierOnly cancelled (interference)", owner: self)
                 }
@@ -256,13 +265,14 @@ final class HotkeyManager: @unchecked Sendable {
 
             modifierOnlyStates[id] = state
         }
-        
+
         return shouldBlockEvent
     }
 
     // MARK: - Key Down Handling
     private func handleKeyDown(keyCode: UInt16, flagsRaw: UInt64) -> Bool {
-        let hotkey = HotKey.from(keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
+        let hotkey = HotKey.from(
+            keyCode: keyCode, flagsRaw: flagsRaw, physicalKeys: physicalModifierKeys)
         var shouldBlockEvent = false
 
         for entry in registeredHotkeys.values {
@@ -280,21 +290,26 @@ final class HotkeyManager: @unchecked Sendable {
                 if entry.hotkey.rawValue == hotkey.rawValue {
                     triggerHotkey(id: entry.id, isMain: entry.isMain)
                     shouldBlockEvent = true
-                    Logger.shared.debug("⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]", owner: self)
+                    Logger.shared.debug(
+                        "⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]",
+                        owner: self)
                 }
             } else if entry.hotkey.matchesIgnoringSide(hotkey) {
                 triggerHotkey(id: entry.id, isMain: entry.isMain)
                 shouldBlockEvent = true
-                Logger.shared.debug("⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]", owner: self)
+                Logger.shared.debug(
+                    "⚡ Hotkey triggered: \(entry.hotkey.description()) [id=\(entry.id)]",
+                    owner: self)
             }
         }
-        
+
         return shouldBlockEvent
     }
 
     // MARK: - Modifier Key Tracking
     private func updatePhysicalModifierKeys(flagsRaw: UInt64, keyCode: UInt16) {
-        let flags = NSEvent.ModifierFlags(rawValue: NSEvent.ModifierFlags.RawValue(truncatingIfNeeded: flagsRaw))
+        let flags = NSEvent.ModifierFlags(
+            rawValue: NSEvent.ModifierFlags.RawValue(truncatingIfNeeded: flagsRaw))
 
         let mapping: [(UInt16, NSEvent.ModifierFlags)] = [
             (UInt16(kVK_LeftCommand), .command),
@@ -320,7 +335,8 @@ final class HotkeyManager: @unchecked Sendable {
             if isMain {
                 NotificationCenter.default.post(name: .mainHotkeyTriggered, object: nil)
             } else {
-                NotificationCenter.default.post(name: .customHotkeyTriggered, object: nil, userInfo: ["hotkeyID": id])
+                NotificationCenter.default.post(
+                    name: .customHotkeyTriggered, object: nil, userInfo: ["hotkeyID": id])
             }
         }
     }
@@ -361,8 +377,8 @@ private func hotkeyManagerTapCallback(
 // CGEvent Utilities are implemented in HotKey.swift
 
 // MARK: - String + FourCharCode
-private extension String {
-    var fourCharCodeValue: UInt32 {
+extension String {
+    fileprivate var fourCharCodeValue: UInt32 {
         var result: UInt32 = 0
         if let data = self.data(using: .macOSRoman) {
             data.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in

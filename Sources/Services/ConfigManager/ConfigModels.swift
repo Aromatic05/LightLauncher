@@ -24,11 +24,13 @@ struct AppConfig: Codable {
         var fileLevel: LogLevel
         var customFilePath: String?
 
-        init(printToTerminal: Bool = true,
-             logToFile: Bool = false,
-             consoleLevel: LogLevel = .info,
-             fileLevel: LogLevel = .debug,
-             customFilePath: String? = nil) {
+        init(
+            printToTerminal: Bool = true,
+            logToFile: Bool = false,
+            consoleLevel: LogLevel = .info,
+            fileLevel: LogLevel = .debug,
+            customFilePath: String? = nil
+        ) {
             self.printToTerminal = printToTerminal
             self.logToFile = logToFile
             self.consoleLevel = consoleLevel

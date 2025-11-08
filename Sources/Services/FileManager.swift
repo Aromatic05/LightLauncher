@@ -1,15 +1,15 @@
-import Foundation
 import AppKit
-import SwiftUI
 import Combine
+import Foundation
+import SwiftUI
 
 // MARK: - 文件管理器管理类
 @MainActor
 class FileManager_LightLauncher {
     static let shared = FileManager_LightLauncher()
-    
+
     private init() {}
-    
+
     func getFiles(at path: String) -> [FileItem] {
         // 检查文件访问权限
         guard PermissionManager.shared.checkFileBrowsingPermissions() else {
@@ -19,12 +19,12 @@ class FileManager_LightLauncher {
             }
             return []
         }
-        
+
         let originalURL = URL(fileURLWithPath: path)
 
         // 优先解析符号链接：如果用户传入的是符号链接，尝试跟随到目标路径。
         // 注意：resolvingSymlinksInPath 会返回解析后的 URL，但如果目标不存在或不可访问，后续的 fileExists/contentsOfDirectory 会失败。
-    let url = originalURL.resolvingSymlinksInPath()
+        let url = originalURL.resolvingSymlinksInPath()
 
         // 如果解析后路径不存在（可能是坏的符号链接），给出更明确的提示并返回空
         if !FileManager.default.fileExists(atPath: url.path) {
@@ -56,33 +56,39 @@ class FileManager_LightLauncher {
         do {
             let contents = try FileManager.default.contentsOfDirectory(
                 at: url,
-                includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey],
+                includingPropertiesForKeys: [
+                    .isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey,
+                ],
                 options: []  // 不跳过隐藏文件
             )
-            
+
             var files: [FileItem] = []
-            
+
             // 添加返回上级目录项（除了根目录）
             if url.path != "/" && url.path != NSHomeDirectory() {
                 // 为返回上级目录展示父目录（基于解析后的目标路径）
                 let parentURL = url.deletingLastPathComponent()
-                files.append(FileItem(
-                    name: "..",
-                    url: parentURL,
-                    isDirectory: true,
-                    size: nil,
-                    modificationDate: nil
-                ))
+                files.append(
+                    FileItem(
+                        name: "..",
+                        url: parentURL,
+                        isDirectory: true,
+                        size: nil,
+                        modificationDate: nil
+                    ))
             }
-            
+
             // 处理目录内容
             for fileURL in contents {
                 // 尝试获取资源信息，优先判断是否目录并处理符号链接（但继续列出项以便用户看到它）
                 var isDirectory: ObjCBool = false
-                let exists = FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory)
+                let exists = FileManager.default.fileExists(
+                    atPath: fileURL.path, isDirectory: &isDirectory)
 
                 if exists {
-                    let resourceValues = try? fileURL.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey])
+                    let resourceValues = try? fileURL.resourceValues(forKeys: [
+                        .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey,
+                    ])
 
                     // 如果当前项是一个符号链接并且它指向目录，您可能希望在 UI 上把它当成目录处理；这里不强制跟随目标，只是标记为目录（当目标为目录时）
                     var finalIsDirectory = isDirectory.boolValue
@@ -90,21 +96,24 @@ class FileManager_LightLauncher {
                         // 尝试解析符号链接目标并判断目标是否为目录
                         let resolved = fileURL.resolvingSymlinksInPath()
                         var resolvedIsDir: ObjCBool = false
-                        if FileManager.default.fileExists(atPath: resolved.path, isDirectory: &resolvedIsDir) {
+                        if FileManager.default.fileExists(
+                            atPath: resolved.path, isDirectory: &resolvedIsDir)
+                        {
                             finalIsDirectory = resolvedIsDir.boolValue
                         }
                     }
 
-                    files.append(FileItem(
-                        name: fileURL.lastPathComponent,
-                        url: fileURL,
-                        isDirectory: finalIsDirectory,
-                        size: resourceValues?.fileSize.map { Int64($0) },
-                        modificationDate: resourceValues?.contentModificationDate
-                    ))
+                    files.append(
+                        FileItem(
+                            name: fileURL.lastPathComponent,
+                            url: fileURL,
+                            isDirectory: finalIsDirectory,
+                            size: resourceValues?.fileSize.map { Int64($0) },
+                            modificationDate: resourceValues?.contentModificationDate
+                        ))
                 }
             }
-            
+
             // 排序：目录在前，然后按名称排序
             return files.sorted { file1, file2 in
                 if file1.name == ".." { return true }
@@ -114,58 +123,59 @@ class FileManager_LightLauncher {
                 }
                 return file1.name.localizedCaseInsensitiveCompare(file2.name) == .orderedAscending
             }
-            
+
         } catch {
             Logger.shared.error("Error reading directory: \(error)", owner: self)
-            
+
             // 如果读取失败，可能是权限问题，显示更具体的错误信息
             Task { @MainActor in
                 let alert = NSAlert()
                 alert.alertStyle = .warning
                 alert.messageText = "无法访问目录"
-                alert.informativeText = "访问 '\(path)' 时出现错误。这可能是权限问题或目录不存在。\n\n错误详情：\(error.localizedDescription)"
+                alert.informativeText =
+                    "访问 '\(path)' 时出现错误。这可能是权限问题或目录不存在。\n\n错误详情：\(error.localizedDescription)"
                 alert.addButton(withTitle: "检查权限")
                 alert.addButton(withTitle: "确定")
-                
+
                 let response = alert.runModal()
                 if response == .alertFirstButtonReturn {
                     PermissionManager.shared.promptPermissionGuide(for: .fileAccess)
                 }
             }
-            
+
             return []
         }
     }
-    
+
     func filterFiles(_ files: [FileItem], query: String) -> [FileItem] {
         if query.isEmpty {
             return files
         }
-        
+
         return files.filter { file in
             // 改进过滤逻辑，支持更精确的匹配
             let fileName = file.name.localizedLowercase
             let queryLower = query.localizedLowercase
-            
+
             // 1. 完全匹配
             if fileName == queryLower {
                 return true
             }
-            
+
             // 2. 前缀匹配
             if fileName.hasPrefix(queryLower) {
                 return true
             }
-            
+
             // 3. 包含匹配
             if fileName.contains(queryLower) {
                 return true
             }
-            
+
             return false
         }
     }
-    
+
     func openInFinder(_ url: URL) {
         // 检查文件访问权限
         guard PermissionManager.shared.checkFileBrowsingPermissions() else {
@@ -177,13 +187,14 @@ class FileManager_LightLauncher {
             }
             return
         }
-        
+
         if url.hasDirectoryPath {
             // 如果是目录，在 Finder 中显示该目录
             NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
         } else {
             // 如果是文件，在 Finder 中选中该文件
-            NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
+            NSWorkspace.shared.selectFile(
+                url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
         }
     }
 }

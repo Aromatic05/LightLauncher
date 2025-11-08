@@ -12,7 +12,8 @@ class APIManager {
 
     init(pluginInstance: PluginInstance) {
         self.pluginInstance = pluginInstance
-        self.pluginAPI = PluginAPI(pluginInstance: pluginInstance, permissionManager: permissionManager)
+        self.pluginAPI = PluginAPI(
+            pluginInstance: pluginInstance, permissionManager: permissionManager)
     }
 
     /// 将 API 注入到 JavaScript 上下文
@@ -63,7 +64,8 @@ class APIManager {
 
         // 日志输出
         let logBlock: @convention(block) (String) -> Void = { message in
-            Logger.shared.info("[Plugin \(pluginInstance.plugin.name)]: \(message)", owner: pluginInstance)
+            Logger.shared.info(
+                "[Plugin \(pluginInstance.plugin.name)]: \(message)", owner: pluginInstance)
         }
         lightlauncher?.setObject(logBlock, forKeyedSubscript: "log" as NSString)
 
@@ -116,8 +118,11 @@ class APIManager {
         // 写入文件（接受 JSValue，内部做安全转换以避免桥接异常）
         let writeFileBlock: @convention(block) (JSValue?) -> Bool = { [weak self] paramsJS in
             guard let strong = self else { return false }
-            guard let dict = strong.pluginAPI?.jsDictionary(from: paramsJS, in: context) else { return false }
-            guard let path = dict["path"] as? String, let content = dict["content"] as? String else { return false }
+            guard let dict = strong.pluginAPI?.jsDictionary(from: paramsJS, in: context) else {
+                return false
+            }
+            guard let path = dict["path"] as? String, let content = dict["content"] as? String
+            else { return false }
             return strong.pluginAPI?.writeFile(path: path, content: content) ?? false
         }
         lightlauncher?.setObject(writeFileBlock, forKeyedSubscript: "writeFile" as NSString)
@@ -148,10 +153,13 @@ class APIManager {
         lightlauncher: JSValue?, context: JSContext, pluginInstance: PluginInstance
     ) {
         // HTTP 请求（接受 JSValue 参数，内部安全转换）
-        let networkRequestBlock: @convention(block) (JSValue?, JSValue?) -> Void = { [weak self] paramsJS, callback in
-            self?.pluginAPI?.makeNetworkRequest(paramsJS: paramsJS, callback: callback, context: context)
+        let networkRequestBlock: @convention(block) (JSValue?, JSValue?) -> Void = {
+            [weak self] paramsJS, callback in
+            self?.pluginAPI?.makeNetworkRequest(
+                paramsJS: paramsJS, callback: callback, context: context)
         }
-        lightlauncher?.setObject(networkRequestBlock, forKeyedSubscript: "networkRequest" as NSString)
+        lightlauncher?.setObject(
+            networkRequestBlock, forKeyedSubscript: "networkRequest" as NSString)
     }
 
     // MARK: - 系统 API
@@ -160,8 +168,11 @@ class APIManager {
         lightlauncher: JSValue?, context: JSContext, pluginInstance: PluginInstance
     ) {
         // 执行系统命令
-        let executeCommandBlock: @convention(block) (String) -> [String: Any] = { [weak self] command in
-            return self?.pluginAPI?.executeSystemCommand(command: command) ?? ["error": "API not available"]
+        let executeCommandBlock: @convention(block) (String) -> [String: Any] = {
+            [weak self] command in
+            return self?.pluginAPI?.executeSystemCommand(command: command) ?? [
+                "error": "API not available"
+            ]
         }
         lightlauncher?.setObject(
             executeCommandBlock, forKeyedSubscript: "executeCommand" as NSString)
@@ -172,7 +183,8 @@ class APIManager {
             let params = strong.pluginAPI?.jsDictionary(from: paramsJS, in: context)
             return strong.pluginAPI?.showNotification(params: params) ?? false
         }
-        lightlauncher?.setObject(showNotificationBlock, forKeyedSubscript: "showNotification" as NSString)
+        lightlauncher?.setObject(
+            showNotificationBlock, forKeyedSubscript: "showNotification" as NSString)
     }
 
     // MARK: - 权限 API

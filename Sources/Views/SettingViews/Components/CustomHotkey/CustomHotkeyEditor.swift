@@ -24,7 +24,8 @@ struct CustomHotKeyEditView: View {
         self._name = State(initialValue: hotKey?.name ?? "")
         self._type = State(initialValue: hotKey?.type ?? "query")
         self._text = State(initialValue: hotKey?.text ?? "")
-        self._hotkey = State(initialValue: hotKey?.hotkey ?? HotKey(keyCode: UInt32(kVK_Space), option: true))
+        self._hotkey = State(
+            initialValue: hotKey?.hotkey ?? HotKey(keyCode: UInt32(kVK_Space), option: true))
     }
 
     var isValid: Bool {

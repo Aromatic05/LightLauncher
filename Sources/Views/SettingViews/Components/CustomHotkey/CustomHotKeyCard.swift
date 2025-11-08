@@ -18,15 +18,15 @@ struct CustomHotKeyCard: View {
                     .lineLimit(1)
             }
             .frame(width: 200, alignment: .leading)
-            
+
             Spacer()
-            
+
             // 中间：快捷键显示按钮（和 GeneralSettingsView 同款，可点击编辑）
             Button(action: onEdit) {
                 HStack(spacing: 8) {
                     Image(systemName: "keyboard")
                     Text(hotKey.hotkey.description())
-                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -39,7 +39,7 @@ struct CustomHotKeyCard: View {
                 )
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             // 右侧：小号删除编辑图标
             // 编辑按钮（小号）
             Button(action: onEdit) {
@@ -64,4 +64,3 @@ struct CustomHotKeyCard: View {
         .cornerRadius(12)
     }
 }
-

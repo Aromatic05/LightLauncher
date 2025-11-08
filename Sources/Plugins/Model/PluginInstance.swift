@@ -1,5 +1,5 @@
-import JavaScriptCore
 import Combine
+import JavaScriptCore
 
 // MARK: - 插件运行时实例
 
@@ -14,7 +14,7 @@ class PluginInstance {
     var apiManager: APIManager?
     /// 该插件在当前会话中是否被用户启用。
     var isEnabled: Bool = true
-    
+
     /// 搜索回调函数
     var searchCallback: JSValue?
     /// 动作处理器
@@ -29,29 +29,29 @@ class PluginInstance {
 
     /// items 更新时的通知回调，由主程序设置
     var onItemsUpdated: (() -> Void)?
-    
+
     init(plugin: Plugin) {
         self.plugin = plugin
     }
-    
+
     /// 处理输入
     /// - Parameter input: 用户输入
     func handleInput(_ input: String) {
         guard isEnabled, let callback = searchCallback else { return }
-        
+
         callback.call(withArguments: [input])
     }
-    
+
     /// 执行动作
     /// - Parameter action: 动作标识符
     /// - Returns: 是否成功执行
     func executeAction(_ action: String) -> Bool {
         guard isEnabled, let handler = actionHandler else { return false }
-        
+
         let result = handler.call(withArguments: [action])
         return result?.toBool() ?? false
     }
-    
+
     /// 设置并准备 JS 环境。
     func setupContext() {
         guard context == nil else { return }

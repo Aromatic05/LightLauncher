@@ -2,7 +2,7 @@ import Foundation
 
 /// 插件相关的错误类型
 enum PluginError: Error, LocalizedError {
-    case invalidManifest(String) // 需要传递错误信息
+    case invalidManifest(String)  // 需要传递错误信息
     case missingMainFile(String)
     case loadFailed(String)
     case executionFailed(String)
@@ -15,7 +15,7 @@ enum PluginError: Error, LocalizedError {
     case missingScript(String)
     case invalidScript(String)
     case scriptEvaluationFailed(String)
-    
+
     var errorDescription: String? {
         switch self {
         case .invalidManifest(let message):

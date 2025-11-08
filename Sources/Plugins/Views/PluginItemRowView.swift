@@ -5,7 +5,7 @@ struct PluginItemRowView: View {
     let item: PluginItem
     let isSelected: Bool
     let index: Int
-    
+
     var body: some View {
         HStack(spacing: 12) {
             // 索引数字
@@ -14,7 +14,7 @@ struct PluginItemRowView: View {
                     Circle()
                         .fill(isSelected ? Color.accentColor : Color.secondary.opacity(0.3))
                         .frame(width: 24, height: 24)
-                    
+
                     Text("\(index + 1)")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(isSelected ? .white : .secondary)
@@ -24,7 +24,7 @@ struct PluginItemRowView: View {
                         .frame(width: 24, height: 24)
                 }
             }
-            
+
             // 图标
             if let nsImage = item.icon {
                 Image(nsImage: nsImage)
@@ -37,14 +37,14 @@ struct PluginItemRowView: View {
                     .foregroundColor(isSelected ? .accentColor : .secondary)
                     .frame(width: 24, height: 24)
             }
-            
+
             // 内容
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(isSelected ? .primary : .primary.opacity(0.9))
                     .lineLimit(1)
-                
+
                 if let subtitle = item.subtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(.system(size: 13))
@@ -52,9 +52,9 @@ struct PluginItemRowView: View {
                         .lineLimit(1)
                 }
             }
-            
+
             Spacer()
-            
+
             // 动作指示器（如果有）
             if item.action != nil {
                 Image(systemName: "return")
@@ -74,4 +74,3 @@ struct PluginItemRowView: View {
         )
     }
 }
-

@@ -33,8 +33,8 @@ final class Logger: @unchecked Sendable {
     private let fileQueue = DispatchQueue(label: "com.lightlauncher.logger.file", qos: .utility)
 
     // 输出控制
-    private(set) var consoleLevel: Level = .info // 控制 osLogger / terminal 的最小输出等级
-    private(set) var fileLevel: Level = .debug   // 控制文件写入的最小输出等级
+    private(set) var consoleLevel: Level = .info  // 控制 osLogger / terminal 的最小输出等级
+    private(set) var fileLevel: Level = .debug  // 控制文件写入的最小输出等级
 
     private(set) var logToOSLog: Bool = true
     private(set) var printToTerminal: Bool = true
@@ -44,7 +44,9 @@ final class Logger: @unchecked Sendable {
 
     private init() {
         if #available(macOS 11.0, *) {
-            osLogger = os.Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.lightlauncher", category: "LightLauncher")
+            osLogger = os.Logger(
+                subsystem: Bundle.main.bundleIdentifier ?? "com.lightlauncher",
+                category: "LightLauncher")
         } else {
             osLogger = nil
         }
@@ -58,12 +60,14 @@ final class Logger: @unchecked Sendable {
     ///   - consoleLevel: 控制台/终端最小日志等级
     ///   - fileLevel: 文件写入最小等级
     ///   - customFileURL: 自定义日志文件（如果为 nil 且启用文件写入，将使用 per-session 文件放在 ~/.cache/LightLauncher/<date>/ ）
-    func configure(logToOSLog: Bool = true,
-                   printToTerminal: Bool = true,
-                   logToFile: Bool = false,
-                   consoleLevel: Level = .info,
-                   fileLevel: Level = .debug,
-                   customFileURL: URL? = nil) {
+    func configure(
+        logToOSLog: Bool = true,
+        printToTerminal: Bool = true,
+        logToFile: Bool = false,
+        consoleLevel: Level = .info,
+        fileLevel: Level = .debug,
+        customFileURL: URL? = nil
+    ) {
         self.logToOSLog = logToOSLog
         self.printToTerminal = printToTerminal
         self.consoleLevel = consoleLevel
@@ -74,7 +78,8 @@ final class Logger: @unchecked Sendable {
             self.logToFile = true
             if let custom = customFileURL {
                 self.fileURL = custom
-                try? FileManager.default.createDirectory(at: custom.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? FileManager.default.createDirectory(
+                    at: custom.deletingLastPathComponent(), withIntermediateDirectories: true)
             } else {
                 startNewSessionLogFile()
             }
@@ -115,7 +120,9 @@ final class Logger: @unchecked Sendable {
         return logToFile && level >= fileLevel && fileURL != nil
     }
 
-    private func composeMessage(level: Level, owner: Any?, file: String, function: String, line: Int, message: String) -> String {
+    private func composeMessage(
+        level: Level, owner: Any?, file: String, function: String, line: Int, message: String
+    ) -> String {
         let ts = ISO8601DateFormatter().string(from: Date())
         var prefix = "[\(ts)] [\(level.description)]"
         if let owner = owner {
@@ -148,7 +155,7 @@ final class Logger: @unchecked Sendable {
         guard let url = fileURL else { return }
         let data = (text + "\n").data(using: .utf8) ?? Data()
         fileQueue.async { [weak self] in
-            guard let _ = self else { return }
+            guard self != nil else { return }
             if FileManager.default.fileExists(atPath: url.path) {
                 if let handle = try? FileHandle(forWritingTo: url) {
                     defer { try? handle.close() }
@@ -168,19 +175,22 @@ final class Logger: @unchecked Sendable {
     }
 
     // Public API: 支持延迟构造 message
-    func log(_ level: Level,
-             _ message: @autoclosure () -> String,
-             owner: Any? = nil,
-             file: String = #file,
-             function: String = #function,
-             line: Int = #line) {
+    func log(
+        _ level: Level,
+        _ message: @autoclosure () -> String,
+        owner: Any? = nil,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line
+    ) {
         let shouldConsole = shouldLogToConsole(level: level)
         let shouldFile = shouldLogToFile(level: level)
 
         if !shouldConsole && !shouldFile { return }
 
         let msg = message()
-        let composed = composeMessage(level: level, owner: owner, file: file, function: function, line: line, message: msg)
+        let composed = composeMessage(
+            level: level, owner: owner, file: file, function: function, line: line, message: msg)
 
         if shouldConsole {
             if logToOSLog {
@@ -197,19 +207,31 @@ final class Logger: @unchecked Sendable {
     }
 
     // 便捷方法
-    func debug(_ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file, function: String = #function, line: Int = #line) {
+    func debug(
+        _ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file,
+        function: String = #function, line: Int = #line
+    ) {
         log(.debug, message(), owner: owner, file: file, function: function, line: line)
     }
 
-    func info(_ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file, function: String = #function, line: Int = #line) {
+    func info(
+        _ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file,
+        function: String = #function, line: Int = #line
+    ) {
         log(.info, message(), owner: owner, file: file, function: function, line: line)
     }
 
-    func warning(_ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file, function: String = #function, line: Int = #line) {
+    func warning(
+        _ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file,
+        function: String = #function, line: Int = #line
+    ) {
         log(.warning, message(), owner: owner, file: file, function: function, line: line)
     }
 
-    func error(_ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file, function: String = #function, line: Int = #line) {
+    func error(
+        _ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file,
+        function: String = #function, line: Int = #line
+    ) {
         log(.error, message(), owner: owner, file: file, function: function, line: line)
     }
 

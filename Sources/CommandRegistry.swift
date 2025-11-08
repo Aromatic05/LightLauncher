@@ -68,7 +68,9 @@ final class CommandRegistry {
 
         // 防止重复注册
         guard prefixMap[prefix] == nil else {
-            Logger.shared.warning("⚠️ Warning: Command prefix '\(prefix)' is already registered. Ignoring new registration.", owner: self)
+            Logger.shared.warning(
+                "⚠️ Warning: Command prefix '\(prefix)' is already registered. Ignoring new registration.",
+                owner: self)
             return
         }
 
@@ -84,7 +86,8 @@ final class CommandRegistry {
 
         // 注册到前缀池中
         prefixMap[prefix] = record
-        Logger.shared.info("✅ Command registered: '\(record.prefix)' -> \(record.displayName)", owner: self)
+        Logger.shared.info(
+            "✅ Command registered: '\(record.prefix)' -> \(record.displayName)", owner: self)
     }
 
     /**
@@ -125,11 +128,14 @@ final class CommandRegistry {
 
         // 安全校验
         guard controller.mode == .plugin else {
-            Logger.shared.error("❌ Error: Trying to register a plugin with a non-plugin controller.", owner: self)
+            Logger.shared.error(
+                "❌ Error: Trying to register a plugin with a non-plugin controller.", owner: self)
             return
         }
         guard prefixMap[prefix] == nil else {
-            Logger.shared.warning("⚠️ Warning: Plugin command prefix '\(prefix)' is already registered. Ignoring.", owner: self)
+            Logger.shared.warning(
+                "⚠️ Warning: Plugin command prefix '\(prefix)' is already registered. Ignoring.",
+                owner: self)
             return
         }
 
@@ -144,7 +150,8 @@ final class CommandRegistry {
         )
 
         prefixMap[prefix] = record
-        Logger.shared.info("🧩 Plugin command registered: '\(record.prefix)' -> \(record.displayName)", owner: self)
+        Logger.shared.info(
+            "🧩 Plugin command registered: '\(record.prefix)' -> \(record.displayName)", owner: self)
     }
 
     func unregister(prefix: String) {

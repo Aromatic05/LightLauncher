@@ -115,29 +115,33 @@ struct AboutSettingsView: View {
                         .fontWeight(.semibold)
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Toggle(isOn: Binding(
-                            get: { configManager.config.logging.printToTerminal },
-                            set: { new in
-                                configManager.config.logging.printToTerminal = new
-                                Task { @MainActor in
-                                    configManager.saveConfig()
+                        Toggle(
+                            isOn: Binding(
+                                get: { configManager.config.logging.printToTerminal },
+                                set: { new in
+                                    configManager.config.logging.printToTerminal = new
+                                    Task { @MainActor in
+                                        configManager.saveConfig()
+                                    }
+                                    Logger.shared.apply(config: configManager.config.logging)
                                 }
-                                Logger.shared.apply(config: configManager.config.logging)
-                            }
-                        )) {
+                            )
+                        ) {
                             Text("在终端显示日志")
                         }
 
-                        Toggle(isOn: Binding(
-                            get: { configManager.config.logging.logToFile },
-                            set: { new in
-                                configManager.config.logging.logToFile = new
-                                Task { @MainActor in
-                                    configManager.saveConfig()
+                        Toggle(
+                            isOn: Binding(
+                                get: { configManager.config.logging.logToFile },
+                                set: { new in
+                                    configManager.config.logging.logToFile = new
+                                    Task { @MainActor in
+                                        configManager.saveConfig()
+                                    }
+                                    Logger.shared.apply(config: configManager.config.logging)
                                 }
-                                Logger.shared.apply(config: configManager.config.logging)
-                            }
-                        )) {
+                            )
+                        ) {
                             Text("写入日志文件（默认关闭）")
                         }
 
@@ -145,16 +149,19 @@ struct AboutSettingsView: View {
                         HStack {
                             Text("控制台日志等级：")
                             Spacer()
-                            Picker("控制台日志等级", selection: Binding(
-                                get: { configManager.config.logging.consoleLevel },
-                                set: { new in
-                                    configManager.config.logging.consoleLevel = new
-                                    Task { @MainActor in
-                                        configManager.saveConfig()
+                            Picker(
+                                "控制台日志等级",
+                                selection: Binding(
+                                    get: { configManager.config.logging.consoleLevel },
+                                    set: { new in
+                                        configManager.config.logging.consoleLevel = new
+                                        Task { @MainActor in
+                                            configManager.saveConfig()
+                                        }
+                                        Logger.shared.apply(config: configManager.config.logging)
                                     }
-                                    Logger.shared.apply(config: configManager.config.logging)
-                                }
-                            )) {
+                                )
+                            ) {
                                 Text("Debug").tag(AppConfig.LoggingConfig.LogLevel.debug)
                                 Text("Info").tag(AppConfig.LoggingConfig.LogLevel.info)
                                 Text("Warn").tag(AppConfig.LoggingConfig.LogLevel.warning)
@@ -167,16 +174,19 @@ struct AboutSettingsView: View {
                         HStack {
                             Text("文件日志等级：")
                             Spacer()
-                            Picker("文件日志等级", selection: Binding(
-                                get: { configManager.config.logging.fileLevel },
-                                set: { new in
-                                    configManager.config.logging.fileLevel = new
-                                    Task { @MainActor in
-                                        configManager.saveConfig()
+                            Picker(
+                                "文件日志等级",
+                                selection: Binding(
+                                    get: { configManager.config.logging.fileLevel },
+                                    set: { new in
+                                        configManager.config.logging.fileLevel = new
+                                        Task { @MainActor in
+                                            configManager.saveConfig()
+                                        }
+                                        Logger.shared.apply(config: configManager.config.logging)
                                     }
-                                    Logger.shared.apply(config: configManager.config.logging)
-                                }
-                            )) {
+                                )
+                            ) {
                                 Text("Debug").tag(AppConfig.LoggingConfig.LogLevel.debug)
                                 Text("Info").tag(AppConfig.LoggingConfig.LogLevel.info)
                                 Text("Warn").tag(AppConfig.LoggingConfig.LogLevel.warning)
@@ -267,7 +277,8 @@ struct AboutSettingsView: View {
         Task {
             do {
                 if FileManager.default.fileExists(atPath: url.path) {
-                    let items = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+                    let items = try FileManager.default.contentsOfDirectory(
+                        at: url, includingPropertiesForKeys: nil)
                     for item in items {
                         try FileManager.default.removeItem(at: item)
                     }

@@ -117,7 +117,8 @@ class PluginLoader {
             }
         } catch {
             // 配置文件解析失败不应该阻止插件加载
-            Logger.shared.warning("警告: 插件 \(manifest.name) 的配置文件解析失败: \(error.localizedDescription)", owner: self)
+            Logger.shared.warning(
+                "警告: 插件 \(manifest.name) 的配置文件解析失败: \(error.localizedDescription)", owner: self)
             return [:]
         }
     }

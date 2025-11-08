@@ -8,16 +8,16 @@ struct HotKeyCard: View {
     let description: String?
     let icon: String
     let iconColor: Color
-    
+
     @ObservedObject var recorder: HotKeyRecorder
     @Binding var hotkey: HotKey
-    
+
     let hasConflict: Bool
     let showResetButton: Bool
-    
+
     let onKeyRecorded: (HotKey) -> Void
     let onReset: (() -> Void)?
-    
+
     // MARK: - Initialization
     init(
         title: String,
@@ -42,7 +42,7 @@ struct HotKeyCard: View {
         self.onKeyRecorded = onKeyRecorded
         self.onReset = onReset
     }
-    
+
     // MARK: - Body
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -53,9 +53,9 @@ struct HotKeyCard: View {
                 Text(title)
                     .font(.title2)
                     .fontWeight(.semibold)
-                
+
                 Spacer()
-                
+
                 if hasConflict {
                     HStack(spacing: 4) {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -70,14 +70,14 @@ struct HotKeyCard: View {
                     .cornerRadius(6)
                 }
             }
-            
+
             // 描述文本
             if let description = description {
                 Text(description)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
-            
+
             // 快捷键设置区域
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -87,9 +87,9 @@ struct HotKeyCard: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
+
                 Spacer()
-                
+
                 // 快捷键录制按钮
                 Button(action: {
                     if !recorder.isRecording {
@@ -125,14 +125,15 @@ struct HotKeyCard: View {
                             .stroke(
                                 hasConflict
                                     ? Color.red
-                                    : (recorder.isRecording ? iconColor : Color.secondary.opacity(0.3)),
+                                    : (recorder.isRecording
+                                        ? iconColor : Color.secondary.opacity(0.3)),
                                 lineWidth: 2
                             )
                     )
                 }
                 .buttonStyle(PlainButtonStyle())
                 .disabled(recorder.isRecording)
-                
+
                 // 取消/重置按钮
                 if recorder.isRecording {
                     Button("取消") {
@@ -164,7 +165,7 @@ struct CompactHotKeyCard: View {
     let hasConflict: Bool
     let onEdit: () -> Void
     let onDelete: (() -> Void)?
-    
+
     init(
         title: String,
         hotkey: HotKey,
@@ -178,7 +179,7 @@ struct CompactHotKeyCard: View {
         self.onEdit = onEdit
         self.onDelete = onDelete
     }
-    
+
     var body: some View {
         HStack(spacing: 16) {
             // 快捷键显示
@@ -186,7 +187,7 @@ struct CompactHotKeyCard: View {
                 Text(title)
                     .font(.headline)
                     .foregroundColor(.primary)
-                
+
                 Text(hotkey.description())
                     .font(.system(.subheadline, design: .monospaced))
                     .padding(.horizontal, 8)
@@ -195,16 +196,16 @@ struct CompactHotKeyCard: View {
                     .foregroundColor(.purple)
                     .cornerRadius(6)
             }
-            
+
             Spacer()
-            
+
             // 冲突提示
             if hasConflict {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundColor(.red)
                     .font(.caption)
             }
-            
+
             // 操作按钮
             HStack(spacing: 8) {
                 Button(action: onEdit) {
@@ -213,7 +214,7 @@ struct CompactHotKeyCard: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .help("编辑快捷键")
-                
+
                 if let onDelete = onDelete {
                     Button(action: onDelete) {
                         Image(systemName: "trash")
@@ -239,7 +240,7 @@ struct HotKeyPreview: View {
     let hotkey: HotKey
     let text: String?
     let isValid: Bool
-    
+
     init(
         hotkey: HotKey,
         text: String? = nil,
@@ -249,13 +250,13 @@ struct HotKeyPreview: View {
         self.text = text
         self.isValid = isValid
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("预览")
                 .font(.headline)
                 .fontWeight(.semibold)
-            
+
             if isValid {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -270,7 +271,7 @@ struct HotKeyPreview: View {
                             .foregroundColor(.purple)
                             .cornerRadius(6)
                     }
-                    
+
                     if let text = text, !text.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("输入内容:")
