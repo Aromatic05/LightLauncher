@@ -84,19 +84,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     NSWorkspace.shared.open(fileURL)
                     return
                 }
-                print("❌ 文件不存在，无法打开：\(fileURL.path)")
+                Logger.shared.warning("文件不存在，无法打开：\(fileURL.path)", owner: self)
                 return
             } else if config.type == "web" {
                 if WebUtils.openWebURL(config.text) {
                     return
                 }
-                print("❌ 无法识别的 URL：\(config.text)")
+                Logger.shared.warning("无法识别的 URL：\(config.text)", owner: self)
                 return
             } else if config.type == "search" {
                 if WebUtils.performWebSearch(query: config.text) {
                     return
                 }
-                print("❌ 无法执行网络搜索，查询为空：\(config.text)")
+                Logger.shared.warning("无法执行网络搜索，查询为空：\(config.text)", owner: self)
                 return
             } else {
                 // 默认行为：显示主窗口并更新查询
@@ -122,7 +122,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             await PluginManager.shared.loadAllPlugins()
             let plugins = PluginManager.shared.getLoadedPlugins()
-            print("✅ 插件系统就绪，已加载 \(plugins.count) 个插件")
+            Logger.shared.info("插件系统就绪，已加载 \(plugins.count) 个插件", owner: self)
         }
     }
 
