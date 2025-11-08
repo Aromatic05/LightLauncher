@@ -212,4 +212,33 @@ final class Logger: @unchecked Sendable {
     func error(_ message: @autoclosure () -> String, owner: Any? = nil, file: String = #file, function: String = #function, line: Int = #line) {
         log(.error, message(), owner: owner, file: file, function: function, line: line)
     }
+
+    /// 根据 `AppConfig.LoggingConfig` 应用配置（便于在 App 启动时从配置中心统一设置）
+    func apply(config: AppConfig.LoggingConfig) {
+        func mapLevel(_ l: AppConfig.LoggingConfig.LogLevel) -> Logger.Level {
+            switch l {
+            case .debug: return .debug
+            case .info: return .info
+            case .warning: return .warning
+            case .error: return .error
+            }
+        }
+
+        let customURL: URL? = config.customFilePath.flatMap { path in
+            return URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+        }
+
+        configure(
+            logToOSLog: true,
+            printToTerminal: config.printToTerminal,
+            logToFile: config.logToFile,
+            consoleLevel: mapLevel(config.consoleLevel),
+            fileLevel: mapLevel(config.fileLevel),
+            customFileURL: customURL
+        )
+
+        if config.logToFile && customURL == nil {
+            startNewSessionLogFile()
+        }
+    }
 }

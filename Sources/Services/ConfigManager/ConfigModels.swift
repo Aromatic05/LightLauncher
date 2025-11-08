@@ -6,7 +6,36 @@ struct AppConfig: Codable {
     var customHotKeys: [CustomHotKeyConfig]  // 新增自定义快捷键数组
     var searchDirectories: [SearchDirectory]
     var commonAbbreviations: [String: [String]]
+    // 日志配置
+    var logging: LoggingConfig
     var modes: ModesConfig
+
+    struct LoggingConfig: Codable {
+        enum LogLevel: String, Codable {
+            case debug
+            case info
+            case warning
+            case error
+        }
+
+        var printToTerminal: Bool
+        var logToFile: Bool
+        var consoleLevel: LogLevel
+        var fileLevel: LogLevel
+        var customFilePath: String?
+
+        init(printToTerminal: Bool = true,
+             logToFile: Bool = false,
+             consoleLevel: LogLevel = .info,
+             fileLevel: LogLevel = .debug,
+             customFilePath: String? = nil) {
+            self.printToTerminal = printToTerminal
+            self.logToFile = logToFile
+            self.consoleLevel = consoleLevel
+            self.fileLevel = fileLevel
+            self.customFilePath = customFilePath
+        }
+    }
 
     struct HotKeyConfig: Codable {
         var hotkey: HotKey

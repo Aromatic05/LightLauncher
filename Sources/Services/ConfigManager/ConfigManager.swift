@@ -52,6 +52,7 @@ class ConfigManager: ObservableObject {
             customHotKeys: AppConfigDefaults.customHotKeys,
             searchDirectories: AppConfigDefaults.searchDirectories,
             commonAbbreviations: AppConfigDefaults.commonAbbreviations,
+            logging: AppConfigDefaults.logging,
             modes: AppConfigDefaults.modes
         )
     }
@@ -90,6 +91,7 @@ class ConfigManager: ObservableObject {
                 customHotKeys: oldConfig.customHotKeys,
                 searchDirectories: oldConfig.searchDirectories.map { SearchDirectory(path: $0) },
                 commonAbbreviations: oldConfig.commonAbbreviations,
+                logging: AppConfigDefaults.logging,
                 modes: AppConfig.ModesConfig()
             )
         } catch {

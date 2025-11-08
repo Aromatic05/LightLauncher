@@ -10,6 +10,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var windowManager: WindowManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 初始化 Logger 配置（从 ConfigManager 获取）
+        Logger.shared.apply(config: configManager.config.logging)
+
         // 启动权限检查
         Task { @MainActor in
             PermissionManager.shared.performStartupPermissionCheck()

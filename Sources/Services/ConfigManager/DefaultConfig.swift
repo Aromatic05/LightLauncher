@@ -137,11 +137,20 @@ enum AppConfigDefaults {
 
     static let hotKey: AppConfig.HotKeyConfig = AppConfig.HotKeyConfig()
 
+    static let logging: AppConfig.LoggingConfig = AppConfig.LoggingConfig(
+        printToTerminal: true,
+        logToFile: false,
+        consoleLevel: .info,
+        fileLevel: .debug,
+        customFilePath: nil
+    )
+
     static let defaultConfig: AppConfig = AppConfig(
         hotKey: hotKey,
         customHotKeys: customHotKeys,
         searchDirectories: searchDirectories,
         commonAbbreviations: commonAbbreviations,
+        logging: logging,
         modes: modes
     )
 }
