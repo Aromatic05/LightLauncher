@@ -72,14 +72,18 @@ final class WindowManager: NSObject, NSWindowDelegate {
     }
 
     /// 显示主启动器窗口。
-    public func showMainWindow() {
+    public func showMainWindow(query: String? = nil) {
         guard let window = launcherWindow, let viewModel = viewModel else { return }
+        if let query = query {
+            viewModel.updateQuery(newQuery: query)
+        } else {
+            viewModel.clearSearch()
+        }
         // 记录显示主窗口前的前台应用
         previousFrontmostApp = NSWorkspace.shared.frontmostApplication
 
         isHidingWindow = false
         centerWindow(window)
-        viewModel.clearSearch()
         inputMethodManager.switchToEnglish()
 
         NSApp.activate(ignoringOtherApps: true)

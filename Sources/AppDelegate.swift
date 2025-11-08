@@ -100,8 +100,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             } else {
                 // 默认行为：显示主窗口并更新查询
-                self.windowManager?.showMainWindow()
-                self.viewModel?.updateQuery(newQuery: config.text)
+                self.windowManager?.showMainWindow(query: config.text)
             }
         }
     }
