@@ -41,7 +41,8 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     func handle(keyEvent: KeyEvent) -> Bool {
         switch keyEvent {
         case .numeric(let number) where number >= 1 && number <= 6:
-            if displayableItems[Int(number) - 1].executeAction() {
+            // 使用已存在的 selectAppByNumber 方法，该方法会做索引边界检查，避免数组越界导致崩溃
+            if selectAppByNumber(Int(number)) {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
             return true
