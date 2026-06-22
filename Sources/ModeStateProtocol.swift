@@ -47,6 +47,14 @@ protocol ModeStateController: AnyObject {
 }
 
 extension ModeStateController {
+    func settingsTitle(_ baseTitle: String) -> String {
+        guard let prefix, !prefix.isEmpty else {
+            return baseTitle
+        }
+
+        return "\(baseTitle) (\(prefix))"
+    }
+
     var interceptedKeys: Set<KeyEvent> {
         return []
     }

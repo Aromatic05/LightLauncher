@@ -43,8 +43,10 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     }
 
     func getHelpText() -> [String] {
+        let trigger = prefix ?? ">"
+
         return [
-            "Type after /t to enter a shell command",
+            "Type after \(trigger) to enter a shell command",
             "Press Enter to run the command in your terminal",
             "Press Esc to exit",
         ]

@@ -117,7 +117,7 @@ class ConfigManager: ObservableObject {
                 # killModeEnabled: 启用关闭应用模式 (/k)
                 # searchModeEnabled: 启用网页搜索模式 (/s)
                 # webModeEnabled: 启用网页打开模式 (/w)
-                # terminalModeEnabled: 启用终端执行模式 (/t)
+                # terminalModeEnabled: 启用终端执行模式 (>)
                 # showCommandSuggestions: 输入 / 时显示命令提示
                 # defaultSearchEngine: 默认搜索引擎 (google, baidu, bing)
                 # preferredTerminal: 首选终端应用 (auto, terminal, iterm2, ghostty, kitty, alacritty, wezterm)

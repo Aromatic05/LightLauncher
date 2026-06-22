@@ -49,7 +49,7 @@ struct ModeSettingsView: View {
                 VStack(spacing: 32) {
                     // 关闭模式
                     ModeSettingSection(
-                        title: "关闭模式 (/k)",
+                        title: KillModeController.shared.settingsTitle("关闭模式"),
                         icon: "xmark.circle",
                         iconColor: .red,
                         description: "快速关闭运行中的应用程序",
@@ -82,7 +82,7 @@ struct ModeSettingsView: View {
 
                     // 剪贴板模式
                     ModeSettingSection(
-                        title: "剪贴板模式 (/c)",
+                        title: ClipModeController.shared.settingsTitle("剪贴板模式"),
                         icon: "doc.on.clipboard",
                         iconColor: .purple,
                         description: "快速管理和粘贴剪贴板历史",
@@ -129,7 +129,7 @@ struct ModeSettingsView: View {
 
                     // 插件模式
                     ModeSettingSection(
-                        title: "插件模式 (/p)",
+                        title: PluginModeController.shared.settingsTitle("插件模式"),
                         icon: "puzzlepiece.extension",
                         iconColor: .teal,
                         description: "通过插件扩展更多功能",
@@ -155,7 +155,7 @@ struct ModeSettingsView: View {
 
                     // 网页搜索模式
                     ModeSettingSection(
-                        title: "网页搜索 (/s)",
+                        title: SearchModeController.shared.settingsTitle("网页搜索"),
                         icon: "globe",
                         iconColor: .blue,
                         description: "使用默认搜索引擎搜索网络内容",
@@ -202,7 +202,7 @@ struct ModeSettingsView: View {
 
                     // 网页打开模式
                     ModeSettingSection(
-                        title: "网页打开 (/w)",
+                        title: WebModeController.shared.settingsTitle("网页打开"),
                         icon: "safari",
                         iconColor: .green,
                         description: "快速打开网站或 URL，支持书签和历史记录",
@@ -320,7 +320,7 @@ struct ModeSettingsView: View {
 
                     // 终端执行模式
                     ModeSettingSection(
-                        title: "终端执行 (/t)",
+                        title: TerminalModeController.shared.settingsTitle("终端执行"),
                         icon: "terminal",
                         iconColor: .orange,
                         description: "在终端中执行命令",
@@ -400,7 +400,7 @@ struct ModeSettingsView: View {
 
                     // 文件管理器模式
                     ModeSettingSection(
-                        title: "文件管理器 (/o)",
+                        title: FileModeController.shared.settingsTitle("文件管理器"),
                         icon: "folder",
                         iconColor: .blue,
                         description: "浏览文件和文件夹，支持自定义起始路径",
