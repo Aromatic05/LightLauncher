@@ -6,6 +6,29 @@ import SwiftUI
 // MARK: - 剪切板模式控制器
 @MainActor
 final class ClipModeController: NSObject, ModeStateController, ObservableObject {
+    typealias RestoreScheduler = (@escaping @Sendable () -> Void) -> Void
+    typealias EventPoster = @Sendable (
+        _ source: CGEventSource?,
+        _ keyCode: CGKeyCode,
+        _ keyDown: Bool,
+        _ flags: CGEventFlags
+    ) -> Void
+
+    private final class PasteboardRestoreBox: @unchecked Sendable {
+        let items: [NSPasteboardItem]
+        let pasteboard: NSPasteboard
+
+        init(items: [NSPasteboardItem], pasteboard: NSPasteboard) {
+            self.items = items
+            self.pasteboard = pasteboard
+        }
+
+        @MainActor
+        func restore() {
+            ClipModeController.restorePasteboardItems(items, to: pasteboard)
+        }
+    }
+
     /// 是否为片段模式
     @Published var isSnippetMode: Bool = false {
         didSet {
@@ -100,23 +123,32 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     /// 使用 Accessibility API 将文本直接输入到当前聚焦控件
-    private static func simulateTextInput(_ text: String) {
+    static func simulateTextInput(
+        _ text: String,
+        pasteboard: NSPasteboard = .general,
+        restoreScheduler: RestoreScheduler? = nil,
+        eventPoster: EventPoster? = nil
+    ) {
         guard !text.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+
+        let snapshot = capturePasteboardItems(from: pasteboard)
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+
         let src = CGEventSource(stateID: .hidSystemState)
-        let vKey: CGKeyCode = 9  // 'v' 键
-        let cmdDown = CGEvent(keyboardEventSource: src, virtualKey: 0x37, keyDown: true)  // Command
-        let vDown = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: true)
-        let vUp = CGEvent(keyboardEventSource: src, virtualKey: vKey, keyDown: false)
-        let cmdUp = CGEvent(keyboardEventSource: src, virtualKey: 0x37, keyDown: false)
-        cmdDown?.flags = .maskCommand
-        vDown?.flags = .maskCommand
-        vUp?.flags = .maskCommand
-        cmdDown?.post(tap: .cghidEventTap)
-        vDown?.post(tap: .cghidEventTap)
-        vUp?.post(tap: .cghidEventTap)
-        cmdUp?.post(tap: .cghidEventTap)
+        let postEvent = eventPoster ?? defaultEventPoster
+        postEvent(src, 0x37, true, .maskCommand)
+        postEvent(src, 9, true, .maskCommand)
+        postEvent(src, 9, false, .maskCommand)
+        postEvent(src, 0x37, false, [])
+
+        let restoreBox = PasteboardRestoreBox(items: snapshot, pasteboard: pasteboard)
+        let scheduler = restoreScheduler ?? defaultRestoreScheduler
+        scheduler {
+            MainActor.assumeIsolated {
+                restoreBox.restore()
+            }
+        }
     }
 
     // 3. 生命周期与UI
@@ -174,5 +206,45 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         }
 
         return scoredItems.sorted { $0.1 > $1.1 }.map { $0.0 }
+    }
+
+    nonisolated private static func defaultRestoreScheduler(_ action: @escaping @Sendable () -> Void) {
+        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { _ in
+            action()
+        }
+    }
+
+    nonisolated private static func defaultEventPoster(
+        _ source: CGEventSource?,
+        _ keyCode: CGKeyCode,
+        _ keyDown: Bool,
+        _ flags: CGEventFlags
+    ) {
+        let event = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: keyDown)
+        event?.flags = flags
+        event?.post(tap: .cghidEventTap)
+    }
+
+    private static func capturePasteboardItems(from pasteboard: NSPasteboard) -> [NSPasteboardItem] {
+        (pasteboard.pasteboardItems ?? []).map(copyPasteboardItem(_:))
+    }
+
+    private static func restorePasteboardItems(
+        _ items: [NSPasteboardItem],
+        to pasteboard: NSPasteboard
+    ) {
+        pasteboard.clearContents()
+        guard !items.isEmpty else { return }
+        pasteboard.writeObjects(items)
+    }
+
+    private static func copyPasteboardItem(_ item: NSPasteboardItem) -> NSPasteboardItem {
+        let copy = NSPasteboardItem()
+        for type in item.types {
+            if let data = item.data(forType: type) {
+                copy.setData(data, forType: type)
+            }
+        }
+        return copy
     }
 }
