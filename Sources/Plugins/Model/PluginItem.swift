@@ -51,15 +51,17 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
 
     @MainActor
     func executeAction() -> Bool {
-        // if case .showingPluginList(let items) = internalMode {
-        //     let command = String(action.dropFirst("select_plugin:".count))
-        //     handleInput(arguments: command)
-        //     return true
-        // }
+        guard let action = self.action else {
+            return false
+        }
 
-        guard let instance = PluginModeController.shared.activeInstance,
-            let action = self.action
-        else {
+        if action.hasPrefix("select_plugin:") {
+            let command = String(action.dropFirst("select_plugin:".count))
+            PluginModeController.shared.handleInput(arguments: command)
+            return false
+        }
+
+        guard let instance = PluginModeController.shared.activeInstance else {
             return false
         }
         return instance.executeAction(action)

@@ -145,6 +145,26 @@ final class PluginModeControllerTests: XCTestCase {
         // 应该包含注册的插件
         XCTAssertGreaterThanOrEqual(items.count, 2)
     }
+
+    func testPluginListItemExecuteAction_shouldActivatePluginWithoutClosing() async {
+        _ = createAndRegisterTestPlugin(name: "list_select", command: "listcmd")
+
+        pluginMode.handleInput(arguments: "")
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        guard let firstItem = pluginMode.displayableItems
+            .compactMap({ $0 as? PluginItem })
+            .first(where: { $0.action == "select_plugin:listcmd" })
+        else {
+            return XCTFail("Expected plugin list item")
+        }
+
+        let shouldHideWindow = firstItem.executeAction()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertFalse(shouldHideWindow)
+        XCTAssertEqual(pluginMode.activeInstance?.plugin.name, "list_select")
+    }
     
     // MARK: - 插件切换测试
     
