@@ -38,7 +38,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     func handle(keyEvent: KeyEvent) -> Bool {
         switch keyEvent {
         case .numeric(let number) where number >= 1 && number <= 6:
-            if displayableItems[Int(number) - 1].executeAction() {
+            if selectKillAppByNumber(Int(number)) {
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
             return true
