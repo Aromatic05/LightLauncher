@@ -8,7 +8,12 @@ import SwiftUI
 final class KillModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = KillModeController()
     private override init() {}
-    @Published var forceKillEnabled: Bool = false
+    @Published var forceKillEnabled: Bool = false {
+        didSet {
+            guard forceKillEnabled != oldValue else { return }
+            dataDidChange.send()
+        }
+    }
 
     // MARK: - ModeStateController Protocol Implementation
     // 1. 身份与元数据

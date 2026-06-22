@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import XCTest
 @testable import LightLauncher
@@ -96,6 +97,18 @@ final class KillModeTests: XCTestCase {
 
         XCTAssertFalse(controller.forceKillEnabled)
         XCTAssertTrue(controller.displayableItems.isEmpty)
+    }
+
+    func testForceKillToggle_publishesDataDidChange() async {
+        let expectation = XCTestExpectation(description: "force kill change published")
+        let cancellable = controller.dataDidChange.sink {
+            expectation.fulfill()
+        }
+        defer { cancellable.cancel() }
+
+        controller.forceKillEnabled = true
+
+        await fulfillment(of: [expectation], timeout: 1.0)
     }
 }
 
