@@ -5,15 +5,6 @@ struct SearchBoxView: View {
     @Binding var searchText: String
     @FocusState private var isSearchFieldFocused: Bool
     let mode: LauncherMode
-    // NOTE: There are three debounce locations that must be coordinated:
-    // 1) UI layer debounce here (controls `debouncedDisplayText`) — currently ~45ms.
-    // 2) ViewModel debounce in `LauncherViewModel.bindSearchText()` — currently ~50ms.
-    // 3) File-mode extra debounce in `LauncherViewModel.handleSearchTextChange` — currently ~100ms.
-    // Ensure UI debounce <= ViewModel debounce <= file-mode debounce to avoid race
-    // conditions where a delayed UI task writes an older value over a newer model update.
-    @State private var hideLongText: Bool = false
-    @State private var debounceWorkItem: DispatchWorkItem?
-    @State private var debouncedDisplayText: String = ""
 
     // 接收来自父视图 LauncherView 的窗口状态
     let isWindowKey: Bool
@@ -26,12 +17,7 @@ struct SearchBoxView: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundColor(.secondary)
 
-            let displayBinding = Binding<String>(
-                get: { self.debouncedDisplayText },
-                set: { self.searchText = $0 }
-            )
-
-            TextField(mode.placeholder, text: displayBinding)
+            TextField(mode.placeholder, text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
                 .font(.system(size: 16))
                 .focused($isSearchFieldFocused)  // 绑定焦点
@@ -67,32 +53,8 @@ struct SearchBoxView: View {
                 }
             }
         }
-        .onChange(of: searchText) { newText in
-            // 取消之前的任务，重新安排防抖更新
-            debounceWorkItem?.cancel()
-            // Use execution-time read of `self.searchText` instead of capturing `newText`.
-            // This avoids a "late task" writing an old snapshot back into the UI when
-            // ViewModel updates `searchText` faster than the UI debounce fires.
-            let work = DispatchWorkItem {
-                let current = self.searchText
-                if current.count > 60 {
-                    self.debouncedDisplayText = ""
-                    self.hideLongText = true
-                } else {
-                    self.debouncedDisplayText = current
-                    self.hideLongText = false
-                }
-            }
-            debounceWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(45), execute: work)
-        }
         .onReceive(viewModel.focusSearchField) { _ in
             self.isSearchFieldFocused = true
-            let currentText = self.searchText
-            self.searchText = ""
-            DispatchQueue.main.async {
-                self.searchText = currentText
-            }
         }
     }
 }

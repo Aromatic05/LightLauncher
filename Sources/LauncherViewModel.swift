@@ -127,14 +127,12 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Input Handling
     private func bindSearchText() {
-        // 取消通用的 Combine 防抖，改用手动控制（file 模式内已有特殊防抖逻辑）
         $searchText
-            .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
+            .dropFirst()
+            .removeDuplicates()
             .sink { [weak self] newText in
-                DispatchQueue.main.async { [weak self] in
-                    guard let self = self else { return }
-                    self.handleSearchTextChange(newText: newText, oldText: self.previousSearchText)
-                }
+                guard let self = self else { return }
+                self.handleSearchTextChange(newText: newText, oldText: self.previousSearchText)
             }
             .store(in: &cancellables)
     }
@@ -154,7 +152,6 @@ class LauncherViewModel: ObservableObject {
             debounceWorkItem = work
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100), execute: work)
         } else {
-            // 非 file 模式直接处理，并取消任何遗留的延迟任务
             debounceWorkItem?.cancel()
             self.updateCommandSuggestions(for: newText, oldText: oldText)
             self.processInput(newText)
