@@ -42,8 +42,8 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
                 NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
             return true
-        case .commandFlagChanged:
-            if .commandFlagChanged(isPressed: true) == keyEvent {
+        case .optionFlagChanged:
+            if .optionFlagChanged(isPressed: true) == keyEvent {
                 forceKillEnabled.toggle()
             }
             return true
@@ -86,6 +86,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
         return [
             "Type to filter running applications",
             "Press Enter to kill the selected process",
+            "Press Option to toggle force kill",
             "Press Esc to exit",
         ]
     }

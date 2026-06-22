@@ -66,13 +66,26 @@ final class KillModeTests: XCTestCase {
         wait(for: [hideExpectation], timeout: 0.1)
     }
 
-    func testHandleCommandFlagChanged_togglesForceKillMode() {
+    func testHandleOptionFlagChanged_togglesForceKillMode() {
+        XCTAssertFalse(controller.forceKillEnabled)
+
+        let handled = controller.handle(keyEvent: .optionFlagChanged(isPressed: true))
+
+        XCTAssertTrue(handled)
+        XCTAssertTrue(controller.forceKillEnabled)
+    }
+
+    func testHandleCommandFlagChanged_doesNotToggleForceKillMode() {
         XCTAssertFalse(controller.forceKillEnabled)
 
         let handled = controller.handle(keyEvent: .commandFlagChanged(isPressed: true))
 
-        XCTAssertTrue(handled)
-        XCTAssertTrue(controller.forceKillEnabled)
+        XCTAssertFalse(handled)
+        XCTAssertFalse(controller.forceKillEnabled)
+    }
+
+    func testGetHelpText_describesOptionToggle() {
+        XCTAssertTrue(controller.getHelpText().contains("Press Option to toggle force kill"))
     }
 }
 

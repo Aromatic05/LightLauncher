@@ -74,8 +74,8 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
 
     func handle(keyEvent: KeyEvent) -> Bool {
         switch keyEvent {
-        case .commandFlagChanged:
-            if .commandFlagChanged(isPressed: true) == keyEvent {
+        case .optionFlagChanged:
+            if .optionFlagChanged(isPressed: true) == keyEvent {
                 isSnippetMode.toggle()
             }
             return true
@@ -174,6 +174,8 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         return [
             "Browse and paste clipboard history",
             "Press Enter to copy the selected item",
+            "Press Shift+Enter to paste directly",
+            "Press Option to switch between clipboard history and snippets",
             "Type to filter history, press Esc to exit",
         ]
     }
