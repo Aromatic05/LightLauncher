@@ -97,4 +97,14 @@ final class ClipModeTests: XCTestCase {
             helpText.contains("Press Option to switch between clipboard history and snippets")
         )
     }
+
+    func testCleanup_resetsSnippetModeAndClearsItems() {
+        controller.isSnippetMode = true
+        controller.displayableItems = [ClipboardItem.text("hello")]
+
+        controller.cleanup()
+
+        XCTAssertFalse(controller.isSnippetMode)
+        XCTAssertTrue(controller.displayableItems.isEmpty)
+    }
 }

@@ -32,6 +32,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     /// 是否为片段模式
     @Published var isSnippetMode: Bool = false {
         didSet {
+            guard isSnippetMode != oldValue else { return }
             handleInput(arguments: "")
         }
     }
@@ -153,6 +154,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
 
     // 3. 生命周期与UI
     func cleanup() {
+        self.isSnippetMode = false
         self.displayableItems = []
     }
 

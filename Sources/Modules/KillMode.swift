@@ -64,6 +64,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     // 3. 生命周期与UI
     func cleanup() {
         self.displayableItems = []
+        self.forceKillEnabled = false
     }
 
     func makeContentView() -> AnyView {

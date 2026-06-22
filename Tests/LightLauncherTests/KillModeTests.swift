@@ -87,6 +87,16 @@ final class KillModeTests: XCTestCase {
     func testGetHelpText_describesOptionToggle() {
         XCTAssertTrue(controller.getHelpText().contains("Press Option to toggle force kill"))
     }
+
+    func testCleanup_resetsForceKillMode() {
+        controller.forceKillEnabled = true
+        controller.displayableItems = [TestKillItem(title: "Kill Me", executeResult: true)]
+
+        controller.cleanup()
+
+        XCTAssertFalse(controller.forceKillEnabled)
+        XCTAssertTrue(controller.displayableItems.isEmpty)
+    }
 }
 
 private final class TestKillItem: DisplayableItem {
