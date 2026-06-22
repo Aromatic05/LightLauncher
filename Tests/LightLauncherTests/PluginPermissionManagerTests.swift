@@ -316,7 +316,68 @@ final class PluginPermissionManagerTests: XCTestCase {
             )
         )
     }
-    
+
+    func testHasFilePermission_withTraversalOutsideAllowedDirectory_shouldReturnFalse() throws {
+        let allowedDirectory = testPluginDirectory.appendingPathComponent("allowed")
+        let siblingDirectory = testPluginDirectory.appendingPathComponent("sibling")
+
+        try FileManager.default.createDirectory(
+            at: allowedDirectory,
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: siblingDirectory,
+            withIntermediateDirectories: true
+        )
+
+        let plugin = createTestPlugin(permissions: [
+            PluginPermissionSpec(type: .fileRead, directories: [allowedDirectory.path])
+        ])
+
+        let escapedPath = allowedDirectory.appendingPathComponent("../sibling/secret.txt").path
+
+        XCTAssertFalse(
+            permissionManager.hasFilePermission(
+                plugin: plugin,
+                type: .fileRead,
+                path: escapedPath
+            )
+        )
+    }
+
+    func testHasFilePermission_withSymlinkedParentEscapingAllowedDirectory_shouldReturnFalse()
+        throws
+    {
+        let allowedDirectory = testPluginDirectory.appendingPathComponent("allowed")
+        let outsideDirectory = testPluginDirectory.appendingPathComponent("outside")
+        let symlinkPath = allowedDirectory.appendingPathComponent("linked-outside")
+
+        try FileManager.default.createDirectory(
+            at: allowedDirectory,
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: outsideDirectory,
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createSymbolicLink(
+            atPath: symlinkPath.path,
+            withDestinationPath: outsideDirectory.path
+        )
+
+        let plugin = createTestPlugin(permissions: [
+            PluginPermissionSpec(type: .fileRead, directories: [allowedDirectory.path])
+        ])
+
+        XCTAssertFalse(
+            permissionManager.hasFilePermission(
+                plugin: plugin,
+                type: .fileRead,
+                path: symlinkPath.appendingPathComponent("secret.txt").path
+            )
+        )
+    }
+
     // MARK: - 辅助方法
     
     private func createTestPlugin(permissions: [PluginPermissionSpec]?) -> Plugin {

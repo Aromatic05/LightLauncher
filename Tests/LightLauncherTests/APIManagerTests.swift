@@ -182,6 +182,25 @@ final class APIManagerTests: XCTestCase {
         
         XCTAssertEqual(result?.toString(), "Test content")
     }
+
+    func testReadFile_withDirectoryRestrictedPermission_shouldRejectOutsidePath() throws {
+        let allowedDirectory = testPluginDirectory.appendingPathComponent("allowed")
+        let blockedFilePath = testPluginDirectory.appendingPathComponent("blocked.txt").path
+
+        try FileManager.default.createDirectory(
+            at: allowedDirectory,
+            withIntermediateDirectories: true
+        )
+        try "Blocked content".write(toFile: blockedFilePath, atomically: true, encoding: .utf8)
+
+        let (_, context, _) = createTestSetup(permissions: [
+            PluginPermissionSpec(type: .fileRead, directories: [allowedDirectory.path])
+        ])
+
+        let result = context.evaluateScript("lightlauncher.readFile('\(blockedFilePath)');")
+
+        XCTAssertTrue(result?.isNull ?? false || result?.isUndefined ?? false)
+    }
     
     func testWriteFile_withPermission_shouldSucceed() {
         let testFilePath = testPluginDirectory.appendingPathComponent("test_write.txt").path
@@ -204,6 +223,39 @@ final class APIManagerTests: XCTestCase {
         // 验证文件确实被写入
         let content = try? String(contentsOfFile: testFilePath, encoding: .utf8)
         XCTAssertEqual(content, "Written content")
+    }
+
+    func testWriteFile_withDirectoryRestrictedPermission_shouldRejectTraversal() throws {
+        let allowedDirectory = testPluginDirectory.appendingPathComponent("allowed")
+        let outsideDirectory = testPluginDirectory.appendingPathComponent("outside")
+
+        try FileManager.default.createDirectory(
+            at: allowedDirectory,
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: outsideDirectory,
+            withIntermediateDirectories: true
+        )
+
+        let escapedPath = allowedDirectory.appendingPathComponent("../outside/escaped.txt").path
+
+        let (_, context, _) = createTestSetup(permissions: [
+            PluginPermissionSpec(type: .fileWrite, directories: [allowedDirectory.path])
+        ])
+
+        let result = context.evaluateScript("""
+        lightlauncher.writeFile({
+            path: '\(escapedPath)',
+            content: 'escape attempt'
+        });
+        """)
+
+        XCTAssertEqual(result?.toBool(), false)
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: outsideDirectory.appendingPathComponent("escaped.txt").path)
+        )
     }
     
     func testFileAPI_inDataDirectory_shouldNotRequirePermission() {
@@ -230,6 +282,25 @@ final class APIManagerTests: XCTestCase {
         let readResult = context.evaluateScript(readScript)
         
         XCTAssertEqual(readResult?.toString(), "Data directory content")
+    }
+
+    func testFileAPI_withSiblingPathSharingDataDirectoryPrefix_shouldNotBypassPermission() {
+        let (_, context, plugin) = createTestSetup(permissions: [])
+
+        let pluginDataRoot = URL(fileURLWithPath: NSHomeDirectory())
+            .appendingPathComponent(".config/LightLauncher/data")
+        let siblingPath = pluginDataRoot
+            .appendingPathComponent("\(plugin.name)-evil/escape.txt").path
+
+        let result = context.evaluateScript("""
+        lightlauncher.writeFile({
+            path: '\(siblingPath)',
+            content: 'should fail'
+        });
+        """)
+
+        XCTAssertEqual(result?.toBool(), false)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: siblingPath))
     }
     
     // MARK: - 剪贴板 API 权限测试
@@ -276,6 +347,28 @@ final class APIManagerTests: XCTestCase {
         let result = context.evaluateScript("lightlauncher.readClipboard();")
         
         XCTAssertEqual(result?.toString(), "Test clipboard content")
+    }
+
+    func testShowNotification_withoutPermission_shouldReturnFalse() {
+        let (_, context, _) = createTestSetup(permissions: [])
+
+        let result = context.evaluateScript("""
+        lightlauncher.showNotification({ title: 'Hello', body: 'World' });
+        """)
+
+        XCTAssertEqual(result?.toBool(), false)
+    }
+
+    func testShowNotification_withPermission_shouldReturnTrue() {
+        let (_, context, _) = createTestSetup(permissions: [
+            PluginPermissionSpec(type: .notifications)
+        ])
+
+        let result = context.evaluateScript("""
+        lightlauncher.showNotification({ title: 'Hello', body: 'World' });
+        """)
+
+        XCTAssertEqual(result?.toBool(), true)
     }
     
     // MARK: - 权限检查 API 测试

@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 class PluginPermissionManager {
     static let shared = PluginPermissionManager()
+    private let fileManager = FileManager.default
 
     private init() {}
 
@@ -45,17 +46,26 @@ class PluginPermissionManager {
             return true
         }
 
-        // 检查路径是否在允许的目录中。
-        // 使用路径规范化并匹配路径组件边界，避免像 "/Users/test" 匹配 "/Users/testing" 的情况。
         return allowedDirectories.contains { allowedDir in
-            let fileURL = URL(fileURLWithPath: path).standardizedFileURL
-            let dirURL = URL(fileURLWithPath: allowedDir).standardizedFileURL
-
-            // 完全相等或 file 的路径以 dir 路径加 '/' 为前缀
-            if fileURL.path == dirURL.path { return true }
-            return fileURL.path.hasPrefix(
-                dirURL.path.hasSuffix("/") ? dirURL.path : dirURL.path + "/")
+            isPath(path, withinDirectory: allowedDir)
         }
+    }
+
+    /// 检查路径是否位于某个目录之内。
+    /// 这个方法会规范化路径并解析现有祖先路径中的符号链接，以避免前缀和 traversal 绕过。
+    func isPath(_ path: String, withinDirectory directory: String) -> Bool {
+        let normalizedPath = canonicalPath(for: path)
+        let normalizedDirectory = canonicalPath(for: directory)
+
+        if normalizedDirectory == "/" {
+            return normalizedPath.hasPrefix("/")
+        }
+
+        if normalizedPath == normalizedDirectory {
+            return true
+        }
+
+        return normalizedPath.hasPrefix(normalizedDirectory + "/")
     }
 
     /// 验证插件的所有权限声明是否有效
@@ -116,6 +126,27 @@ class PluginPermissionManager {
     private func isValidDirectoryPath(_ path: String) -> Bool {
         // 基本的路径验证
         return !path.isEmpty && !path.contains("..") && path.hasPrefix("/")
+    }
+
+    private func canonicalPath(for path: String) -> String {
+        let expandedPath = NSString(string: path).expandingTildeInPath
+        let standardizedURL = URL(fileURLWithPath: expandedPath).standardizedFileURL
+        return resolveExistingAncestorSymlinks(for: standardizedURL).standardizedFileURL.path
+    }
+
+    private func resolveExistingAncestorSymlinks(for url: URL) -> URL {
+        var missingComponents: [String] = []
+        var currentURL = url
+
+        while currentURL.path != "/", !fileManager.fileExists(atPath: currentURL.path) {
+            missingComponents.append(currentURL.lastPathComponent)
+            currentURL.deleteLastPathComponent()
+        }
+
+        let resolvedBase = currentURL.resolvingSymlinksInPath().standardizedFileURL
+        return missingComponents.reversed().reduce(resolvedBase) { partialURL, component in
+            partialURL.appendingPathComponent(component)
+        }
     }
 
     private func getPermissionDescription(_ type: PluginPermissionType) -> String {

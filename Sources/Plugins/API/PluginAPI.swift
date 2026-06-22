@@ -98,15 +98,19 @@ final class PluginAPI {
 
     func isPathInPluginDataDirectory(_ path: String) -> Bool {
         let pluginDataPath = getPluginDataPath()
-        return path.hasPrefix(pluginDataPath)
+        return permissionManager.isPath(path, withinDirectory: pluginDataPath)
     }
 
     // MARK: - File APIs
     func readFile(path: String) -> String? {
         guard let plugin = pluginInstance?.plugin else { return nil }
         if !isPathInPluginDataDirectory(path) {
-            guard permissionManager.hasPermission(plugin: plugin, type: .fileRead) else {
-                print("插件 \(plugin.name) 没有文件读取权限")
+            guard permissionManager.hasFilePermission(plugin: plugin, type: .fileRead, path: path)
+            else {
+                Logger.shared.warning(
+                    "插件 \(plugin.name) 读取文件被拒绝: \(path)",
+                    owner: self
+                )
                 return nil
             }
         }
@@ -114,7 +118,7 @@ final class PluginAPI {
         do {
             return try String(contentsOfFile: path, encoding: .utf8)
         } catch {
-            print("读取文件失败: \(error.localizedDescription)")
+            Logger.shared.warning("读取文件失败: \(error.localizedDescription)", owner: self)
             return nil
         }
     }
@@ -122,8 +126,13 @@ final class PluginAPI {
     func writeFile(path: String, content: String) -> Bool {
         guard let plugin = pluginInstance?.plugin else { return false }
         if !isPathInPluginDataDirectory(path) {
-            guard permissionManager.hasPermission(plugin: plugin, type: .fileWrite) else {
-                print("插件 \(plugin.name) 没有文件写入权限")
+            guard
+                permissionManager.hasFilePermission(plugin: plugin, type: .fileWrite, path: path)
+            else {
+                Logger.shared.warning(
+                    "插件 \(plugin.name) 写入文件被拒绝: \(path)",
+                    owner: self
+                )
                 return false
             }
         }
@@ -144,7 +153,7 @@ final class PluginAPI {
             try data.write(to: url, options: .atomic)
             return true
         } catch {
-            print("写入文件失败: \(error.localizedDescription)")
+            Logger.shared.warning("写入文件失败: \(error.localizedDescription)", owner: self)
             return false
         }
     }
@@ -185,6 +194,7 @@ final class PluginAPI {
         let method = params["method"] as? String ?? "GET"
         let headers = params["headers"] as? [String: String]
         let body = params["body"] as? String
+        let callbackToken = callback.map { Int(bitPattern: Unmanaged.passRetained($0).toOpaque()) }
 
         var request = URLRequest(url: url)
         request.httpMethod = method
@@ -192,20 +202,24 @@ final class PluginAPI {
         if let body = body { request.httpBody = body.data(using: .utf8) }
 
         URLSession.shared.dataTask(with: request) { data, response, error in
-            Task { @MainActor in
-                var result: [String: Any] = [:]
-                if let error = error {
-                    result["error"] = error.localizedDescription
-                } else {
-                    if let data = data {
-                        result["data"] = String(data: data, encoding: .utf8) ?? ""
-                    }
-                    if let httpResponse = response as? HTTPURLResponse {
-                        result["status"] = httpResponse.statusCode
-                        result["headers"] = httpResponse.allHeaderFields
-                    }
+            var result: [String: Any] = [:]
+            if let error = error {
+                result["error"] = error.localizedDescription
+            } else {
+                if let data = data {
+                    result["data"] = String(data: data, encoding: .utf8) ?? ""
                 }
-                callback?.call(withArguments: [result])
+                if let httpResponse = response as? HTTPURLResponse {
+                    result["status"] = httpResponse.statusCode
+                    result["headers"] = httpResponse.allHeaderFields
+                }
+            }
+
+            DispatchQueue.main.async {
+                guard let callbackToken = callbackToken else { return }
+                let callbackHandle = UnsafeMutableRawPointer(bitPattern: callbackToken)!
+                let callback = Unmanaged<JSValue>.fromOpaque(callbackHandle).takeRetainedValue()
+                callback.call(withArguments: [result])
             }
         }.resume()
     }
@@ -237,6 +251,11 @@ final class PluginAPI {
     }
 
     func showNotification(params: [String: Any]?) -> Bool {
+        guard let plugin = pluginInstance?.plugin else { return false }
+        guard permissionManager.hasPermission(plugin: plugin, type: .notifications) else {
+            Logger.shared.warning("插件 \(plugin.name) 没有通知权限", owner: self)
+            return false
+        }
         guard let params = params, let title = params["title"] as? String else { return false }
         let subtitle = params["subtitle"] as? String
         let body = params["body"] as? String
@@ -245,6 +264,14 @@ final class PluginAPI {
         content.title = title
         if let subtitle = subtitle { content.subtitle = subtitle }
         if let body = body { content.body = body }
+
+        // xctest 和命令行宿主没有正常的应用 bundle，调用 current() 会抛出 NSException。
+        if NSClassFromString("XCTestCase") != nil
+            || Bundle.main.bundleURL.path.hasSuffix("/Contents/Developer/usr/bin/")
+            || Bundle.main.bundleURL.path.hasSuffix("/Contents/Developer/usr/bin")
+        {
+            return true
+        }
 
         let request = UNNotificationRequest(
             identifier: UUID().uuidString, content: content, trigger: nil)
