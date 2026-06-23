@@ -87,6 +87,16 @@ final class PluginModeControllerTests: XCTestCase {
             XCTAssertTrue(firstItem.title.contains("not found") || firstItem.title.contains("Plugin"))
         }
     }
+
+    func testHandleInput_withInvalidCommand_shouldUsePluginPrefixInRecoveryHint() async {
+        pluginMode.handleInput(arguments: "nonexistent_command_xyz")
+
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        let firstItem = pluginMode.displayableItems.first as? PluginItem
+
+        XCTAssertEqual(firstItem?.subtitle, "Type '/p' to see available plugins")
+    }
     
     func testHandleInput_withValidCommand_shouldActivatePlugin() async {
         // 先注册一个测试插件

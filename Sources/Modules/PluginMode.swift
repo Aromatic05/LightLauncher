@@ -141,7 +141,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
     private func showPluginNotFound(command: String) {
         let item = PluginItem(
             title: "Plugin command not found: \(command)",
-            subtitle: "Type '/p' to see available plugins",
+            subtitle: "Type '\(commandReference())' to see available plugins",
             iconName: "questionmark.circle",
             action: nil
         )
