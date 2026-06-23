@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SearchBoxView: View {
@@ -10,6 +11,16 @@ struct SearchBoxView: View {
     let isWindowKey: Bool
 
     let onClear: () -> Void
+
+    @MainActor
+    static func moveCaretToEnd(in responder: NSResponder?) -> Bool {
+        guard let editor = responder as? NSTextView else { return false }
+
+        let textLength = editor.string.count
+        editor.setSelectedRange(NSRange(location: textLength, length: 0))
+        editor.scrollRangeToVisible(NSRange(location: textLength, length: 0))
+        return true
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -50,11 +61,19 @@ struct SearchBoxView: View {
                 // 使用一小段延迟可以确保窗口的过渡动画完成后再获取焦点，体验更平滑。
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     isSearchFieldFocused = true
+                    moveCaretToEndAfterProgrammaticFocus()
                 }
             }
         }
         .onReceive(viewModel.focusSearchField) { _ in
             self.isSearchFieldFocused = true
+            moveCaretToEndAfterProgrammaticFocus()
+        }
+    }
+
+    private func moveCaretToEndAfterProgrammaticFocus() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+            _ = SearchBoxView.moveCaretToEnd(in: NSApp.keyWindow?.firstResponder)
         }
     }
 }
