@@ -43,10 +43,18 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     // 1. 身份与元数据
     let mode: LauncherMode = .clip
     let prefix: String? = "/v"
-    let displayName: String = "Clipboard History"
+    var displayName: String {
+        isSnippetMode ? "Snippets" : "Clipboard History"
+    }
     let iconName: String = "doc.on.clipboard"
-    let placeholder: String = "Search clipboard history..."
-    let modeDescription: String? = "Browse and paste clipboard history (text/files)"
+    var placeholder: String {
+        isSnippetMode ? "Search snippets..." : "Search clipboard history..."
+    }
+    var modeDescription: String? {
+        isSnippetMode
+            ? "Browse, copy, and paste your saved snippets"
+            : "Browse and paste clipboard history (text/files)"
+    }
 
     @Published var displayableItems: [any DisplayableItem] = [] {
         didSet {
@@ -173,6 +181,16 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func getHelpText() -> [String] {
+        if isSnippetMode {
+            return [
+                "Browse and copy saved snippets",
+                "Press Enter to copy the selected snippet",
+                "Press Shift+Enter to paste the selected snippet directly",
+                "Press Option to switch back to clipboard history",
+                "Type to filter snippets, press Esc to exit",
+            ]
+        }
+
         return [
             "Browse and paste clipboard history",
             "Press Enter to copy the selected item",

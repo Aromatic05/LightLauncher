@@ -98,6 +98,31 @@ final class ClipModeTests: XCTestCase {
         )
     }
 
+    func testSnippetMode_updatesDisplayNamePlaceholderAndDescription() {
+        controller.isSnippetMode = true
+
+        XCTAssertEqual(controller.displayName, "Snippets")
+        XCTAssertEqual(controller.placeholder, "Search snippets...")
+        XCTAssertEqual(controller.modeDescription, "Browse, copy, and paste your saved snippets")
+    }
+
+    func testSnippetMode_helpText_matchesSnippetBehavior() {
+        controller.isSnippetMode = true
+
+        let helpText = controller.getHelpText()
+
+        XCTAssertTrue(helpText.contains("Browse and copy saved snippets"))
+        XCTAssertTrue(helpText.contains("Press Enter to copy the selected snippet"))
+        XCTAssertTrue(helpText.contains("Press Shift+Enter to paste the selected snippet directly"))
+        XCTAssertTrue(helpText.contains("Press Option to switch back to clipboard history"))
+    }
+
+    func testClipboardMode_defaultDisplayNamePlaceholderAndDescription() {
+        XCTAssertEqual(controller.displayName, "Clipboard History")
+        XCTAssertEqual(controller.placeholder, "Search clipboard history...")
+        XCTAssertEqual(controller.modeDescription, "Browse and paste clipboard history (text/files)")
+    }
+
     func testCleanup_resetsSnippetModeAndClearsItems() {
         controller.isSnippetMode = true
         controller.displayableItems = [ClipboardItem.text("hello")]
