@@ -39,26 +39,6 @@ final class PluginModeController: ObservableObject, ModeStateController {
         }
     }
 
-    // func executeAction(at index: Int) -> Bool {
-    //     if case .showingPluginList(let items) = internalMode {
-    //         guard index >= 0 && index < items.count,
-    //               let action = items[index].action,
-    //               action.hasPrefix("select_plugin:") else {
-    //             return false
-    //         }
-    //         let command = String(action.dropFirst("select_plugin:".count))
-    //         handleInput(arguments: command)
-    //         return true
-    //     }
-
-    //     guard let instance = activeInstance, index >= 0 && index < instance.currentItems.count,
-    //           let pluginItem = instance.currentItems[index] as? PluginItem,
-    //           let action = pluginItem.action else {
-    //         return false
-    //     }
-    //     return instance.executeAction(action)
-    // }
-
     func cleanup() {
         activeInstance = nil
         currentPlugin = nil
@@ -135,7 +115,7 @@ final class PluginModeController: ObservableObject, ModeStateController {
                 title: plugin.manifest.displayName,
                 subtitle: "\(plugin.command) - \(plugin.description)",
                 iconName: plugin.manifest.iconName ?? "puzzlepiece.extension",
-                action: "select_plugin:\(plugin.command)"
+                action: .selectPlugin(command: plugin.command)
             )
         }
         self.internalMode = .showingPluginList(items)

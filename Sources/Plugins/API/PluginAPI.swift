@@ -79,7 +79,7 @@ final class PluginAPI {
 
             let subtitle = itemDict["subtitle"] as? String
             let iconName = itemDict["icon"] as? String
-            let action = itemDict["action"] as? String
+            let action = (itemDict["action"] as? String).map { PluginItemAction.runPluginAction(identifier: $0) }
 
             return PluginItem(title: title, subtitle: subtitle, iconName: iconName, action: action)
         }

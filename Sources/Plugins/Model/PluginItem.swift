@@ -2,6 +2,11 @@ import AppKit
 import Foundation
 import SwiftUI
 
+enum PluginItemAction: Hashable, Sendable {
+    case selectPlugin(command: String)
+    case runPluginAction(identifier: String)
+}
+
 // MARK: - 插件返回的结果项
 struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     @ViewBuilder
@@ -12,7 +17,7 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     let title: String
     let subtitle: String?
     let iconName: String?  // SF Symbol 名称或 Base64 图片字符串
-    let action: String?  // 执行动作的标识符
+    let action: PluginItemAction?
     var icon: NSImage? {
         // 根据 iconName 的类型返回对应的 NSImage
         if let iconName = iconName {
@@ -32,7 +37,7 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
 
     init(
         title: String, subtitle: String? = nil, iconName: String? = nil,
-        action: String? = nil
+        action: PluginItemAction? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
@@ -55,16 +60,16 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
             return false
         }
 
-        if action.hasPrefix("select_plugin:") {
-            let command = String(action.dropFirst("select_plugin:".count))
+        switch action {
+        case .selectPlugin(let command):
             PluginModeController.shared.handleInput(arguments: command)
             return false
+        case .runPluginAction(let identifier):
+            guard let instance = PluginModeController.shared.activeInstance else {
+                return false
+            }
+            return instance.executeAction(identifier)
         }
-
-        guard let instance = PluginModeController.shared.activeInstance else {
-            return false
-        }
-        return instance.executeAction(action)
     }
 }
 

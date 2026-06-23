@@ -165,7 +165,12 @@ final class PluginModeControllerTests: XCTestCase {
 
         guard let firstItem = pluginMode.displayableItems
             .compactMap({ $0 as? PluginItem })
-            .first(where: { $0.action == "select_plugin:listcmd" })
+            .first(where: {
+                if case .some(.selectPlugin(command: "listcmd")) = $0.action {
+                    return true
+                }
+                return false
+            })
         else {
             return XCTFail("Expected plugin list item")
         }
@@ -175,6 +180,34 @@ final class PluginModeControllerTests: XCTestCase {
 
         XCTAssertFalse(shouldHideWindow)
         XCTAssertEqual(pluginMode.activeInstance?.plugin.name, "list_select")
+    }
+
+    func testActivePluginItemExecuteAction_shouldDelegateStructuredPluginAction() async {
+        _ = createAndRegisterTestPlugin(
+            name: "action_exec",
+            command: "actionexec",
+            script: """
+            lightlauncher.registerCallback(function() {
+                lightlauncher.display([
+                    { title: 'Run action', action: 'structured_action' }
+                ]);
+            });
+
+            lightlauncher.registerActionHandler(function(action) {
+                return action === 'structured_action';
+            });
+            """
+        )
+
+        pluginMode.handleInput(arguments: "actionexec")
+        try? await Task.sleep(nanoseconds: 300_000_000)
+
+        guard let item = pluginMode.displayableItems.first as? PluginItem else {
+            return XCTFail("Expected active plugin item")
+        }
+
+        XCTAssertEqual(item.action, .runPluginAction(identifier: "structured_action"))
+        XCTAssertTrue(item.executeAction())
     }
     
     // MARK: - 插件切换测试

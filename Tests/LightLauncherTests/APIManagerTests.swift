@@ -124,7 +124,7 @@ final class APIManagerTests: XCTestCase {
             if let item1 = instance.currentItems.first as? PluginItem {
                 XCTAssertEqual(item1.title, "Item 1")
                 XCTAssertEqual(item1.subtitle, "Subtitle 1")
-                XCTAssertEqual(item1.action, "action1")
+                XCTAssertEqual(item1.action, .runPluginAction(identifier: "action1"))
             }
             
             expectation.fulfill()
