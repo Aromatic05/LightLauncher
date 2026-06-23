@@ -19,6 +19,15 @@ final class READMEConsistencyTests: XCTestCase {
         XCTAssertTrue(readme.contains("- **本地存储**: 配置和历史记录默认保存在本地文件中"))
     }
 
+    func testReadmeDocumentsFullXcodeRequirementAndTestCommands() throws {
+        let readme = try loadREADME()
+
+        XCTAssertTrue(readme.contains("完整 Xcode 14.0+（仅安装 Command Line Tools 不足以运行 XCTest）"))
+        XCTAssertTrue(readme.contains("### 运行测试"))
+        XCTAssertTrue(readme.contains("export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer"))
+        XCTAssertTrue(readme.contains("export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer"))
+    }
+
     private func loadREADME() throws -> String {
         let testsDirectory = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
         let projectRoot = testsDirectory.deletingLastPathComponent().deletingLastPathComponent()

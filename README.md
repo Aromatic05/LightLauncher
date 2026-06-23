@@ -200,7 +200,7 @@ LightLauncher 采用现代化的 Swift 架构设计：
 
 ### 开发环境要求
 - macOS 11.0+
-- Xcode 14.0+
+- 完整 Xcode 14.0+（仅安装 Command Line Tools 不足以运行 XCTest）
 - Swift 5.9+
 
 ### 构建项目
@@ -208,6 +208,25 @@ LightLauncher 采用现代化的 Swift 架构设计：
 git clone https://github.com/username/LightLauncher.git
 cd LightLauncher
 swift build
+```
+
+### 运行测试
+```bash
+swift test
+```
+
+如果本机安装了多个 Xcode，可以先指定要使用的开发者目录：
+
+```bash
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+swift test
+```
+
+如果你使用的是单独安装的 Xcode Beta，也可以把路径替换成：
+
+```bash
+export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
+swift test
 ```
 
 ## 📋 系统要求
