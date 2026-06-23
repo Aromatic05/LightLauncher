@@ -16,8 +16,6 @@ struct TerminalModeView: View {
                 {
                     Button("清空") {
                         terminalController.clearHistory()
-                        terminalController.currentQuery = terminalController.currentQuery
-                        terminalController.dataDidChange.send()
                     }
                     .buttonStyle(PlainButtonStyle())
                     .foregroundColor(.blue)

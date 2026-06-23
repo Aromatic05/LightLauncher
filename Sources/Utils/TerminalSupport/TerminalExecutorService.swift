@@ -23,6 +23,7 @@ final class TerminalExecutorService {
     func execute(command: String) -> Bool {
         // 检查终端执行权限
         guard PermissionManager.shared.checkTerminalPermissions() else {
+            Logger.shared.warning("Terminal execution blocked: automation permission missing", owner: self)
             Task { @MainActor in
                 PermissionManager.shared.withPermission(.automation) {
                     // 权限获得后重新执行
@@ -36,6 +37,9 @@ final class TerminalExecutorService {
         guard !cleanCommand.isEmpty else { return false }
 
         let preferredTerminalName = ConfigManager.shared.config.modes.preferredTerminal
+        Logger.shared.debug(
+            "Executing terminal command with preferred terminal '\(preferredTerminalName)'",
+            owner: self)
 
         // 如果用户有偏好设置
         if preferredTerminalName != "auto",
@@ -45,8 +49,15 @@ final class TerminalExecutorService {
         {
             // 尝试使用偏好的终端，如果失败，则回退到自动检测
             if preferredExecutor.execute(command: cleanCommand) {
+                Logger.shared.info(
+                    "Executed terminal command via preferred terminal '\(preferredExecutor.name)'",
+                    owner: self)
                 return true
             }
+
+            Logger.shared.warning(
+                "Preferred terminal '\(preferredExecutor.name)' failed, falling back to auto detection",
+                owner: self)
         }
 
         // 自动检测
@@ -57,9 +68,14 @@ final class TerminalExecutorService {
         // 按优先级顺序遍历所有执行器，找到第一个已安装的并执行
         for executor in executors {
             if executor.execute(command: command) {
+                Logger.shared.info(
+                    "Executed terminal command via auto-detected terminal '\(executor.name)'",
+                    owner: self)
                 return true
             }
         }
+
+        Logger.shared.error("Failed to execute terminal command in any supported terminal", owner: self)
         return false  // 如果所有终端都失败
     }
 }
