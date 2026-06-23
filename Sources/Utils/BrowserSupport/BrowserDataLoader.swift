@@ -1,5 +1,4 @@
 import Foundation
-import SQLite3
 
 // MARK: - 浏览器数据加载协议
 protocol BrowserDataLoader {
@@ -10,6 +9,7 @@ protocol BrowserDataLoader {
 
 // MARK: - 通用工具方法
 class BrowserDataUtils {
+    private static let fileAccess = FileAccessService.shared
 
     /// 去重浏览器数据项
     static func removeDuplicates(from items: [BrowserItem]) -> [BrowserItem] {
@@ -27,21 +27,13 @@ class BrowserDataUtils {
         return result
     }
 
-    /// 安全地从 SQLite 读取字符串
-    static func safeString(from statement: OpaquePointer?, at index: Int32) -> String {
-        guard let cString = sqlite3_column_text(statement, index) else {
-            return ""
-        }
-        return String(cString: cString)
-    }
-
     /// 检查文件是否存在
     static func fileExists(at path: String) -> Bool {
-        return FileManager.default.fileExists(atPath: path)
+        return fileAccess.fileExists(atPath: path)
     }
 
     /// 获取用户主目录
     static var homeDirectory: URL {
-        return FileManager.default.homeDirectoryForCurrentUser
+        return fileAccess.homeDirectory
     }
 }

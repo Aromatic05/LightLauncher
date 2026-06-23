@@ -15,7 +15,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 启动权限检查
         Task { @MainActor in
-            PermissionManager.shared.performStartupPermissionCheck()
+            PermissionPromptService.shared.showReminder(
+                for: PermissionManager.shared.getMissingPermissions()
+            )
         }
 
         // 使用定时任务管理器定期扫描应用程序（每5分钟扫描一次）

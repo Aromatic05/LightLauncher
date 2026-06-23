@@ -4,7 +4,6 @@
 //
 //  集成示例和便利方法
 
-import AppKit
 import Foundation
 
 extension PermissionManager {
@@ -44,81 +43,6 @@ extension PermissionManager {
     }
 
     // MARK: - 启动时权限检查
-
-    /// 应用启动时进行权限检查
-    @MainActor
-    func performStartupPermissionCheck() {
-        let summary = getPermissionSummary()
-        if !summary.isFullyAuthorized {
-            showPermissionReminder()
-        }
-    }
-
-    // 已移除 showPermissionOnboarding 及相关调用
-
-    /// 显示缺失权限说明弹窗（只显示缺失项及说明）
-    @MainActor
-    func showPermissionReminder() {
-        resetPermissionAlertState()
-        let missingPermissions = getMissingPermissions()
-        guard !missingPermissions.isEmpty else { return }
-        // 防止重复弹窗 - 使用一个特殊的key来跟踪权限提醒
-        let reminderKey = AppPermissionType.automation
-        if shouldSkipPermissionAlert(for: reminderKey) {
-            return
-        }
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "需要授权以下权限"
-        let permissionList = missingPermissions.map { "• \($0.rawValue)：\($0.description)" }.joined(
-            separator: "\n")
-        alert.informativeText = "为了正常使用所有功能，需要授权以下权限：\n\n\(permissionList)\n\n建议逐个授权这些权限。"
-        alert.addButton(withTitle: "逐个设置")
-        alert.addButton(withTitle: "忽略")
-        let response = alert.runModal()
-        isShowingPermissionAlert = false
-        if response == .alertFirstButtonReturn {
-            // 逐个引导用户设置权限，无延迟
-            Task { @MainActor in
-                for permission in missingPermissions {
-                    promptPermissionGuide(for: permission)
-                }
-            }
-        }
-    }
-
-    // MARK: - 功能验证包装器
-
-    /// 安全执行需要浏览器数据权限的操作
-    @MainActor
-    func withBrowserDataPermission(perform action: @escaping () -> Void) {
-        if checkBrowserDataPermissions() {
-            action()
-        } else {
-            promptPermissionGuide(for: .fullDiskAccess)
-        }
-    }
-
-    /// 安全执行需要进程管理权限的操作
-    @MainActor
-    func withProcessManagementPermission(perform action: @escaping () -> Void) {
-        if checkProcessManagementPermissions() {
-            action()
-        } else {
-            if !hasPermission(for: .accessibility) {
-                promptPermissionGuide(for: .accessibility)
-            } else if !hasPermission(for: .automation) {
-                promptPermissionGuide(for: .automation)
-            }
-        }
-    }
-
-    /// 安全执行注册全局快捷键的操作（无需权限）
-    @MainActor
-    func withGlobalHotKeyPermission(perform action: @escaping () -> Void) {
-        // 注册快捷键无需权限，直接执行
-        action()
-    }
 
     // MARK: - 调试和诊断
 

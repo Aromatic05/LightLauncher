@@ -8,6 +8,7 @@ import os
 /// - 文件记录默认关闭；如果启用，会在 `~/.cache/LightLauncher/<YYYY-MM-DD>/` 下为每次启动创建单独日志文件
 final class Logger: @unchecked Sendable {
     static let shared = Logger()
+    private let fileAccess = FileAccessService.shared
 
     enum Level: Int, Comparable, CustomStringConvertible {
         case debug = 0
@@ -78,8 +79,7 @@ final class Logger: @unchecked Sendable {
             self.logToFile = true
             if let custom = customFileURL {
                 self.fileURL = custom
-                try? FileManager.default.createDirectory(
-                    at: custom.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try? fileAccess.ensureParentDirectory(for: custom)
             } else {
                 startNewSessionLogFile()
             }
@@ -91,7 +91,7 @@ final class Logger: @unchecked Sendable {
 
     /// 每次启动调用，建立新的 session 文件（如果文件记录被启用或将要启用）
     func startNewSessionLogFile() {
-        let cacheDir = FileManager.default.homeDirectoryForCurrentUser
+        let cacheDir = fileAccess.homeDirectory
             .appendingPathComponent(".cache/LightLauncher", isDirectory: true)
 
         let dateFormatter = DateFormatter()
@@ -99,7 +99,7 @@ final class Logger: @unchecked Sendable {
         let day = dateFormatter.string(from: Date())
 
         let sessionDir = cacheDir.appendingPathComponent(day, isDirectory: true)
-        try? FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        try? fileAccess.ensureDirectory(sessionDir)
 
         let timeFormatter = DateFormatter()
         timeFormatter.dateFormat = "HHmmss"
@@ -156,7 +156,7 @@ final class Logger: @unchecked Sendable {
         let data = (text + "\n").data(using: .utf8) ?? Data()
         fileQueue.async { [weak self] in
             guard self != nil else { return }
-            if FileManager.default.fileExists(atPath: url.path) {
+            if self?.fileAccess.fileExists(at: url) == true {
                 if let handle = try? FileHandle(forWritingTo: url) {
                     defer { try? handle.close() }
                     do {
@@ -166,10 +166,10 @@ final class Logger: @unchecked Sendable {
                     }
                     handle.write(data)
                 } else {
-                    try? data.write(to: url, options: .atomic)
+                    try? self?.fileAccess.writeData(data, to: url, options: .atomic)
                 }
             } else {
-                try? data.write(to: url)
+                try? self?.fileAccess.writeData(data, to: url)
             }
         }
     }

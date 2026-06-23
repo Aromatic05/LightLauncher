@@ -7,6 +7,8 @@ import SwiftUI
 @MainActor
 class FileManager_LightLauncher {
     static let shared = FileManager_LightLauncher()
+    private let fileAccess = FileAccessService.shared
+    private let alertService = AlertService.shared
 
     private init() {}
 
@@ -15,7 +17,7 @@ class FileManager_LightLauncher {
         guard PermissionManager.shared.checkFileBrowsingPermissions() else {
             // 如果没有权限，返回空数组并显示权限请求
             Task { @MainActor in
-                PermissionManager.shared.promptPermissionGuide(for: .fileAccess)
+                PermissionPromptService.shared.prompt(for: .fileAccess)
             }
             return []
         }
@@ -24,37 +26,27 @@ class FileManager_LightLauncher {
 
         // 优先解析符号链接：如果用户传入的是符号链接，尝试跟随到目标路径。
         // 注意：resolvingSymlinksInPath 会返回解析后的 URL，但如果目标不存在或不可访问，后续的 fileExists/contentsOfDirectory 会失败。
-        let url = originalURL.resolvingSymlinksInPath()
+        let url = fileAccess.resolveSymlinks(for: originalURL)
 
         // 如果解析后路径不存在（可能是坏的符号链接），给出更明确的提示并返回空
-        if !FileManager.default.fileExists(atPath: url.path) {
+        if !fileAccess.fileExists(at: url) {
             // 如果解析后路径不存在，但原始路径本身存在（可能指向一个坏链接），给出针对符号链接的提示
-            if FileManager.default.fileExists(atPath: originalURL.path) {
+            if fileAccess.fileExists(at: originalURL) {
                 Task { @MainActor in
-                    let alert = NSAlert()
-                    alert.alertStyle = .warning
-                    alert.messageText = "符号链接目标不存在"
-                    alert.informativeText = "路径 '\(path)' 是一个符号链接，但其目标不存在或不可访问。请检查符号链接或目标路径。"
-                    alert.addButton(withTitle: "确定")
-                    alert.runModal()
+                    alertService.showBrokenSymlinkError(forPath: path)
                 }
                 return []
             }
 
             // 原始路径本身也不存在 — 保持原有错误处理风格
             Task { @MainActor in
-                let alert = NSAlert()
-                alert.alertStyle = .warning
-                alert.messageText = "无法访问目录"
-                alert.informativeText = "访问 '\(path)' 时出现错误。这可能是权限问题或目录不存在。"
-                alert.addButton(withTitle: "确定")
-                alert.runModal()
+                alertService.showDirectoryAccessError(forPath: path)
             }
             return []
         }
 
         do {
-            let contents = try FileManager.default.contentsOfDirectory(
+            let contents = try fileAccess.contentsOfDirectory(
                 at: url,
                 includingPropertiesForKeys: [
                     .isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey,
@@ -65,7 +57,7 @@ class FileManager_LightLauncher {
             var files: [FileItem] = []
 
             // 添加返回上级目录项（除了根目录）
-            if url.path != "/" && url.path != NSHomeDirectory() {
+            if url.path != "/" {
                 // 为返回上级目录展示父目录（基于解析后的目标路径）
                 let parentURL = url.deletingLastPathComponent()
                 files.append(
@@ -82,8 +74,7 @@ class FileManager_LightLauncher {
             for fileURL in contents {
                 // 尝试获取资源信息，优先判断是否目录并处理符号链接（但继续列出项以便用户看到它）
                 var isDirectory: ObjCBool = false
-                let exists = FileManager.default.fileExists(
-                    atPath: fileURL.path, isDirectory: &isDirectory)
+                let exists = fileAccess.itemExists(atPath: fileURL.path, isDirectory: &isDirectory)
 
                 if exists {
                     let resourceValues = try? fileURL.resourceValues(forKeys: [
@@ -94,9 +85,9 @@ class FileManager_LightLauncher {
                     var finalIsDirectory = isDirectory.boolValue
                     if let isSymlink = resourceValues?.isSymbolicLink, isSymlink {
                         // 尝试解析符号链接目标并判断目标是否为目录
-                        let resolved = fileURL.resolvingSymlinksInPath()
+                        let resolved = fileAccess.resolveSymlinks(for: fileURL)
                         var resolvedIsDir: ObjCBool = false
-                        if FileManager.default.fileExists(
+                        if fileAccess.itemExists(
                             atPath: resolved.path, isDirectory: &resolvedIsDir)
                         {
                             finalIsDirectory = resolvedIsDir.boolValue
@@ -129,18 +120,7 @@ class FileManager_LightLauncher {
 
             // 如果读取失败，可能是权限问题，显示更具体的错误信息
             Task { @MainActor in
-                let alert = NSAlert()
-                alert.alertStyle = .warning
-                alert.messageText = "无法访问目录"
-                alert.informativeText =
-                    "访问 '\(path)' 时出现错误。这可能是权限问题或目录不存在。\n\n错误详情：\(error.localizedDescription)"
-                alert.addButton(withTitle: "检查权限")
-                alert.addButton(withTitle: "确定")
-
-                let response = alert.runModal()
-                if response == .alertFirstButtonReturn {
-                    PermissionManager.shared.promptPermissionGuide(for: .fileAccess)
-                }
+                alertService.showDirectoryAccessError(forPath: path, error: error)
             }
 
             return []
@@ -180,10 +160,7 @@ class FileManager_LightLauncher {
         // 检查文件访问权限
         guard PermissionManager.shared.checkFileBrowsingPermissions() else {
             Task { @MainActor in
-                PermissionManager.shared.withPermission(.fileAccess) {
-                    // 权限获得后重新执行
-                    self.openInFinder(url)
-                }
+                PermissionPromptService.shared.prompt(for: .fileAccess)
             }
             return
         }

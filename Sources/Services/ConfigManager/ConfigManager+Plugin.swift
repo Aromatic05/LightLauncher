@@ -4,14 +4,13 @@ import Yams
 extension ConfigManager {
     static func loadPluginsConfig(from url: URL) -> PluginsConfig? {
         do {
-            _ = try String(contentsOf: url, encoding: .utf8)
+            _ = try fileAccess.readString(from: url)
             _ = YAMLDecoder()
         } catch {
             Logger.shared.error("加载插件配置文件失败: \(error)")
             return nil
         }
-        let fileManager = FileManager.default
-        if !fileManager.fileExists(atPath: url.path) {
+        if !fileAccess.fileExists(at: url) {
             let defaultConfig = PluginsConfig(plugins: [])
             do {
                 let encoder = YAMLEncoder()
@@ -22,7 +21,7 @@ extension ConfigManager {
 
                     \(yamlString)
                     """
-                try commentedYaml.write(to: url, atomically: true, encoding: .utf8)
+                try fileAccess.writeString(commentedYaml, to: url)
                 Logger.shared.info("插件配置文件不存在，已创建默认配置: \(url.path)")
             } catch let err {
                 Logger.shared.error("创建默认插件配置文件失败: \(err)")
@@ -30,7 +29,7 @@ extension ConfigManager {
             return defaultConfig
         }
         do {
-            let yamlString = try String(contentsOf: url, encoding: .utf8)
+            let yamlString = try fileAccess.readString(from: url)
             let decoder = YAMLDecoder()
             return try decoder.decode(PluginsConfig.self, from: yamlString)
         } catch let err {
@@ -48,7 +47,7 @@ extension ConfigManager {
 
                 \(yamlString)
                 """
-            try commentedYaml.write(to: pluginsConfigURL, atomically: true, encoding: .utf8)
+            try Self.fileAccess.writeString(commentedYaml, to: pluginsConfigURL)
             Logger.shared.info("插件配置已保存到: \(pluginsConfigURL.path)", owner: self)
         } catch {
             Logger.shared.error("保存插件配置文件失败: \(error)", owner: self)

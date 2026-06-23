@@ -95,10 +95,7 @@ class BrowserDataManager {
         guard PermissionManager.shared.checkBrowserDataPermissions() else {
             // 如果没有权限，显示权限请求
             Task { @MainActor in
-                PermissionManager.shared.withBrowserDataPermission {
-                    // 权限获得后重新调用
-                    self.loadBrowserData()
-                }
+                PermissionPromptService.shared.prompt(for: .fullDiskAccess)
             }
             return
         }

@@ -19,10 +19,14 @@ class SystemCommandManager: ObservableObject {
                 subtitle: "立即锁定屏幕",
                 icon: NSImage(systemSymbolName: "lock.fill", accessibilityDescription: nil),
                 action: {
-                    PermissionManager.shared.withAccessibilityPermission {
+                    if PermissionManager.shared.hasPermission(for: .accessibility) {
                         runShell(
                             "osascript -e 'tell application \"System Events\" to keystroke \"q\" using {control down, command down}'"
                         )
+                    } else {
+                        Task { @MainActor in
+                            PermissionPromptService.shared.prompt(for: .accessibility)
+                        }
                     }
                 }
             ),

@@ -6,6 +6,7 @@ import SwiftUI
 @MainActor
 class SearchHistoryManager: ObservableObject {
     static let shared = SearchHistoryManager()
+    private let fileAccess = FileAccessService.shared
 
     // (已修改) 使用字典来按类别存储历史记录
     @Published private(set) var history: [String: [SearchHistoryItem]] = [:]
@@ -15,8 +16,7 @@ class SearchHistoryManager: ObservableObject {
 
     private var historyFileURL: URL {
         // 文件路径和名称保持不变，现在它将存储一个字典
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-            .first!
+        let documentsPath = fileAccess.documentsDirectory
         return documentsPath.appendingPathComponent("LightLauncher").appendingPathComponent(
             "search_history.json")
     }
@@ -109,7 +109,7 @@ class SearchHistoryManager: ObservableObject {
     // MARK: - 私有方法 (已更新以支持字典)
     private func loadHistory() {
         do {
-            let data = try Data(contentsOf: historyFileURL)
+            let data = try fileAccess.readData(from: historyFileURL)
             // (已修改) 解码为字典类型
             history = try JSONDecoder().decode([String: [SearchHistoryItem]].self, from: data)
         } catch {
@@ -122,13 +122,9 @@ class SearchHistoryManager: ObservableObject {
 
     private func saveHistory() {
         do {
-            let directory = historyFileURL.deletingLastPathComponent()
-            try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true, attributes: nil)
-
             // (已修改) 编码整个字典
             let data = try JSONEncoder().encode(history)
-            try data.write(to: historyFileURL, options: .atomic)
+            try fileAccess.writeData(data, to: historyFileURL, options: .atomic)
         } catch {
             Logger.shared.error("Failed to save search history: \(error)", owner: self)
         }

@@ -48,11 +48,12 @@ class RunningAppsManager: @unchecked Sendable {
     func killApp(_ app: RunningAppInfo, force: Bool = false) -> Bool {
         // 检查进程管理权限
         guard PermissionManager.shared.checkProcessManagementPermissions() else {
+            let missingPermission: AppPermissionType =
+                PermissionManager.shared.hasPermission(for: .accessibility)
+                ? .automation
+                : .accessibility
             Task { @MainActor in
-                PermissionManager.shared.withProcessManagementPermission {
-                    // 权限获得后重新执行
-                    _ = self.killApp(app, force: force)
-                }
+                PermissionPromptService.shared.prompt(for: missingPermission)
             }
             return false
         }

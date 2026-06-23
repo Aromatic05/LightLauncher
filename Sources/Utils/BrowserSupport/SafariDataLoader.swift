@@ -1,8 +1,9 @@
 import Foundation
-import SQLite3
 
 class SafariDataLoader: BrowserDataLoader {
     static let browserType: BrowserType = .safari
+    private static let fileAccess = FileAccessService.shared
+    private static let database = DatabaseService.shared
 
     static func loadBookmarks() async -> [BrowserItem] {
         let bookmarksPath = BrowserDataUtils.homeDirectory.appendingPathComponent(
@@ -14,7 +15,7 @@ class SafariDataLoader: BrowserDataLoader {
         }
 
         do {
-            let data = try Data(contentsOf: bookmarksPath)
+            let data = try fileAccess.readData(from: bookmarksPath)
             guard
                 let plist = try PropertyListSerialization.propertyList(
                     from: data, options: [], format: nil) as? [String: Any],
@@ -75,51 +76,25 @@ class SafariDataLoader: BrowserDataLoader {
     }
 
     private static func loadHistoryFromDatabase(at path: String) async -> [BrowserItem] {
-        return await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .background).async {
-                var db: OpaquePointer?
-                var historyItems: [BrowserItem] = []
-
-                // 使用只读模式打开数据库
-                if sqlite3_open_v2(path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK {
-                    let query = """
-                            SELECT hv.title, hi.url, hv.visit_time, hi.visit_count
-                            FROM history_visits hv
-                            JOIN history_items hi ON hv.history_item = hi.id
-                            WHERE hv.title IS NOT NULL AND hv.title != ''
-                            ORDER BY hv.visit_time DESC
-                            LIMIT 500
-                        """
-
-                    var statement: OpaquePointer?
-                    if sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK {
-                        while sqlite3_step(statement) == SQLITE_ROW {
-                            let title = BrowserDataUtils.safeString(from: statement, at: 0)
-                            let url = BrowserDataUtils.safeString(from: statement, at: 1)
-                            let visitTime = sqlite3_column_double(statement, 2)
-                            let visitCount = Int(sqlite3_column_int(statement, 3))
-
-                            // Safari 时间戳是从2001年1月1日开始的秒数
-                            let referenceDate = Date(timeIntervalSinceReferenceDate: 0)
-                            let lastVisited = Date(timeInterval: visitTime, since: referenceDate)
-
-                            let historyItem = BrowserItem(
-                                title: title,
-                                url: url,
-                                type: .history,
-                                source: .safari,
-                                lastVisited: lastVisited,
-                                visitCount: visitCount
-                            )
-                            historyItems.append(historyItem)
-                        }
-                    }
-                    sqlite3_finalize(statement)
-                }
-                sqlite3_close(db)
-
-                continuation.resume(returning: historyItems)
-            }
+        let query = """
+                SELECT hv.title, hi.url, hv.visit_time, hi.visit_count
+                FROM history_visits hv
+                JOIN history_items hi ON hv.history_item = hi.id
+                WHERE hv.title IS NOT NULL AND hv.title != ''
+                ORDER BY hv.visit_time DESC
+                LIMIT 500
+            """
+        let referenceDate = Date(timeIntervalSinceReferenceDate: 0)
+        return await database.readRows(at: URL(fileURLWithPath: path), query: query) { statement in
+            let visitTime = database.double(from: statement, at: 2)
+            return BrowserItem(
+                title: database.string(from: statement, at: 0),
+                url: database.string(from: statement, at: 1),
+                type: .history,
+                source: .safari,
+                lastVisited: Date(timeInterval: visitTime, since: referenceDate),
+                visitCount: database.int(from: statement, at: 3)
+            )
         }
     }
 }

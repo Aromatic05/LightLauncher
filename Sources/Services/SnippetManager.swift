@@ -6,6 +6,7 @@ import SwiftUI
 @MainActor
 class SnippetManager: ObservableObject {
     static let shared = SnippetManager()
+    private let fileAccess = FileAccessService.shared
 
     @Published private(set) var snippets: [SnippetItem] = []
     private let maxSnippetsCount: Int
@@ -21,7 +22,7 @@ class SnippetManager: ObservableObject {
 
     private init(maxSnippetsCount: Int = 200) {
         self.maxSnippetsCount = maxSnippetsCount
-        let docDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+        let docDir = fileAccess.homeDirectory.appendingPathComponent(
             "Documents/LightLauncher", isDirectory: true)
         self.snippetsDirectory = docDir
         self.snippetsFileURL = docDir.appendingPathComponent("snippets.json")
@@ -118,10 +119,9 @@ class SnippetManager: ObservableObject {
     /// 加载 Snippet
     private func loadSnippets() async {
         do {
-            try FileManager.default.createDirectory(
-                at: snippetsDirectory, withIntermediateDirectories: true)
-            if FileManager.default.fileExists(atPath: snippetsFileURL.path) {
-                let data = try Data(contentsOf: snippetsFileURL)
+            try fileAccess.ensureDirectory(snippetsDirectory)
+            if fileAccess.fileExists(at: snippetsFileURL) {
+                let data = try fileAccess.readData(from: snippetsFileURL)
                 let decoded = try JSONDecoder().decode([SnippetItem].self, from: data)
                 await MainActor.run {
                     self.snippets = Array(decoded.prefix(maxSnippetsCount))
@@ -149,10 +149,9 @@ class SnippetManager: ObservableObject {
         needsSave = false
 
         do {
-            try FileManager.default.createDirectory(
-                at: snippetsDirectory, withIntermediateDirectories: true)
+            try fileAccess.ensureDirectory(snippetsDirectory)
             let data = try JSONEncoder().encode(Array(snippets.prefix(maxSnippetsCount)))
-            try data.write(to: snippetsFileURL)
+            try fileAccess.writeData(data, to: snippetsFileURL)
         } catch {
             Logger.shared.error("Snippet 保存失败: \(error)")
         }

@@ -88,33 +88,9 @@ enum PermissionRiskLevel: String, CaseIterable {
 /// 权限管理器，统一检测和引导用户授权敏感权限
 final class PermissionManager: ObservableObject {
     @MainActor static let shared = PermissionManager()
-
-    // MARK: - 防重复弹窗机制
-
-    /// 跟踪已显示权限弹窗的类型和时间
-    internal var shownPermissionAlerts: [AppPermissionType: Date] = [:]
-
-    /// 防重复弹窗的时间间隔（秒）
-    private let alertCooldownInterval: TimeInterval = 300  // 5分钟
-
-    /// 当前是否有权限弹窗正在显示
-    internal var isShowingPermissionAlert: Bool = false
+    private let fileAccess = FileAccessService.shared
 
     private init() {
-        // 每次启动自动重置弹窗冷却状态
-        resetPermissionAlertState()
-    }
-
-    // MARK: - 通用权限检查方法
-
-    /// 有权限则执行，无权限则引导用户授权
-    @MainActor
-    func withPermission(_ type: AppPermissionType, perform action: @escaping () -> Void) {
-        if hasPermission(for: type) {
-            action()
-        } else {
-            promptPermissionGuide(for: type)
-        }
     }
 
     /// 检查指定权限是否已授权
@@ -149,52 +125,8 @@ final class PermissionManager: ObservableObject {
         }
     }
 
-    /// 引导用户授权指定权限
-    @MainActor
-    func promptPermissionGuide(for type: AppPermissionType) {
-        // 防重复弹窗检查
-        Logger.shared.debug("[DEBUG] 请求权限弹窗: promptPermissionGuide(for: \(type))", owner: self)
-        if shouldSkipPermissionAlert(for: type) {
-            Logger.shared.debug("[DEBUG] promptPermissionGuide skipped for: \(type)", owner: self)
-            return
-        }
-
-        isShowingPermissionAlert = true
-        shownPermissionAlerts[type] = Date()
-
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = "需要\(type.rawValue)权限"
-        alert.informativeText = type.description
-        alert.addButton(withTitle: "前往设置")
-        alert.addButton(withTitle: "取消")
-
-        let response = alert.runModal()
-        isShowingPermissionAlert = false
-
-        Logger.shared.debug(
-            "[DEBUG] promptPermissionGuide finished for: \(type), response: \(response.rawValue)",
-            owner: self)
-        if response == .alertFirstButtonReturn {
-            openSystemPreferences(for: type)
-        }
-    }
-
-    /// 检查是否应该跳过权限弹窗（防重复）
-    internal func shouldSkipPermissionAlert(for type: AppPermissionType) -> Bool {
-        // 检查是否在冷却时间内
-        if let lastShownTime = shownPermissionAlerts[type] {
-            let timeSinceLastAlert = Date().timeIntervalSince(lastShownTime)
-            if timeSinceLastAlert < alertCooldownInterval {
-                return true
-            }
-        }
-
-        return false
-    }
-
     /// 打开对应的系统偏好设置
-    private func openSystemPreferences(for type: AppPermissionType) {
+    func openSystemPreferences(for type: AppPermissionType) {
         let url: URL
 
         switch type {
@@ -263,10 +195,10 @@ final class PermissionManager: ObservableObject {
     /// 检查完全磁盘访问权限
     func isFullDiskAccessGranted() -> Bool {
         // 检测是否能访问受保护的目录（如 Safari 书签）
-        let safariBookmarksPath = FileManager.default.homeDirectoryForCurrentUser
+        let safariBookmarksPath = fileAccess.homeDirectory
             .appendingPathComponent("Library/Safari/Bookmarks.plist")
         do {
-            _ = try Data(contentsOf: safariBookmarksPath)
+            _ = try fileAccess.readData(from: safariBookmarksPath)
             return true
         } catch {
             return false
@@ -340,9 +272,8 @@ final class PermissionManager: ObservableObject {
     /// 检查文件访问权限（基本文件系统访问）
     func isFileAccessGranted() -> Bool {
         // 检查是否能访问用户文档目录
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-            .first!
-        return FileManager.default.isReadableFile(atPath: documentsPath.path)
+        let documentsPath = fileAccess.documentsDirectory
+        return fileAccess.isReadableFile(atPath: documentsPath.path)
     }
 
     /// 检查网络访问权限（应用层面，通常默认允许）
@@ -396,32 +327,6 @@ final class PermissionManager: ObservableObject {
         )
     }
 
-    // MARK: - 向后兼容的方法
-
-    /// 有权限则执行，无权限则引导用户授权辅助功能（保持向后兼容）
-    @MainActor
-    func withAccessibilityPermission(perform action: @escaping () -> Void) {
-        withPermission(.accessibility, perform: action)
-    }
-
-    /// 引导用户前往系统设置授权辅助功能（保持向后兼容）
-    @MainActor
-    func promptAccessibilityGuide() {
-        promptPermissionGuide(for: .accessibility)
-    }
-
-    // MARK: - 防重复弹窗管理方法
-
-    /// 重置权限弹窗状态（用于调试或强制重新显示）
-    func resetPermissionAlertState() {
-        shownPermissionAlerts.removeAll()
-        isShowingPermissionAlert = false
-    }
-
-    /// 清除特定权限的弹窗冷却时间
-    func clearPermissionAlertCooldown(for type: AppPermissionType) {
-        shownPermissionAlerts.removeValue(forKey: type)
-    }
 }
 
 // MARK: - 应用权限摘要数据结构

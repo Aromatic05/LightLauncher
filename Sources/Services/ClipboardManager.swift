@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 class ClipboardManager {
     static let shared = ClipboardManager()
+    private let fileAccess = FileAccessService.shared
 
     private let pasteboard = NSPasteboard.general
     private var changeCount: Int
@@ -21,7 +22,7 @@ class ClipboardManager {
 
     private init(maxHistoryCount: Int = 50) {
         self.maxHistoryCount = maxHistoryCount
-        let docDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
+        let docDir = fileAccess.homeDirectory.appendingPathComponent(
             "Documents/LightLauncher", isDirectory: true)
         self.historyDirectory = docDir
         self.historyFileURL = docDir.appendingPathComponent("clipboard_history.json")
@@ -123,14 +124,9 @@ class ClipboardManager {
         history.removeAll()
         dirty = true
         do {
-            if FileManager.default.fileExists(atPath: historyFileURL.path) {
-                try FileManager.default.removeItem(at: historyFileURL)
-            }
-            if FileManager.default.fileExists(atPath: archiveDirectory.path) {
-                try FileManager.default.removeItem(at: archiveDirectory)
-            }
-            try FileManager.default.createDirectory(
-                at: archiveDirectory, withIntermediateDirectories: true)
+            try fileAccess.removeItemIfExists(at: historyFileURL)
+            try fileAccess.removeItemIfExists(at: archiveDirectory)
+            try fileAccess.ensureDirectory(archiveDirectory)
         } catch {
             Logger.shared.error("删除所有历史（包括归档）失败：\(error)", owner: self)
         }
@@ -154,8 +150,7 @@ class ClipboardManager {
     private func archiveOverflowItems(_ items: [ClipboardItem]) {
         guard !items.isEmpty else { return }
         do {
-            try FileManager.default.createDirectory(
-                at: archiveDirectory, withIntermediateDirectories: true)
+            try fileAccess.ensureDirectory(archiveDirectory)
         } catch {
             Logger.shared.error("创建归档目录失败: \(error)", owner: self)
             return
@@ -166,7 +161,7 @@ class ClipboardManager {
         // 尝试向最后一页追加（如果存在且未满）
         if let lastPageIndex = findLastArchivePageIndex(),
             let lastPageURL = archiveFileURL(forPage: lastPageIndex),
-            let data = try? Data(contentsOf: lastPageURL),
+            let data = try? fileAccess.readData(from: lastPageURL),
             var decoded = try? JSONDecoder().decode([ClipboardItem].self, from: data)
         {
             let space = maxHistoryCount - decoded.count
@@ -176,7 +171,7 @@ class ClipboardManager {
                 // 保存回最后一页
                 do {
                     let encoded = try JSONEncoder().encode(decoded)
-                    try encoded.write(to: lastPageURL)
+                    try fileAccess.writeData(encoded, to: lastPageURL)
                 } catch {
                     Logger.shared.error("向最后归档页追加失败: \(error)", owner: self)
                 }
@@ -199,7 +194,7 @@ class ClipboardManager {
             let url = archiveDirectory.appendingPathComponent(fileName)
             do {
                 let encoded = try JSONEncoder().encode(take)
-                try encoded.write(to: url)
+                try fileAccess.writeData(encoded, to: url)
             } catch {
                 Logger.shared.error("创建新的归档页失败: \(error)", owner: self)
             }
@@ -209,8 +204,7 @@ class ClipboardManager {
     /// 返回归档目录中最后一页的数字索引（1-based），如果没有归档则返回 nil
     private func findLastArchivePageIndex() -> Int? {
         do {
-            let contents = try FileManager.default.contentsOfDirectory(
-                atPath: archiveDirectory.path)
+            let contents = try fileAccess.contentsOfDirectory(atPath: archiveDirectory.path)
             let pageNums = contents.compactMap { fileName -> Int? in
                 // 期望格式: archive_<timestamp>_<seq>.json
                 guard fileName.hasPrefix(archiveFilePrefix),
@@ -240,7 +234,7 @@ class ClipboardManager {
     private func archiveFileURL(forPage page: Int) -> URL? {
         guard page >= 1 else { return nil }
         do {
-            let fileURLs = try FileManager.default.contentsOfDirectory(
+            let fileURLs = try fileAccess.contentsOfDirectory(
                 at: archiveDirectory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
             for url in fileURLs {
                 let name = url.lastPathComponent
@@ -267,12 +261,12 @@ class ClipboardManager {
     /// 加载指定归档页（page 从 1 开始），如果不存在则返回空数组
     func loadArchivePage(_ page: Int) -> [ClipboardItem] {
         guard page >= 1, let url = archiveFileURL(forPage: page),
-            FileManager.default.fileExists(atPath: url.path)
+            fileAccess.fileExists(at: url)
         else {
             return []
         }
         do {
-            let data = try Data(contentsOf: url)
+            let data = try fileAccess.readData(from: url)
             let decoded = try JSONDecoder().decode([ClipboardItem].self, from: data)
             return decoded
         } catch {
@@ -285,8 +279,8 @@ class ClipboardManager {
     func removeArchivePage(_ page: Int) {
         guard page >= 1, let url = archiveFileURL(forPage: page) else { return }
         do {
-            if FileManager.default.fileExists(atPath: url.path) {
-                try FileManager.default.removeItem(at: url)
+            if fileAccess.fileExists(at: url) {
+                try fileAccess.removeItem(at: url)
                 // 重命名后续页以保持连续编号（可选，但便于管理）
                 normalizeArchivePageIndices(startingFrom: page + 1)
             }
@@ -303,7 +297,7 @@ class ClipboardManager {
         var current = startPage
         while true {
             guard let currentURL = archiveFileURL(forPage: current),
-                FileManager.default.fileExists(atPath: currentURL.path)
+                fileAccess.fileExists(at: currentURL)
             else {
                 break
             }
@@ -318,10 +312,10 @@ class ClipboardManager {
             let targetURL = archiveDirectory.appendingPathComponent(targetName)
             do {
                 // 如果目标已存在（理论上不该出现），先移除
-                if FileManager.default.fileExists(atPath: targetURL.path) {
-                    try FileManager.default.removeItem(at: targetURL)
+                if fileAccess.fileExists(at: targetURL) {
+                    try fileAccess.removeItem(at: targetURL)
                 }
-                try FileManager.default.moveItem(at: currentURL, to: targetURL)
+                try fileAccess.moveItem(at: currentURL, to: targetURL)
             } catch {
                 Logger.shared.error("重命名归档页 \(current) -> \(targetIndex) 失败: \(error)", owner: self)
                 break
@@ -335,12 +329,10 @@ class ClipboardManager {
     /// 加载历史记录（只加载前 maxHistoryCount 条），归档页单独按需加载
     private func loadHistory() {
         do {
-            try FileManager.default.createDirectory(
-                at: historyDirectory, withIntermediateDirectories: true)
-            try FileManager.default.createDirectory(
-                at: archiveDirectory, withIntermediateDirectories: true)
-            if FileManager.default.fileExists(atPath: historyFileURL.path) {
-                let data = try Data(contentsOf: historyFileURL)
+            try fileAccess.ensureDirectory(historyDirectory)
+            try fileAccess.ensureDirectory(archiveDirectory)
+            if fileAccess.fileExists(at: historyFileURL) {
+                let data = try fileAccess.readData(from: historyFileURL)
                 let decoded = try JSONDecoder().decode([ClipboardItem].self, from: data)
                 // 仅保留前 maxHistoryCount 条到内存
                 self.history = Array(decoded.prefix(maxHistoryCount))
@@ -356,11 +348,9 @@ class ClipboardManager {
     /// 保存当前内存中的历史记录（只保存前 maxHistoryCount 条）
     private func saveHistory() {
         do {
-            try FileManager.default.createDirectory(
-                at: historyDirectory, withIntermediateDirectories: true)
             let toSave = Array(history.prefix(maxHistoryCount))
             let data = try JSONEncoder().encode(toSave)
-            try data.write(to: historyFileURL)
+            try fileAccess.writeData(data, to: historyFileURL)
         } catch {
             Logger.shared.error("剪贴板历史保存失败: \(error)", owner: self)
         }
@@ -415,22 +405,22 @@ class ClipboardManager {
     /// 将指定归档页中的某个元素删除（用户操作）
     func removeArchiveItem(page: Int, at index: Int) {
         guard page >= 1, let url = archiveFileURL(forPage: page),
-            FileManager.default.fileExists(atPath: url.path)
+            fileAccess.fileExists(at: url)
         else {
             return
         }
         do {
-            let data = try Data(contentsOf: url)
+            let data = try fileAccess.readData(from: url)
             var decoded = try JSONDecoder().decode([ClipboardItem].self, from: data)
             guard decoded.indices.contains(index) else { return }
             decoded.remove(at: index)
             // 如果该页为空，删除该文件并 normalize
             if decoded.isEmpty {
-                try FileManager.default.removeItem(at: url)
+                try fileAccess.removeItem(at: url)
                 normalizeArchivePageIndices(startingFrom: page + 1)
             } else {
                 let encoded = try JSONEncoder().encode(decoded)
-                try encoded.write(to: url)
+                try fileAccess.writeData(encoded, to: url)
             }
         } catch {
             Logger.shared.error("从归档页删除项失败: \(error)", owner: self)

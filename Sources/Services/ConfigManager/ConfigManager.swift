@@ -4,6 +4,7 @@ import Yams
 @MainActor
 class ConfigManager: ObservableObject {
     static let shared = ConfigManager()
+    static let fileAccess = FileAccessService.shared
 
     @Published var config: AppConfig
     @Published var pluginsConfig: PluginsConfig = PluginsConfig(plugins: [])
@@ -14,12 +15,11 @@ class ConfigManager: ObservableObject {
 
     private init() {
         // 创建配置目录
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        let homeDirectory = Self.fileAccess.homeDirectory
         let configDirectory = homeDirectory.appendingPathComponent(".config/LightLauncher")
 
         do {
-            try FileManager.default.createDirectory(
-                at: configDirectory, withIntermediateDirectories: true, attributes: nil)
+            try Self.fileAccess.ensureDirectory(configDirectory)
         } catch {
             Logger.shared.error("无法创建配置目录: \(error)")
         }
@@ -60,7 +60,7 @@ class ConfigManager: ObservableObject {
     // 从文件加载配置
     private static func loadConfig(from url: URL) -> AppConfig? {
         do {
-            let yamlString = try String(contentsOf: url, encoding: .utf8)
+            let yamlString = try fileAccess.readString(from: url)
             let decoder = YAMLDecoder()
             var config = try decoder.decode(AppConfig.self, from: yamlString)
             config = migrateConfig(config)
@@ -83,7 +83,7 @@ class ConfigManager: ObservableObject {
             var commonAbbreviations: [String: [String]]
         }
         do {
-            let yamlString = try String(contentsOf: url, encoding: .utf8)
+            let yamlString = try fileAccess.readString(from: url)
             let decoder = YAMLDecoder()
             let oldConfig = try decoder.decode(OldAppConfig.self, from: yamlString)
             return AppConfig(
@@ -130,7 +130,7 @@ class ConfigManager: ObservableObject {
 
                 \(yamlString)
                 """
-            try commentedYaml.write(to: configURL, atomically: true, encoding: .utf8)
+            try Self.fileAccess.writeString(commentedYaml, to: configURL)
             Logger.shared.info("配置已保存到: \(configURL.path)", owner: self)
         } catch {
             Logger.shared.error("保存配置文件失败: \(error)", owner: self)

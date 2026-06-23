@@ -6,13 +6,13 @@ import SwiftUI
 @MainActor
 class TerminalHistoryManager: ObservableObject {
     static let shared = TerminalHistoryManager()
+    private let fileAccess = FileAccessService.shared
 
     @Published private(set) var commandHistory: [TerminalHistoryItem] = []
     private let maxHistoryCount = 50  // 最多保存50条历史记录
 
     private var historyFileURL: URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-            .first!
+        let documentsPath = fileAccess.documentsDirectory
         return documentsPath.appendingPathComponent("LightLauncher").appendingPathComponent(
             "terminal_history.json")
     }
@@ -74,7 +74,7 @@ class TerminalHistoryManager: ObservableObject {
 
     private func loadHistory() {
         do {
-            let data = try Data(contentsOf: historyFileURL)
+            let data = try fileAccess.readData(from: historyFileURL)
             commandHistory = try JSONDecoder().decode([TerminalHistoryItem].self, from: data)
         } catch {
             // 如果加载失败，使用空数组
@@ -85,13 +85,8 @@ class TerminalHistoryManager: ObservableObject {
 
     private func saveHistory() {
         do {
-            // 确保目录存在
-            let directory = historyFileURL.deletingLastPathComponent()
-            try FileManager.default.createDirectory(
-                at: directory, withIntermediateDirectories: true)
-
             let data = try JSONEncoder().encode(commandHistory)
-            try data.write(to: historyFileURL)
+            try fileAccess.writeData(data, to: historyFileURL)
         } catch {
             Logger.shared.error("Failed to save terminal history: \(error)", owner: self)
         }

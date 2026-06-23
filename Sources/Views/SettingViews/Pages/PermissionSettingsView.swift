@@ -158,7 +158,9 @@ struct PermissionSettingsView: View {
                                     Spacer()
                                     Button("立即设置") {
                                         Task { @MainActor in
-                                            permissionManager.showPermissionReminder()
+                                            PermissionPromptService.shared.showReminder(
+                                                for: permissionManager.getMissingPermissions()
+                                            )
                                         }
                                     }
                                     .buttonStyle(.borderedProminent)
@@ -340,7 +342,7 @@ struct PermissionRowView: View {
             if !isGranted {
                 Button("设置") {
                     Task { @MainActor in
-                        PermissionManager.shared.promptPermissionGuide(for: permissionType)
+                        PermissionPromptService.shared.prompt(for: permissionType)
                     }
                 }
                 .buttonStyle(.borderless)

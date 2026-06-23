@@ -25,10 +25,7 @@ final class TerminalExecutorService {
         guard PermissionManager.shared.checkTerminalPermissions() else {
             Logger.shared.warning("Terminal execution blocked: automation permission missing", owner: self)
             Task { @MainActor in
-                PermissionManager.shared.withPermission(.automation) {
-                    // 权限获得后重新执行
-                    _ = self.execute(command: command)
-                }
+                PermissionPromptService.shared.prompt(for: .automation)
             }
             return false
         }

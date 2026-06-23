@@ -3,12 +3,12 @@ import Foundation
 extension ConfigManager {
     func getFileBrowserStartPaths() -> [String] {
         return config.modes.fileBrowserStartPaths.filter { path in
-            FileManager.default.fileExists(atPath: path)
+            FileAccessService.shared.fileExists(atPath: path)
         }
     }
     func addFileBrowserStartPath(_ path: String) {
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+        guard FileAccessService.shared.itemExists(atPath: path, isDirectory: &isDirectory),
             isDirectory.boolValue
         else { return }
         if !config.modes.fileBrowserStartPaths.contains(path) {
@@ -23,7 +23,7 @@ extension ConfigManager {
     func updateFileBrowserStartPaths(_ paths: [String]) {
         let validPaths = paths.filter { path in
             var isDirectory: ObjCBool = false
-            return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+            return FileAccessService.shared.itemExists(atPath: path, isDirectory: &isDirectory)
                 && isDirectory.boolValue
         }
         config.modes.fileBrowserStartPaths = validPaths
