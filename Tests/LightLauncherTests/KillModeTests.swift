@@ -7,16 +7,19 @@ import XCTest
 @MainActor
 final class KillModeTests: XCTestCase {
     private let controller = KillModeController.shared
+    private let windowRouterSpy = WindowRouterSpy()
 
     override func setUp() async throws {
         try await super.setUp()
         controller.cleanup()
         controller.forceKillEnabled = false
+        controller.windowRouter = windowRouterSpy
     }
 
     override func tearDown() async throws {
         controller.cleanup()
         controller.forceKillEnabled = false
+        controller.windowRouter = NotificationCenterWindowRouter()
         try await super.tearDown()
     }
 
@@ -26,45 +29,24 @@ final class KillModeTests: XCTestCase {
         XCTAssertFalse(controller.selectKillAppByNumber(2))
     }
 
-    func testHandleNumericKey_withOutOfBoundsIndex_doesNotPostHideNotification() {
+    func testHandleNumericKey_withOutOfBoundsIndex_doesNotRequestWindowHide() {
         controller.displayableItems = [TestKillItem(title: "Only Item", executeResult: true)]
-
-        let hideExpectation = expectation(forNotification: .hideWindow, object: nil)
-        hideExpectation.isInverted = true
-        let observer = NotificationCenter.default.addObserver(
-            forName: .hideWindow,
-            object: nil,
-            queue: nil
-        ) { _ in
-            hideExpectation.fulfill()
-        }
-        defer { NotificationCenter.default.removeObserver(observer) }
 
         let handled = controller.handle(keyEvent: .numeric(2))
 
         XCTAssertTrue(handled)
-        wait(for: [hideExpectation], timeout: 0.1)
+        XCTAssertTrue(windowRouterSpy.hideRequests.isEmpty)
     }
 
-    func testHandleNumericKey_withValidIndex_executesActionAndPostsHideNotification() {
+    func testHandleNumericKey_withValidIndex_executesActionAndRequestsWindowHide() {
         let item = TestKillItem(title: "Kill Me", executeResult: true)
         controller.displayableItems = [item]
-
-        let hideExpectation = expectation(forNotification: .hideWindow, object: nil)
-        let observer = NotificationCenter.default.addObserver(
-            forName: .hideWindow,
-            object: nil,
-            queue: nil
-        ) { _ in
-            hideExpectation.fulfill()
-        }
-        defer { NotificationCenter.default.removeObserver(observer) }
 
         let handled = controller.handle(keyEvent: .numeric(1))
 
         XCTAssertTrue(handled)
         XCTAssertEqual(item.executionCount, 1)
-        wait(for: [hideExpectation], timeout: 0.1)
+        XCTAssertEqual(windowRouterSpy.hideRequests, [true])
     }
 
     func testHandleOptionFlagChanged_togglesForceKillMode() {
@@ -109,6 +91,15 @@ final class KillModeTests: XCTestCase {
         controller.forceKillEnabled = true
 
         await fulfillment(of: [expectation], timeout: 1.0)
+    }
+}
+
+@MainActor
+private final class WindowRouterSpy: LauncherWindowRouting {
+    var hideRequests: [Bool] = []
+
+    func hideMainWindow(shouldActivatePreviousApp: Bool) {
+        hideRequests.append(shouldActivatePreviousApp)
     }
 }
 

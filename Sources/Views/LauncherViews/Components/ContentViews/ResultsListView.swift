@@ -16,7 +16,8 @@ struct ResultsListView: View {
                             .id(index)
                             .onTapGesture {
                                 if viewModel.executeSelectedAction(at: index) {
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                                    viewModel.windowRouter.hideMainWindow(
+                                        shouldActivatePreviousApp: true)
                                 }
                             }
                     }

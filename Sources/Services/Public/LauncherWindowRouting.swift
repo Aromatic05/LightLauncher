@@ -5,6 +5,11 @@ protocol LauncherWindowRouting {
     func hideMainWindow(shouldActivatePreviousApp: Bool)
 }
 
+@MainActor
+protocol LauncherWindowRoutingAware: AnyObject {
+    var windowRouter: any LauncherWindowRouting { get set }
+}
+
 struct NotificationCenterWindowRouter: LauncherWindowRouting {
     private let notificationCenter: NotificationCenter
 

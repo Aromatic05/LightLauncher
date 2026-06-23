@@ -5,7 +5,9 @@ import SwiftUI
 
 // MARK: - 剪切板模式控制器
 @MainActor
-final class ClipModeController: NSObject, ModeStateController, ObservableObject {
+final class ClipModeController: NSObject, ModeStateController, ObservableObject,
+    LauncherWindowRoutingAware
+{
     typealias RestoreScheduler = (@escaping @Sendable () -> Void) -> Void
     typealias EventPoster = @Sendable (
         _ source: CGEventSource?,
@@ -38,6 +40,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
     static let shared = ClipModeController()
     private override init() {}
+    var windowRouter: any LauncherWindowRouting = NotificationCenterWindowRouter()
 
     // MARK: - ModeStateController Protocol Implementation
     // 1. 身份与元数据
@@ -91,7 +94,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
             return true
         case .enterWithModifiers(modifierRawValue: UInt(NSEvent.ModifierFlags.shift.rawValue)):
             // 处理带修饰键的 Enter
-            NotificationCenter.default.post(name: .hideWindow, object: nil)
+            windowRouter.hideMainWindow(shouldActivatePreviousApp: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 _ = self.executeInputAction(at: LauncherViewModel.shared.selectedIndex)
             }
