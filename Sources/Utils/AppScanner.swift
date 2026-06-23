@@ -24,23 +24,22 @@ class AppScanner: ObservableObject {
         isScanning = true
 
         Task {
-            let apps = await performScan()
-            // 使用 Set 去重，然后转换为数组并排序
-            let uniqueApps = Array(Set(apps))
-            self.applications = uniqueApps.sorted {
-                $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
+            self.applications = performScan()
             self.isScanning = false
         }
 
         Logger.shared.info("🔍 开始扫描应用程序...", owner: self)
     }
 
-    private func performScan() async -> [AppInfo] {
-        var foundApps: [AppInfo] = []
+    private func performScan() -> [AppInfo] {
+        scanApplications(in: searchDirectories)
+    }
+
+    func scanApplications(in directories: [String]) -> [AppInfo] {
+        var foundApps = Set<AppInfo>()
         let fileManager = FileManager.default
 
-        for directory in searchDirectories {
+        for directory in directories {
             guard fileManager.fileExists(atPath: directory) else { continue }
 
             let directoryURL = URL(fileURLWithPath: directory)
@@ -52,23 +51,21 @@ class AppScanner: ObservableObject {
                 )
             else { continue }
 
-            // Convert to async sequence to avoid async context issues
-            let urls = Array(enumerator.compactMap { $0 as? URL })
-
-            for fileURL in urls {
-                // Check if this is an .app bundle
+            for case let fileURL as URL in enumerator {
                 guard fileURL.pathExtension == "app" else { continue }
 
-                if let appInfo = await createAppInfo(from: fileURL) {
-                    foundApps.append(appInfo)
+                if let appInfo = createAppInfo(from: fileURL) {
+                    foundApps.insert(appInfo)
                 }
             }
         }
 
-        return foundApps
+        return foundApps.sorted {
+            $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
     }
 
-    private func createAppInfo(from appURL: URL) async -> AppInfo? {
+    private func createAppInfo(from appURL: URL) -> AppInfo? {
         let fileManager = FileManager.default
 
         // Check if the app bundle exists and is a directory
