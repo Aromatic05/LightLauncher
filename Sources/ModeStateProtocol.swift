@@ -25,6 +25,7 @@ protocol ModeStateController: AnyObject {
 
     // 新增：模式元信息属性
     var displayName: String { get }
+    var commandDisplayName: String { get }
     var iconName: String { get }
     var placeholder: String { get }
     var modeDescription: String? { get }
@@ -47,6 +48,10 @@ protocol ModeStateController: AnyObject {
 }
 
 extension ModeStateController {
+    var commandDisplayName: String {
+        displayName
+    }
+
     func commandReference(includeTrailingSpace: Bool = false) -> String {
         guard let prefix, !prefix.isEmpty else {
             return ""

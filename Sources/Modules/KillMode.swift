@@ -22,6 +22,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     var displayName: String {
         forceKillEnabled ? "Force Kill" : "Kill Process"
     }
+    let commandDisplayName: String = "Kill Process"
     let iconName: String = "xmark.circle"
     let placeholder: String = "Search running apps to kill..."
     let modeDescription: String? = "Force quit a running application"

@@ -46,6 +46,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     var displayName: String {
         isSnippetMode ? "Snippets" : "Clipboard History"
     }
+    let commandDisplayName: String = "Clipboard History"
     let iconName: String = "doc.on.clipboard"
     var placeholder: String {
         isSnippetMode ? "Search snippets..." : "Search clipboard history..."

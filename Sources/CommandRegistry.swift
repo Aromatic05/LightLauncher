@@ -78,7 +78,7 @@ final class CommandRegistry {
         let record = CommandRecord(
             prefix: prefix,
             mode: controller.mode,
-            displayName: controller.displayName,
+            displayName: controller.commandDisplayName,
             iconName: controller.iconName,
             description: controller.modeDescription,
             controller: controller
