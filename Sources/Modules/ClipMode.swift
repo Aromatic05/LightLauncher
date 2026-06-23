@@ -232,9 +232,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     nonisolated private static func defaultRestoreScheduler(_ action: @escaping @Sendable () -> Void) {
-        Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { _ in
-            action()
-        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: action)
     }
 
     nonisolated private static func defaultEventPoster(
