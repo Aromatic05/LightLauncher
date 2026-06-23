@@ -1,3 +1,5 @@
+import Combine
+import SwiftUI
 import XCTest
 @testable import LightLauncher
 
@@ -73,6 +75,50 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(windowRouterSpy.hideRequests, [true])
     }
 
+    func testCanInitializeIndependentInstanceWithInjectedDependencies() async {
+        let registry = FakeCommandRegistry()
+        let keyboardHandler = FakeKeyboardEventHandler()
+        let settingsProvider = FakeSettingsProvider(showCommandSuggestionsEnabled: false)
+        let routerSpy = WindowRouterSpy()
+        let launchController = TestModeController(mode: .launch, prefix: nil)
+        let killController = TestModeController(
+            mode: .kill,
+            prefix: "/k",
+            interceptedKeys: [.numeric(1)]
+        )
+
+        let commandRecord = CommandRecord(
+            prefix: "/k",
+            mode: .kill,
+            displayName: "Kill Process",
+            iconName: "xmark.circle",
+            description: "Kill a running process",
+            controller: killController
+        )
+        registry.commandLookup["/k finder"] = (commandRecord, "finder")
+
+        let independentViewModel = LauncherViewModel(
+            controllers: [launchController, killController],
+            commandRegistry: registry,
+            keyboardEventHandler: keyboardHandler,
+            settingsProvider: settingsProvider,
+            windowRouter: routerSpy
+        )
+
+        XCTAssertEqual(registry.registeredControllers, [.launch, .kill])
+
+        independentViewModel.searchText = "/k finder"
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(independentViewModel.mode, .kill)
+        XCTAssertEqual(killController.lastInput, "finder")
+        XCTAssertEqual(keyboardHandler.interceptionRulesHistory.last, [.numeric(1)])
+
+        keyboardHandler.subject.send(.escape)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(routerSpy.hideRequests, [true])
+    }
+
     private func resetViewModelState() {
         viewModel.searchText = ""
         viewModel.showCommandSuggestions = false
@@ -89,5 +135,97 @@ private final class WindowRouterSpy: LauncherWindowRouting {
 
     func hideMainWindow(shouldActivatePreviousApp: Bool) {
         hideRequests.append(shouldActivatePreviousApp)
+    }
+}
+
+@MainActor
+private final class FakeCommandRegistry: CommandRegistryManaging {
+    var registeredControllers: [LauncherMode] = []
+    var commandLookup: [String: (record: CommandRecord, arguments: String)] = [:]
+    var suggestions: [CommandRecord] = []
+
+    func register(_ controller: any ModeStateController) {
+        registeredControllers.append(controller.mode)
+    }
+
+    func findCommand(for text: String) -> (record: CommandRecord, arguments: String)? {
+        commandLookup[text]
+    }
+
+    func getCommandSuggestions() -> [CommandRecord] {
+        suggestions
+    }
+}
+
+@MainActor
+private final class FakeKeyboardEventHandler: KeyboardEventManaging {
+    let subject = PassthroughSubject<KeyEvent, Never>()
+    var interceptionRulesHistory: [Set<KeyEvent>] = []
+
+    var keyEvents: AnyPublisher<KeyEvent, Never> {
+        subject.eraseToAnyPublisher()
+    }
+
+    func updateInterceptionRules(for modeKeys: Set<KeyEvent>) {
+        interceptionRulesHistory.append(modeKeys)
+    }
+}
+
+@MainActor
+private final class FakeSettingsProvider: CommandSuggestionSettingsProviding {
+    let showCommandSuggestionsEnabled: Bool
+
+    init(showCommandSuggestionsEnabled: Bool) {
+        self.showCommandSuggestionsEnabled = showCommandSuggestionsEnabled
+    }
+}
+
+@MainActor
+private final class TestModeController: ModeStateController {
+    static let shared = TestModeController(mode: .launch, prefix: nil)
+
+    let mode: LauncherMode
+    let prefix: String?
+    let displayName: String
+    let iconName: String
+    let placeholder: String
+    let modeDescription: String?
+    let interceptedKeys: Set<KeyEvent>
+    let dataDidChange = PassthroughSubject<Void, Never>()
+    var displayableItems: [any DisplayableItem] = []
+    private(set) var lastInput: String?
+
+    init(
+        mode: LauncherMode,
+        prefix: String?,
+        displayName: String = "Test Mode",
+        iconName: String = "circle",
+        placeholder: String = "Test placeholder",
+        modeDescription: String? = "Test description",
+        interceptedKeys: Set<KeyEvent> = []
+    ) {
+        self.mode = mode
+        self.prefix = prefix
+        self.displayName = displayName
+        self.iconName = iconName
+        self.placeholder = placeholder
+        self.modeDescription = modeDescription
+        self.interceptedKeys = interceptedKeys
+    }
+
+    func handleInput(arguments: String) {
+        lastInput = arguments
+    }
+
+    func cleanup() {
+        lastInput = nil
+    }
+
+    func makeContentView() -> AnyView {
+        AnyView(EmptyView())
+    }
+
+    func getHelpText() -> [String] {
+        []
     }
 }

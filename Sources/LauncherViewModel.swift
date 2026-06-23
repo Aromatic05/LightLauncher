@@ -21,7 +21,7 @@ class LauncherViewModel: ObservableObject {
         didSet {
             setupControllerSubscription()
             let rules = activeController?.interceptedKeys ?? []
-            KeyboardEventHandler.shared.updateInterceptionRules(for: rules)
+            keyboardEventHandler.updateInterceptionRules(for: rules)
             refreshID = UUID()
         }
     }
@@ -37,6 +37,9 @@ class LauncherViewModel: ObservableObject {
             propagateWindowRouter()
         }
     }
+    private let commandRegistry: any CommandRegistryManaging
+    private let keyboardEventHandler: any KeyboardEventManaging
+    private let settingsProvider: any CommandSuggestionSettingsProviding
 
     var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []
@@ -50,24 +53,39 @@ class LauncherViewModel: ObservableObject {
     var isControlPressed: Bool = false
 
     // MARK: - Initialization
-    private init() {
-        setupControllersAndRegisterCommands()
+    init(
+        controllers allControllers: [any ModeStateController]? = nil,
+        commandRegistry: any CommandRegistryManaging = CommandRegistry.shared,
+        keyboardEventHandler: any KeyboardEventManaging = KeyboardEventHandler.shared,
+        settingsProvider: any CommandSuggestionSettingsProviding = SettingsManager.shared,
+        windowRouter: any LauncherWindowRouting = NotificationCenterWindowRouter()
+    ) {
+        self.commandRegistry = commandRegistry
+        self.keyboardEventHandler = keyboardEventHandler
+        self.settingsProvider = settingsProvider
+        self.windowRouter = windowRouter
+        setupControllersAndRegisterCommands(
+            controllers: allControllers ?? Self.defaultControllers()
+        )
         self.activeController = controllers[.launch]
         bindSearchText()
         setupKeyboardSubscription()
     }
 
-    private func setupControllersAndRegisterCommands() {
-        let allControllers: [any ModeStateController] = [
+    private static func defaultControllers() -> [any ModeStateController] {
+        [
             LaunchModeController.shared, KillModeController.shared,
             FileModeController.shared, PluginModeController.shared,
             SearchModeController.shared, WebModeController.shared,
             ClipModeController.shared, TerminalModeController.shared,
             KeywordModeController.shared,
         ]
+    }
+
+    private func setupControllersAndRegisterCommands(controllers allControllers: [any ModeStateController]) {
         allControllers.forEach { controller in
             controllers[controller.mode] = controller
-            CommandRegistry.shared.register(controller)
+            commandRegistry.register(controller)
         }
         propagateWindowRouter()
     }
@@ -83,7 +101,7 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Keyboard Handling
     func setupKeyboardSubscription() {
-        KeyboardEventHandler.shared.keyEventPublisher
+        keyboardEventHandler.keyEvents
             .receive(on: DispatchQueue.main)
             .sink { [weak self] event in
                 self?.handle(keyEvent: event)
@@ -182,7 +200,7 @@ class LauncherViewModel: ObservableObject {
             controllers[.launch]?.handleInput(arguments: "")
             return
         }
-        if let (record, arguments) = CommandRegistry.shared.findCommand(for: text) {
+        if let (record, arguments) = commandRegistry.findCommand(for: text) {
             modeSwitchIfNeeded(to: record.mode)
             if record.mode == .plugin {
                 if record.prefix == "/p" {
@@ -243,11 +261,11 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Command Suggestions (UNCHANGED)
     private func updateCommandSuggestions(for text: String, oldText: String) {
-        if SettingsManager.shared.showCommandSuggestions,
+        if settingsProvider.showCommandSuggestionsEnabled,
             let first = text.first,
             !first.isLetter
         {
-            let newSuggestions = LauncherCommand.getSuggestions(for: text)
+            let newSuggestions = LauncherCommand.getSuggestions(for: text, using: commandRegistry)
             if self.commandSuggestions.map({ $0.prefix }) != newSuggestions.map({ $0.prefix }) {
                 self.commandSuggestions = newSuggestions
             }

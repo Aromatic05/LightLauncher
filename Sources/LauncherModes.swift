@@ -42,14 +42,17 @@ struct LauncherCommand {
      * @return 返回一个 CommandRecord 数组，可直接用于UI渲染。
      */
     @MainActor
-    static func getSuggestions(for text: String) -> [CommandRecord] {
+    static func getSuggestions(
+        for text: String,
+        using registry: any CommandRegistryManaging = CommandRegistry.shared
+    ) -> [CommandRecord] {
         guard let firstChar = text.first else {
             return []
         }
         guard !firstChar.isLetter else {
             return []
         }
-        let allCommands = CommandRegistry.shared.getCommandSuggestions()
+        let allCommands = registry.getCommandSuggestions()
         if text.count == 1 && firstChar == "/" {
             return allCommands
         }
