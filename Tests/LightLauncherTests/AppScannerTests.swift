@@ -1,7 +1,6 @@
 import XCTest
 @testable import LightLauncher
 
-@MainActor
 final class AppScannerTests: XCTestCase {
     private var testDirectory: URL!
 
@@ -20,21 +19,21 @@ final class AppScannerTests: XCTestCase {
         try super.tearDownWithError()
     }
 
-    func testScanApplications_sortsByNameAndDeduplicatesAcrossDirectories() throws {
-        let scanner = AppScanner()
+    func testScanApplications_sortsByNameAndDeduplicatesAcrossDirectories() async throws {
         try createAppBundle(named: "Zeta.app", bundleName: "Zeta", in: testDirectory)
         try createAppBundle(named: "Alpha.app", bundleName: "Alpha", in: testDirectory)
+        let directoryPath = testDirectory.path
 
-        let applications = scanner.scanApplications(
-            in: [testDirectory.path, testDirectory.path]
-        )
+        let applications = await MainActor.run {
+            let scanner = AppScanner()
+            return scanner.scanApplications(in: [directoryPath, directoryPath])
+        }
 
         XCTAssertEqual(applications.map(\.name), ["Alpha", "Zeta"])
         XCTAssertEqual(Set(applications.map(\.url.path)).count, 2)
     }
 
-    func testScanApplications_fallsBackToBundleDisplayNameAndFilename() throws {
-        let scanner = AppScanner()
+    func testScanApplications_fallsBackToBundleDisplayNameAndFilename() async throws {
         let displayNameDirectory = testDirectory.appendingPathComponent("Nested")
         try FileManager.default.createDirectory(at: displayNameDirectory, withIntermediateDirectories: true)
 
@@ -50,8 +49,12 @@ final class AppScannerTests: XCTestCase {
             bundleDisplayName: nil,
             in: displayNameDirectory
         )
+        let directoryPath = testDirectory.path
 
-        let applications = scanner.scanApplications(in: [testDirectory.path])
+        let applications = await MainActor.run {
+            let scanner = AppScanner()
+            return scanner.scanApplications(in: [directoryPath])
+        }
 
         XCTAssertEqual(applications.map(\.name), ["Display App", "FilenameFallback"])
     }
