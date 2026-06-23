@@ -40,6 +40,28 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.searchText, longText)
     }
 
+    func testEnterKey_appliesSelectedCommandSuggestion() async {
+        let command = CommandRecord(
+            prefix: "/s",
+            mode: .search,
+            displayName: "Web Search",
+            iconName: "globe",
+            description: "Search the web with your default engine",
+            controller: SearchModeController.shared
+        )
+
+        viewModel.commandSuggestions = [command]
+        viewModel.showCommandSuggestions = true
+        viewModel.selectedIndex = 0
+
+        KeyboardEventHandler.shared.keyEventPublisher.send(.enter)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.searchText, "/s ")
+        XCTAssertFalse(viewModel.showCommandSuggestions)
+        XCTAssertTrue(viewModel.commandSuggestions.isEmpty)
+    }
+
     private func resetViewModelState() {
         viewModel.searchText = ""
         viewModel.showCommandSuggestions = false

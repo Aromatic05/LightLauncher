@@ -3,6 +3,8 @@ import SwiftUI
 
 // MARK: - 增强命令建议视图
 struct CommandSuggestionsView: View {
+    static let selectionHintText = "Enter 选择 • ↑↓ 导航"
+
     // 【修改】接收的数据类型从 [LauncherCommand] 变为 [CommandRecord]
     let commands: [CommandRecord]
     @Binding var selectedIndex: Int
@@ -19,7 +21,7 @@ struct CommandSuggestionsView: View {
                     .fontWeight(.semibold)
                 Spacer()
                 if !commands.isEmpty {
-                    Text("Space 选择 • ↑↓ 导航")
+                    Text(Self.selectionHintText)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
