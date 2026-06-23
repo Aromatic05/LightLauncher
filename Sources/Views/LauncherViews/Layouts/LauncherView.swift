@@ -4,7 +4,6 @@ import SwiftUI
 
 struct LauncherView: View {
     @ObservedObject var viewModel: LauncherViewModel
-    @State private var isOurWindowKey: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,7 +14,7 @@ struct LauncherView: View {
             SearchBoxView(
                 searchText: $viewModel.searchText,
                 mode: viewModel.mode,
-                isWindowKey: isOurWindowKey,
+                isWindowKey: viewModel.isLauncherWindowKey,
                 onClear: {
                     viewModel.clearSearch()
                 }
@@ -45,20 +44,5 @@ struct LauncherView: View {
         .opacity(0.95)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) {
-            notification in
-            if notification.object is LauncherWindow {
-                isOurWindowKey = true
-            } else {
-                // 如果是其他窗口成为了 Key，那我们的窗口肯定就不是 Key 了
-                isOurWindowKey = false
-            }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) {
-            notification in
-            if notification.object is LauncherWindow {
-                isOurWindowKey = false
-            }
-        }
     }
 }

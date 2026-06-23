@@ -15,6 +15,7 @@ class LauncherViewModel: ObservableObject {
     @Published var commandSuggestions: [CommandRecord] = []
     @Published var showCommandSuggestions = false
     @Published var shouldHideWindowAfterAction = true
+    @Published var isLauncherWindowKey = false
 
     private(set) var controllers: [LauncherMode: any ModeStateController] = [:]
     @Published private(set) var activeController: (any ModeStateController)? {

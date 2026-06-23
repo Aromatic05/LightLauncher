@@ -7,6 +7,7 @@ import SwiftUI
 class SnippetManager: ObservableObject {
     static let shared = SnippetManager()
     private let fileAccess = FileAccessService.shared
+    private let scheduledTasks = ScheduledTaskManager.shared
 
     @Published private(set) var snippets: [SnippetItem] = []
     private let maxSnippetsCount: Int
@@ -14,8 +15,8 @@ class SnippetManager: ObservableObject {
     private let snippetsFileURL: URL
 
     // 性能优化：批量保存
-    private var saveTimer: Timer?
     private var needsSave = false
+    private let saveTaskID = "SnippetManager.save"
 
     // 性能优化：搜索缓存
     private var searchCache: [String: [SnippetItem]] = [:]
@@ -135,18 +136,16 @@ class SnippetManager: ObservableObject {
     /// 延迟保存 - 避免频繁 I/O
     private func scheduleSave() {
         needsSave = true
-        saveTimer?.invalidate()
-        saveTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
-            Task {
-                await self.performSave()
-            }
+        scheduledTasks.addTask(id: saveTaskID, interval: 1.0, executeImmediately: false) {
+            self.performSave()
         }
     }
 
     /// 执行保存
-    private func performSave() async {
+    private func performSave() {
         guard needsSave else { return }
         needsSave = false
+        scheduledTasks.removeTask(id: saveTaskID)
 
         do {
             try fileAccess.ensureDirectory(snippetsDirectory)

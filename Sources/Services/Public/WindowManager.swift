@@ -90,6 +90,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
         window.makeFirstResponder(window.contentView)
+        viewModel.isLauncherWindowKey = true
         KeyboardEventHandler.shared.startMonitoring()
     }
 
@@ -162,6 +163,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
         isHidingWindow = true
 
         launcherWindow?.orderOut(nil)
+        viewModel?.isLauncherWindowKey = false
         viewModel?.clearSearch()
 
         inputMethodManager.restorePreviousInputMethod()
@@ -221,7 +223,14 @@ final class WindowManager: NSObject, NSWindowDelegate {
     /// 当窗口失去焦点时，自动隐藏。
     func windowDidResignKey(_ notification: Notification) {
         if notification.object as? NSWindow == launcherWindow {
+            viewModel?.isLauncherWindowKey = false
             hideMainWindow()
+        }
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        if notification.object as? NSWindow == launcherWindow {
+            viewModel?.isLauncherWindowKey = true
         }
     }
 }

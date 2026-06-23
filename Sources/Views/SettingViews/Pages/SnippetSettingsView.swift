@@ -7,15 +7,14 @@ struct SnippetSettingsView: View {
     @State private var editingSnippet: SnippetItem?
     @State private var searchText = ""
     @State private var filteredSnippets: [SnippetItem] = []
-    @State private var searchDebounceTimer: Timer?
+    @State private var searchTask: Task<Void, Never>?
 
     private func updateFilteredSnippets() {
-        // 去抖动：避免在用户输入时频繁搜索
-        searchDebounceTimer?.invalidate()
-        searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-            DispatchQueue.main.async {
-                doUpdateFilteredSnippets()
-            }
+        searchTask?.cancel()
+        searchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            doUpdateFilteredSnippets()
         }
     }
 
@@ -47,6 +46,9 @@ struct SnippetSettingsView: View {
         }
         .onChange(of: snippetManager.snippets) { _ in
             doUpdateFilteredSnippets()  // 数据变化时立即更新
+        }
+        .onDisappear {
+            searchTask?.cancel()
         }
         .sheet(isPresented: $showingAddSnippet) {
             SnippetEditView(snippet: nil) { newSnippet in
