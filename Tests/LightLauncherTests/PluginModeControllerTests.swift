@@ -33,6 +33,7 @@ final class PluginModeControllerTests: XCTestCase {
         XCTAssertEqual(pluginMode.mode, .plugin)
         XCTAssertEqual(pluginMode.prefix, "/p")
         XCTAssertEqual(pluginMode.displayName, "Plugins")
+        XCTAssertEqual(pluginMode.commandDisplayName, "Plugins")
         XCTAssertEqual(pluginMode.iconName, "puzzlepiece.extension")
         XCTAssertNotNil(pluginMode.placeholder)
     }
@@ -236,6 +237,38 @@ final class PluginModeControllerTests: XCTestCase {
         let activePlaceholder = pluginMode.placeholder
         XCTAssertNotNil(activePlaceholder)
     }
+
+    func testDisplayNameAndDescription_shouldChangeWithActivePlugin() async {
+        _ = createAndRegisterTestPlugin(
+            name: "test_display_name",
+            command: "displaytest",
+            displayName: "Display Test Plugin",
+            description: "Custom plugin description"
+        )
+
+        pluginMode.handleInput(arguments: "displaytest")
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertEqual(pluginMode.displayName, "Display Test Plugin")
+        XCTAssertEqual(pluginMode.modeDescription, "Custom plugin description")
+    }
+
+    func testCleanup_shouldRestoreDefaultDisplayNameAndDescription() async {
+        _ = createAndRegisterTestPlugin(
+            name: "cleanup_display_name",
+            command: "cleanupdisplay",
+            displayName: "Cleanup Display Plugin",
+            description: "Cleanup plugin description"
+        )
+
+        pluginMode.handleInput(arguments: "cleanupdisplay")
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        pluginMode.cleanup()
+
+        XCTAssertEqual(pluginMode.displayName, "Plugins")
+        XCTAssertEqual(pluginMode.modeDescription, "Extend functionality with plugins")
+    }
     
     // MARK: - 错误处理测试
     
@@ -333,13 +366,15 @@ final class PluginModeControllerTests: XCTestCase {
         name: String,
         command: String,
         script: String = "console.log('test');",
-        placeholder: String? = nil
+        placeholder: String? = nil,
+        displayName: String? = nil,
+        description: String = "Test plugin"
     ) -> Plugin {
         let manifest = PluginManifest(
             name: name,
             version: "1.0.0",
-            displayName: name.capitalized,
-            description: "Test plugin",
+            displayName: displayName ?? name.capitalized,
+            description: description,
             command: command,
             author: "Test Author",
             main: "main.js",

@@ -8,12 +8,17 @@ final class PluginModeController: ObservableObject, ModeStateController {
     // MARK: - ModeStateController Protocol Implementation
     let mode: LauncherMode = .plugin
     let prefix: String? = "/p"
-    let displayName: String = "Plugins"
+    var displayName: String {
+        currentPlugin?.manifest.displayName ?? "Plugins"
+    }
+    let commandDisplayName: String = "Plugins"
     let iconName: String = "puzzlepiece.extension"
     var placeholder: String {
         currentPlugin?.manifest.placeholder ?? "Enter plugin command..."
     }
-    var modeDescription: String? = "Extend functionality with plugins"
+    var modeDescription: String? {
+        currentPlugin?.description ?? "Extend functionality with plugins"
+    }
 
     let dataDidChange = PassthroughSubject<Void, Never>()
 
