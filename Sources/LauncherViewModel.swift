@@ -32,6 +32,7 @@ class LauncherViewModel: ObservableObject {
     private var previousSearchText = ""
     private var debounceWorkItem: DispatchWorkItem?
     let focusSearchField = PassthroughSubject<Void, Never>()
+    var windowRouter: any LauncherWindowRouting = NotificationCenterWindowRouter()
 
     var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []
@@ -103,12 +104,12 @@ class LauncherViewModel: ObservableObject {
                 applySelectedCommand(selectedCommand)
             } else {
                 if executeSelectedAction(at: selectedIndex) {
-                    NotificationCenter.default.post(name: .hideWindow, object: nil)
+                    windowRouter.hideMainWindow(shouldActivatePreviousApp: true)
                 }
             }
             return
         case .escape:
-            NotificationCenter.default.post(name: .hideWindow, object: nil)
+            windowRouter.hideMainWindow(shouldActivatePreviousApp: true)
             return
         default: break
         }

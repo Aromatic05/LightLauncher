@@ -36,6 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         LauncherViewModel.shared.switchController(from: nil, to: .launch)
         if let viewModel = viewModel {
             windowManager = WindowManager(viewModel: viewModel)
+            viewModel.windowRouter = windowManager!
         }
 
         setupStatusMenuManager()
