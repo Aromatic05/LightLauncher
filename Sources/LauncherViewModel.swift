@@ -32,11 +32,6 @@ class LauncherViewModel: ObservableObject {
     private var previousSearchText = ""
     private var debounceWorkItem: DispatchWorkItem?
     let focusSearchField = PassthroughSubject<Void, Never>()
-    var windowRouter: any LauncherWindowRouting = NotificationCenterWindowRouter() {
-        didSet {
-            propagateWindowRouter()
-        }
-    }
 
     var displayableItems: [any DisplayableItem] {
         activeController?.displayableItems ?? []
@@ -68,16 +63,6 @@ class LauncherViewModel: ObservableObject {
         allControllers.forEach { controller in
             controllers[controller.mode] = controller
             CommandRegistry.shared.register(controller)
-        }
-        propagateWindowRouter()
-    }
-
-    private func propagateWindowRouter() {
-        controllers.values.forEach { controller in
-            guard let routingAwareController = controller as? any LauncherWindowRoutingAware else {
-                return
-            }
-            routingAwareController.windowRouter = windowRouter
         }
     }
 
@@ -118,12 +103,12 @@ class LauncherViewModel: ObservableObject {
                 applySelectedCommand(selectedCommand)
             } else {
                 if executeSelectedAction(at: selectedIndex) {
-                    windowRouter.hideMainWindow(shouldActivatePreviousApp: true)
+                    NotificationCenter.default.post(name: .hideWindow, object: nil)
                 }
             }
             return
         case .escape:
-            windowRouter.hideMainWindow(shouldActivatePreviousApp: true)
+            NotificationCenter.default.post(name: .hideWindow, object: nil)
             return
         default: break
         }

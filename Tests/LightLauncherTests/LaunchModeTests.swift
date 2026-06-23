@@ -6,17 +6,16 @@ import XCTest
 @MainActor
 final class LaunchModeTests: XCTestCase {
     private let controller = LaunchModeController.shared
-    private let windowRouterSpy = WindowRouterSpy()
+    private let hideWindowRecorder = HideWindowNotificationRecorder()
 
     override func setUp() async throws {
         try await super.setUp()
         controller.cleanup()
-        controller.windowRouter = windowRouterSpy
+        hideWindowRecorder.reset()
     }
 
     override func tearDown() async throws {
         controller.cleanup()
-        controller.windowRouter = NotificationCenterWindowRouter()
         try await super.tearDown()
     }
 
@@ -26,10 +25,10 @@ final class LaunchModeTests: XCTestCase {
         let handled = controller.handle(keyEvent: .numeric(2))
 
         XCTAssertTrue(handled)
-        XCTAssertTrue(windowRouterSpy.hideRequests.isEmpty)
+        XCTAssertTrue(hideWindowRecorder.requests.isEmpty)
     }
 
-    func testHandleNumericKey_withValidIndex_executesActionAndRequestsWindowHide() {
+    func testHandleNumericKey_withValidIndex_executesActionAndPostsHideWindowNotification() {
         let item = TestLaunchItem(title: "Launch Me", executeResult: true)
         controller.displayableItems = [item]
 
@@ -37,16 +36,7 @@ final class LaunchModeTests: XCTestCase {
 
         XCTAssertTrue(handled)
         XCTAssertEqual(item.executionCount, 1)
-        XCTAssertEqual(windowRouterSpy.hideRequests, [true])
-    }
-}
-
-@MainActor
-private final class WindowRouterSpy: LauncherWindowRouting {
-    var hideRequests: [Bool] = []
-
-    func hideMainWindow(shouldActivatePreviousApp: Bool) {
-        hideRequests.append(shouldActivatePreviousApp)
+        XCTAssertEqual(hideWindowRecorder.requests, [true])
     }
 }
 

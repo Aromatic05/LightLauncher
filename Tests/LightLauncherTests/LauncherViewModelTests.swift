@@ -4,17 +4,15 @@ import XCTest
 @MainActor
 final class LauncherViewModelTests: XCTestCase {
     private let viewModel = LauncherViewModel.shared
-    private let windowRouterSpy = WindowRouterSpy()
+    private let hideWindowRecorder = HideWindowNotificationRecorder()
 
     override func setUp() async throws {
         try await super.setUp()
         resetViewModelState()
-        viewModel.windowRouter = windowRouterSpy
     }
 
     override func tearDown() async throws {
         resetViewModelState()
-        viewModel.windowRouter = NotificationCenterWindowRouter()
         try await super.tearDown()
     }
 
@@ -63,14 +61,14 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.searchText, "/s ")
         XCTAssertFalse(viewModel.showCommandSuggestions)
         XCTAssertTrue(viewModel.commandSuggestions.isEmpty)
-        XCTAssertTrue(windowRouterSpy.hideRequests.isEmpty)
+        XCTAssertTrue(hideWindowRecorder.requests.isEmpty)
     }
 
-    func testEscapeKey_requestsWindowHideThroughRouter() async {
+    func testEscapeKey_postsHideWindowNotification() async {
         KeyboardEventHandler.shared.keyEventPublisher.send(.escape)
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        XCTAssertEqual(windowRouterSpy.hideRequests, [true])
+        XCTAssertEqual(hideWindowRecorder.requests, [true])
     }
 
     private func resetViewModelState() {
@@ -79,15 +77,6 @@ final class LauncherViewModelTests: XCTestCase {
         viewModel.commandSuggestions = []
         viewModel.selectedIndex = 0
         viewModel.mode = .launch
-        windowRouterSpy.hideRequests = []
-    }
-}
-
-@MainActor
-private final class WindowRouterSpy: LauncherWindowRouting {
-    var hideRequests: [Bool] = []
-
-    func hideMainWindow(shouldActivatePreviousApp: Bool) {
-        hideRequests.append(shouldActivatePreviousApp)
+        hideWindowRecorder.reset()
     }
 }

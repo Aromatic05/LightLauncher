@@ -5,12 +5,9 @@ import Foundation
 import SwiftUI
 
 @MainActor
-final class KillModeController: NSObject, ModeStateController, ObservableObject,
-    LauncherWindowRoutingAware
-{
+final class KillModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = KillModeController()
     private override init() {}
-    var windowRouter: any LauncherWindowRouting = NotificationCenterWindowRouter()
     @Published var forceKillEnabled: Bool = false {
         didSet {
             guard forceKillEnabled != oldValue else { return }
@@ -48,7 +45,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject,
         switch keyEvent {
         case .numeric(let number) where number >= 1 && number <= 6:
             if selectKillAppByNumber(Int(number)) {
-                windowRouter.hideMainWindow(shouldActivatePreviousApp: true)
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
             return true
         case .optionFlagChanged:

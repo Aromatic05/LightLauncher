@@ -36,7 +36,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         LauncherViewModel.shared.switchController(from: nil, to: .launch)
         if let viewModel = viewModel {
             windowManager = WindowManager(viewModel: viewModel)
-            viewModel.windowRouter = windowManager!
         }
 
         setupStatusMenuManager()
@@ -145,15 +144,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func showSettingsWindow() {
         windowManager?.showSettingsWindow()
     }
-
-    private func hideWindow() {
-        windowManager?.hideMainWindow()
-    }
-
-    private func hideWindow(shouldActivatePreviousApp: Bool) {
-        windowManager?.hideMainWindow(shouldActivatePreviousApp: shouldActivatePreviousApp)
-    }
-
     /// **[已修改]** 更新热键现在只需要重新调用统一的设置方法。
     private func updateGlobalHotkey() {
         // 重新注册所有热键

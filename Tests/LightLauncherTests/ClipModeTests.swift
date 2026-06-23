@@ -5,19 +5,18 @@ import XCTest
 @MainActor
 final class ClipModeTests: XCTestCase {
     private let controller = ClipModeController.shared
-    private let windowRouterSpy = WindowRouterSpy()
+    private let hideWindowRecorder = HideWindowNotificationRecorder()
 
     override func setUp() async throws {
         try await super.setUp()
         controller.cleanup()
         controller.isSnippetMode = false
-        controller.windowRouter = windowRouterSpy
+        hideWindowRecorder.reset()
     }
 
     override func tearDown() async throws {
         controller.cleanup()
         controller.isSnippetMode = false
-        controller.windowRouter = NotificationCenterWindowRouter()
         try await super.tearDown()
     }
 
@@ -92,14 +91,14 @@ final class ClipModeTests: XCTestCase {
         XCTAssertFalse(controller.isSnippetMode)
     }
 
-    func testHandleShiftEnter_requestsWindowHideThroughRouter() {
+    func testHandleShiftEnter_postsHideWindowNotification() {
         let handled = controller.handle(
             keyEvent: .enterWithModifiers(
                 modifierRawValue: UInt(NSEvent.ModifierFlags.shift.rawValue))
         )
 
         XCTAssertTrue(handled)
-        XCTAssertEqual(windowRouterSpy.hideRequests, [true])
+        XCTAssertEqual(hideWindowRecorder.requests, [true])
     }
 
     func testGetHelpText_describesOptionToggleAndDirectPaste() {
@@ -144,14 +143,5 @@ final class ClipModeTests: XCTestCase {
 
         XCTAssertFalse(controller.isSnippetMode)
         XCTAssertTrue(controller.displayableItems.isEmpty)
-    }
-}
-
-@MainActor
-private final class WindowRouterSpy: LauncherWindowRouting {
-    var hideRequests: [Bool] = []
-
-    func hideMainWindow(shouldActivatePreviousApp: Bool) {
-        hideRequests.append(shouldActivatePreviousApp)
     }
 }

@@ -6,7 +6,7 @@ import SwiftUI
 /// 它封装了主启动器窗口和设置窗口的全部逻辑，并作为窗口的代理来响应事件。
 /// 通过将窗口管理逻辑集中于此，极大地简化了 AppDelegate 的职责。
 @MainActor
-final class WindowManager: NSObject, NSWindowDelegate, LauncherWindowRouting {
+final class WindowManager: NSObject, NSWindowDelegate {
     // MARK: - 属性
     private var launcherWindow: LauncherWindow?
     private var settingsWindow: NSWindow?

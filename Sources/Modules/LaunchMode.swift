@@ -20,12 +20,9 @@ struct AppMatch {
 
 // MARK: - 启动模式控制器
 @MainActor
-final class LaunchModeController: NSObject, ModeStateController, ObservableObject,
-    LauncherWindowRoutingAware
-{
+final class LaunchModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = LaunchModeController()
     private let systemCommandManager = SystemCommandManager.shared
-    var windowRouter: any LauncherWindowRouting = NotificationCenterWindowRouter()
 
     // 1. 身份与元数据
     let mode: LauncherMode = .launch
@@ -46,7 +43,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         case .numeric(let number) where number >= 1 && number <= 6:
             // 使用已存在的 selectAppByNumber 方法，该方法会做索引边界检查，避免数组越界导致崩溃
             if selectAppByNumber(Int(number)) {
-                windowRouter.hideMainWindow(shouldActivatePreviousApp: true)
+                NotificationCenter.default.post(name: .hideWindow, object: nil)
             }
             return true
         default:

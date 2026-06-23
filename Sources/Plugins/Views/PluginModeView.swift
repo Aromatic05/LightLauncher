@@ -41,8 +41,7 @@ struct PluginModeView: View {
                         .onTapGesture {
                             viewModel.selectedIndex = index
                             if viewModel.executeSelectedAction(at: index) {
-                                viewModel.windowRouter.hideMainWindow(
-                                    shouldActivatePreviousApp: true)
+                                NotificationCenter.default.post(name: .hideWindow, object: nil)
                             }
                         }
                     }
