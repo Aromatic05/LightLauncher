@@ -5,13 +5,12 @@ import SwiftUI
 class ClipboardManager {
     static let shared = ClipboardManager()
     private let fileAccess = FileAccessService.shared
+    private let scheduledTasks = ScheduledTaskManager.shared
 
     private let pasteboard = NSPasteboard.general
     private var changeCount: Int
     private(set) var history: [ClipboardItem] = []
     private let maxHistoryCount: Int
-    private var timer: Timer?
-    private var saveTimer: Timer?
     private var dirty: Bool = false
     private let saveInterval: TimeInterval = 10.0  // 可调整保存间隔（秒）
     private let historyDirectory: URL
@@ -19,6 +18,8 @@ class ClipboardManager {
     private let archiveDirectory: URL
     private let archiveFilePrefix = "archive_"
     private let archiveFileExtension = "json"
+    private let monitorTaskID = "ClipboardManager.monitor"
+    private let saveTaskID = "ClipboardManager.save"
 
     private init(maxHistoryCount: Int = 50) {
         self.maxHistoryCount = maxHistoryCount
@@ -34,10 +35,10 @@ class ClipboardManager {
     }
 
     deinit {
-        Task { [self] in
-            await stopMonitoring()
-            await forceSaveHistory()
-            await stopSaveTimer()
+        Task { @MainActor [self] in
+            stopMonitoring()
+            forceSaveHistory()
+            stopSaveTimer()
         }
     }
 
@@ -45,35 +46,20 @@ class ClipboardManager {
 
     /// 开始监听剪贴板变化
     func startMonitoring() {
-        // 检查剪贴板权限（虽然通常不需要特殊权限，但保持一致性）
-        guard PermissionManager.shared.checkClipboardPermissions() else {
-            Task { @MainActor in
-                let alert = NSAlert()
-                alert.alertStyle = .informational
-                alert.messageText = "剪贴板功能"
-                alert.informativeText = "剪贴板历史记录功能已启用。如果遇到问题，请检查应用权限设置。"
-                alert.addButton(withTitle: "确定")
-                alert.runModal()
-            }
-            return
-        }
+        guard PermissionManager.shared.checkClipboardPermissions() else { return }
 
-        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { [self] in
-                await self.checkPasteboard()
-            }
+        scheduledTasks.addTask(id: monitorTaskID, interval: 0.5, executeImmediately: false) {
+            self.checkPasteboard()
         }
     }
 
     /// 停止监听
-    func stopMonitoring() async {
-        timer?.invalidate()
-        timer = nil
+    func stopMonitoring() {
+        scheduledTasks.removeTask(id: monitorTaskID)
     }
 
     /// 检查剪贴板内容是否有变化
-    private func checkPasteboard() async {
+    private func checkPasteboard() {
         if pasteboard.changeCount != changeCount {
             changeCount = pasteboard.changeCount
             // 优先处理文件
@@ -357,29 +343,23 @@ class ClipboardManager {
     }
 
     private func startSaveTimer() {
-        saveTimer = Timer.scheduledTimer(withTimeInterval: saveInterval, repeats: true) {
-            [weak self] _ in
-            guard let self else { return }
-            Task { [self] in
-                await self.periodicSaveHistory()
-            }
+        scheduledTasks.addTask(id: saveTaskID, interval: saveInterval, executeImmediately: false) {
+            self.periodicSaveHistory()
         }
     }
 
-    @MainActor
-    private func stopSaveTimer() async {
-        saveTimer?.invalidate()
-        saveTimer = nil
+    private func stopSaveTimer() {
+        scheduledTasks.removeTask(id: saveTaskID)
     }
 
-    private func periodicSaveHistory() async {
+    private func periodicSaveHistory() {
         if dirty {
             saveHistory()
             dirty = false
         }
     }
 
-    private func forceSaveHistory() async {
+    private func forceSaveHistory() {
         saveHistory()
         dirty = false
     }
