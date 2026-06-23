@@ -29,7 +29,7 @@ final class ModePrefixConsistencyTests: XCTestCase {
     func testTerminalHelpText_usesActualPrefix() {
         XCTAssertEqual(
             TerminalModeController.shared.getHelpText().first,
-            "Type after > to enter a shell command"
+            "在 > 后输入终端命令"
         )
     }
 

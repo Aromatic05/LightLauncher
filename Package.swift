@@ -25,7 +25,8 @@ let package = Package(
         .testTarget(
             name: "LightLauncherTests",
             dependencies: ["LightLauncher"],
-            path: "Tests/LightLauncherTests"
+            path: "Tests/LightLauncherTests",
+            exclude: ["PLUGIN_TESTS_README.md"]
         )
     ]
 )

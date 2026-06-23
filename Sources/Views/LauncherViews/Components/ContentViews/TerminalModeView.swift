@@ -7,7 +7,7 @@ struct TerminalModeView: View {
         VStack(spacing: 4) {
             // 历史记录标题和清空按钮
             HStack {
-                Text("终端历史")
+                Text("终端命令历史")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Spacer()

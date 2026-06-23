@@ -6,14 +6,14 @@ struct KillModeView: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            // 标题和强制杀死切换按钮
+            // 标题和强制结束切换按钮
             HStack {
                 Text("结束进程")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Spacer()
                 Toggle(isOn: $killController.forceKillEnabled) {
-                    Text(killController.forceKillEnabled ? "强制杀死" : "正常结束")
+                    Text(killController.forceKillEnabled ? "强制结束" : "普通结束")
                         .font(.caption)
                         .foregroundColor(killController.forceKillEnabled ? .red : .blue)
                 }

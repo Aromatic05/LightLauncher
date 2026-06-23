@@ -3,7 +3,7 @@ import Combine
 import Foundation
 import SwiftUI
 
-// MARK: - 剪切板模式控制器
+// MARK: - 剪贴板模式控制器
 @MainActor
 final class ClipModeController: NSObject, ModeStateController, ObservableObject {
     typealias RestoreScheduler = (@escaping @Sendable () -> Void) -> Void
@@ -44,17 +44,17 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     let mode: LauncherMode = .clip
     let prefix: String? = "/v"
     var displayName: String {
-        isSnippetMode ? "Snippets" : "Clipboard History"
+        isSnippetMode ? "片段" : "剪贴板历史"
     }
-    let commandDisplayName: String = "Clipboard History"
+    let commandDisplayName: String = "剪贴板历史"
     let iconName: String = "doc.on.clipboard"
     var placeholder: String {
-        isSnippetMode ? "Search snippets..." : "Search clipboard history..."
+        isSnippetMode ? "搜索片段..." : "搜索剪贴板历史..."
     }
     var modeDescription: String? {
         isSnippetMode
-            ? "Browse, copy, and paste your saved snippets"
-            : "Browse and paste clipboard history (text/files)"
+            ? "浏览、复制或直接粘贴已保存的片段"
+            : "浏览剪贴板历史，支持文本和文件"
     }
 
     @Published var displayableItems: [any DisplayableItem] = [] {
@@ -110,7 +110,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         return SnippetManager.shared.searchSnippets(query: query)
     }
 
-    /// 直接输入选中内容（使用辅助功能 API），而不是复制到剪切板
+    /// 直接粘贴选中内容，而不是仅复制到剪贴板
     func executeInputAction(at index: Int) -> Bool {
         guard index >= 0 && index < self.displayableItems.count else {
             return false
@@ -132,7 +132,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         return false
     }
 
-    /// 使用 Accessibility API 将文本直接输入到当前聚焦控件
+    /// 使用临时剪贴板和 Cmd+V 将文本直接粘贴到当前聚焦控件
     static func simulateTextInput(
         _ text: String,
         pasteboard: NSPasteboard = .general,
@@ -174,7 +174,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         //     return AnyView(EmptyStateView(
         //         icon: "doc.on.clipboard",
         //         iconColor: hasSearchText ? .secondary.opacity(0.5) : .accentColor.opacity(0.7),
-        //         title: hasSearchText ? "未找到剪切板内容" : "暂无剪切板历史",
+        //         title: hasSearchText ? "未找到剪贴板内容" : "暂无剪贴板历史",
         //         description: hasSearchText ? "请尝试其他搜索关键词" : nil,
         //         helpTexts: getHelpText()
         //     ))
@@ -184,20 +184,20 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     func getHelpText() -> [String] {
         if isSnippetMode {
             return [
-                "Browse and copy saved snippets",
-                "Press Enter to copy the selected snippet",
-                "Press Shift+Enter to paste the selected snippet directly",
-                "Press Option to switch back to clipboard history",
-                "Type to filter snippets, press Esc to exit",
+                "浏览并复制已保存的片段",
+                "按 Enter 将选中片段复制到剪贴板",
+                "按 Shift+Enter 直接粘贴选中片段",
+                "按 Option 切回剪贴板历史",
+                "输入关键词过滤片段，按 Esc 退出",
             ]
         }
 
         return [
-            "Browse and paste clipboard history",
-            "Press Enter to copy the selected item",
-            "Press Shift+Enter to paste directly",
-            "Press Option to switch between clipboard history and snippets",
-            "Type to filter history, press Esc to exit",
+            "浏览剪贴板历史",
+            "按 Enter 将选中项目复制到剪贴板",
+            "按 Shift+Enter 直接粘贴选中项目",
+            "按 Option 在剪贴板历史和片段间切换",
+            "输入关键词过滤历史，按 Esc 退出",
         ]
     }
 

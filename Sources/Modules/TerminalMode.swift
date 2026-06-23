@@ -14,10 +14,10 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
 
     let mode: LauncherMode = .terminal
     let prefix: String? = ">"
-    let displayName: String = "Terminal"
+    let displayName: String = "终端执行"
     let iconName: String = "terminal"
-    let placeholder: String = "Enter terminal command to execute..."
-    let modeDescription: String? = "Execute shell commands"
+    let placeholder: String = "输入要执行的终端命令..."
+    let modeDescription: String? = "在终端中执行命令"
 
     @Published var currentQuery: String = ""
 
@@ -46,9 +46,9 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
         let trigger = prefix ?? ">"
 
         return [
-            "Type after \(trigger) to enter a shell command",
-            "Press Enter to run the command in your terminal",
-            "Press Esc to exit",
+            "在 \(trigger) 后输入终端命令",
+            "按 Enter 在终端中执行命令",
+            "按 Esc 退出",
         ]
     }
 

@@ -12,6 +12,24 @@ final class READMEConsistencyTests: XCTestCase {
         XCTAssertFalse(readme.contains("- `/t` + 命令 → 执行终端命令"))
     }
 
+    func testReadmeDocumentsClipboardAndPluginPrefixes() throws {
+        let readme = try loadREADME()
+
+        XCTAssertTrue(readme.contains("### 📋 **剪贴板历史** (`/v`)"))
+        XCTAssertTrue(readme.contains("- `/v` + 关键词 → 搜索剪贴板历史"))
+        XCTAssertTrue(readme.contains("### 🧩 **插件模式** (`/p`)"))
+        XCTAssertTrue(readme.contains("- `/p` + 插件命令 → 调用插件"))
+    }
+
+    func testReadmeUsesCurrentModesEnabledConfigShape() throws {
+        let readme = try loadREADME()
+
+        XCTAssertTrue(readme.contains("  enabled:\n    kill: true"))
+        XCTAssertTrue(readme.contains("    clip: true"))
+        XCTAssertTrue(readme.contains("    plugin: true"))
+        XCTAssertFalse(readme.contains("killModeEnabled: true"))
+    }
+
     func testReadmeDoesNotClaimUnsupportedEncryptedStorage() throws {
         let readme = try loadREADME()
 

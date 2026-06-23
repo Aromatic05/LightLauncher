@@ -67,7 +67,28 @@ final class KillModeTests: XCTestCase {
     }
 
     func testGetHelpText_describesOptionToggle() {
-        XCTAssertTrue(controller.getHelpText().contains("Press Option to toggle force kill"))
+        XCTAssertEqual(
+            controller.getHelpText(),
+            [
+                "输入应用名过滤运行中的应用",
+                "按 Enter 结束选中的进程",
+                "按 Option 在普通结束和强制结束间切换",
+                "按 Esc 退出",
+            ]
+        )
+    }
+
+    func testDefaultCopy_usesUnifiedChineseTerms() {
+        XCTAssertEqual(controller.displayName, "结束进程")
+        XCTAssertEqual(controller.commandDisplayName, "结束进程")
+        XCTAssertEqual(controller.placeholder, "搜索运行中的应用...")
+        XCTAssertEqual(controller.modeDescription, "结束正在运行的应用")
+    }
+
+    func testForceKillCopy_usesForceEndTerm() {
+        controller.forceKillEnabled = true
+
+        XCTAssertEqual(controller.displayName, "强制结束")
     }
 
     func testCleanup_resetsForceKillMode() {
@@ -81,7 +102,7 @@ final class KillModeTests: XCTestCase {
     }
 
     func testForceKillToggle_publishesDataDidChange() async {
-        let expectation = XCTestExpectation(description: "force kill change published")
+        let expectation = XCTestExpectation(description: "force end change published")
         let cancellable = controller.dataDidChange.sink {
             expectation.fulfill()
         }

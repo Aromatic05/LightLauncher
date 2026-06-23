@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// 剪切板历史记录项
+/// 剪贴板历史记录项
 enum ClipboardItem: Codable, Equatable, DisplayableItem {
     case text(String)
     case file(URL)

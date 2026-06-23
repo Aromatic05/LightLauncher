@@ -32,10 +32,11 @@ final class PluginModeControllerTests: XCTestCase {
     func testModeProperties_shouldHaveCorrectValues() {
         XCTAssertEqual(pluginMode.mode, .plugin)
         XCTAssertEqual(pluginMode.prefix, "/p")
-        XCTAssertEqual(pluginMode.displayName, "Plugins")
-        XCTAssertEqual(pluginMode.commandDisplayName, "Plugins")
+        XCTAssertEqual(pluginMode.displayName, "插件")
+        XCTAssertEqual(pluginMode.commandDisplayName, "插件模式")
         XCTAssertEqual(pluginMode.iconName, "puzzlepiece.extension")
-        XCTAssertNotNil(pluginMode.placeholder)
+        XCTAssertEqual(pluginMode.placeholder, "输入插件命令...")
+        XCTAssertEqual(pluginMode.modeDescription, "通过插件扩展更多功能")
     }
     
     func testCleanup_shouldResetState() {
@@ -59,7 +60,7 @@ final class PluginModeControllerTests: XCTestCase {
         let helpText = pluginMode.getHelpText()
         
         XCTAssertFalse(helpText.isEmpty)
-        XCTAssertTrue(helpText.first?.contains("Plugins") ?? false)
+        XCTAssertEqual(helpText.first, "可用插件:")
     }
     
     // MARK: - 输入处理测试
@@ -85,7 +86,7 @@ final class PluginModeControllerTests: XCTestCase {
         
         // 应该显示未找到的消息
         if let firstItem = items.first as? PluginItem {
-            XCTAssertTrue(firstItem.title.contains("not found") || firstItem.title.contains("Plugin"))
+            XCTAssertTrue(firstItem.title.contains("未找到插件命令"))
         }
     }
 
@@ -96,7 +97,7 @@ final class PluginModeControllerTests: XCTestCase {
 
         let firstItem = pluginMode.displayableItems.first as? PluginItem
 
-        XCTAssertEqual(firstItem?.subtitle, "Type '/p' to see available plugins")
+        XCTAssertEqual(firstItem?.subtitle, "输入 '/p' 查看可用插件")
     }
     
     func testHandleInput_withValidCommand_shouldActivatePlugin() async {
@@ -299,8 +300,8 @@ final class PluginModeControllerTests: XCTestCase {
 
         pluginMode.cleanup()
 
-        XCTAssertEqual(pluginMode.displayName, "Plugins")
-        XCTAssertEqual(pluginMode.modeDescription, "Extend functionality with plugins")
+        XCTAssertEqual(pluginMode.displayName, "插件")
+        XCTAssertEqual(pluginMode.modeDescription, "通过插件扩展更多功能")
     }
     
     // MARK: - 错误处理测试

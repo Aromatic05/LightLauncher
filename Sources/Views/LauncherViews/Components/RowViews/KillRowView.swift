@@ -51,7 +51,7 @@ struct RunningAppRowView: View {
                     .foregroundColor(isSelected ? .white : .primary)
                     .lineLimit(1)
 
-                Text(app.isHidden ? "Hidden" : "Running")
+                Text(app.isHidden ? "已隐藏" : "运行中")
                     .font(.system(size: 12))
                     .foregroundColor(
                         isSelected ? .white.opacity(0.8) : (app.isHidden ? .orange : .green))
@@ -64,7 +64,7 @@ struct RunningAppRowView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
-                    Text("close")
+                    Text(KillModeController.shared.forceKillEnabled ? "强制结束" : "结束")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                 }

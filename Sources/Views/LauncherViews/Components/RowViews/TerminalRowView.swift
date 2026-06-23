@@ -104,7 +104,7 @@ struct TerminalCurrentCommandRowView: View {
                 Text(command.isEmpty ? "..." : command)
                     .font(.system(size: 14))
                     .lineLimit(1)
-                Text("按回车执行命令")
+                Text("按 Enter 在终端中执行")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

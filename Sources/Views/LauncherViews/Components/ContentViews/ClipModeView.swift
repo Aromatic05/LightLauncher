@@ -13,7 +13,7 @@ struct ClipModeView: View {
                 // 顶部模式切换和清空按钮
                 HStack {
                     Button(action: { clipController.isSnippetMode = false }) {
-                        Text("剪切板")
+                        Text("剪贴板")
                             .fontWeight(clipController.isSnippetMode ? .regular : .bold)
                             .foregroundColor(
                                 clipController.isSnippetMode ? .secondary : .accentColor)

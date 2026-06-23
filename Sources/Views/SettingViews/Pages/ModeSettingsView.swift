@@ -47,12 +47,12 @@ struct ModeSettingsView: View {
 
                 // 模式设置组
                 VStack(spacing: 32) {
-                    // 关闭模式
+                    // 结束进程模式
                     ModeSettingSection(
-                        title: KillModeController.shared.settingsTitle("关闭模式"),
+                        title: KillModeController.shared.settingsTitle("结束进程"),
                         icon: "xmark.circle",
                         iconColor: .red,
-                        description: "快速关闭运行中的应用程序",
+                        description: "搜索并结束运行中的应用",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["kill"] ?? true },
                             set: {
@@ -69,7 +69,8 @@ struct ModeSettingsView: View {
                                 .font(.headline)
                                 .fontWeight(.semibold)
                             VStack(alignment: .leading, spacing: 6) {
-                                Text("• 搜索并选择要关闭的应用")
+                                Text("• 搜索并选择要结束的应用")
+                                Text("• 按 Option 在普通结束和强制结束间切换")
                                 Text("• 使用数字键 1-6 快速选择")
                                 Text(
                                     "• 删除 \(KillModeController.shared.commandReference()) 前缀自动返回启动模式"
@@ -87,7 +88,7 @@ struct ModeSettingsView: View {
                         title: ClipModeController.shared.settingsTitle("剪贴板模式"),
                         icon: "doc.on.clipboard",
                         iconColor: .purple,
-                        description: "快速管理和粘贴剪贴板历史",
+                        description: "管理剪贴板历史和片段，支持复制或直接粘贴",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["clip"] ?? true },
                             set: {
@@ -100,9 +101,13 @@ struct ModeSettingsView: View {
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("管理最近的剪贴板内容，快速粘贴")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("• 按 Enter 将选中项目复制到剪贴板")
+                                Text("• 按 Shift+Enter 直接粘贴选中项目")
+                                Text("• 按 Option 在剪贴板历史和片段间切换")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                         }
                     }
 
@@ -134,7 +139,7 @@ struct ModeSettingsView: View {
                         title: PluginModeController.shared.settingsTitle("插件模式"),
                         icon: "puzzlepiece.extension",
                         iconColor: .teal,
-                        description: "通过插件扩展更多功能",
+                        description: "输入插件命令，调用自定义插件能力",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["plugin"] ?? true },
                             set: {
@@ -147,9 +152,12 @@ struct ModeSettingsView: View {
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("管理和调用自定义插件")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("• 输入 \(PluginModeController.shared.commandReference()) 查看可用插件")
+                                Text("• 选择插件后继续输入参数")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                         }
                     }
 
@@ -327,7 +335,7 @@ struct ModeSettingsView: View {
                         title: TerminalModeController.shared.settingsTitle("终端执行"),
                         icon: "terminal",
                         iconColor: .orange,
-                        description: "在终端中执行命令",
+                        description: "输入终端命令，并在所选终端应用中执行",
                         isEnabled: Binding(
                             get: { settingsManager.modeEnabled["terminal"] ?? true },
                             set: {
@@ -340,6 +348,15 @@ struct ModeSettingsView: View {
                         }
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(
+                                    "• 输入 \(TerminalModeController.shared.commandReference(includeTrailingSpace: true))后输入终端命令"
+                                )
+                                Text("• 按 Enter 在终端中执行命令")
+                            }
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+
                             Text("终端应用设置：")
                                 .font(.headline)
                                 .fontWeight(.semibold)

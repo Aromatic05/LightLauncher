@@ -16,9 +16,9 @@ extension PermissionManager {
         return hasPermission(for: .fullDiskAccess)
     }
 
-    /// 检查剪切板管理所需的权限
+    /// 检查剪贴板管理所需的权限
     func checkClipboardPermissions() -> Bool {
-        // 剪切板访问通常不需要特殊权限，但可以扩展
+        // 剪贴板访问通常不需要特殊权限，但可以扩展
         return true
     }
 

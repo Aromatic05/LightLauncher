@@ -5,7 +5,7 @@ enum AppConfigDefaults {
     // 默认自定义快捷键配置
     static let customHotKeys: [CustomHotKeyConfig] = [
         CustomHotKeyConfig(
-            name: "剪切板",
+            name: "剪贴板",
             hotkey: HotKey(keyCode: UInt32(kVK_ANSI_V), option: true),
             text: "/v "),
         CustomHotKeyConfig(

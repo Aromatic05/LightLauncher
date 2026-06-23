@@ -9,15 +9,15 @@ final class PluginModeController: ObservableObject, ModeStateController {
     let mode: LauncherMode = .plugin
     let prefix: String? = "/p"
     var displayName: String {
-        currentPlugin?.manifest.displayName ?? "Plugins"
+        currentPlugin?.manifest.displayName ?? "插件"
     }
-    let commandDisplayName: String = "Plugins"
+    let commandDisplayName: String = "插件模式"
     let iconName: String = "puzzlepiece.extension"
     var placeholder: String {
-        currentPlugin?.manifest.placeholder ?? "Enter plugin command..."
+        currentPlugin?.manifest.placeholder ?? "输入插件命令..."
     }
     var modeDescription: String? {
-        currentPlugin?.description ?? "Extend functionality with plugins"
+        currentPlugin?.description ?? "通过插件扩展更多功能"
     }
 
     let dataDidChange = PassthroughSubject<Void, Never>()
@@ -53,9 +53,9 @@ final class PluginModeController: ObservableObject, ModeStateController {
 
     func getHelpText() -> [String] {
         let plugins = pluginManager.getEnabledPlugins()
-        var helpTexts = ["Available Plugins:"]
+        var helpTexts = ["可用插件:"]
         if plugins.isEmpty {
-            helpTexts.append("- No plugins available.")
+            helpTexts.append("- 暂无可用插件。")
         } else {
             plugins.forEach { helpTexts.append("- \($0.command): \($0.description)") }
         }
@@ -125,8 +125,8 @@ final class PluginModeController: ObservableObject, ModeStateController {
 
     private func showPluginNotFound(command: String) {
         let item = PluginItem(
-            title: "Plugin command not found: \(command)",
-            subtitle: "Type '\(commandReference())' to see available plugins",
+            title: "未找到插件命令：\(command)",
+            subtitle: "输入 '\(commandReference())' 查看可用插件",
             iconName: "questionmark.circle",
             action: nil
         )

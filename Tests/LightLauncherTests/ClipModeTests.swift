@@ -104,18 +104,24 @@ final class ClipModeTests: XCTestCase {
     func testGetHelpText_describesOptionToggleAndDirectPaste() {
         let helpText = controller.getHelpText()
 
-        XCTAssertTrue(helpText.contains("Press Shift+Enter to paste directly"))
-        XCTAssertTrue(
-            helpText.contains("Press Option to switch between clipboard history and snippets")
+        XCTAssertEqual(
+            helpText,
+            [
+                "浏览剪贴板历史",
+                "按 Enter 将选中项目复制到剪贴板",
+                "按 Shift+Enter 直接粘贴选中项目",
+                "按 Option 在剪贴板历史和片段间切换",
+                "输入关键词过滤历史，按 Esc 退出",
+            ]
         )
     }
 
     func testSnippetMode_updatesDisplayNamePlaceholderAndDescription() {
         controller.isSnippetMode = true
 
-        XCTAssertEqual(controller.displayName, "Snippets")
-        XCTAssertEqual(controller.placeholder, "Search snippets...")
-        XCTAssertEqual(controller.modeDescription, "Browse, copy, and paste your saved snippets")
+        XCTAssertEqual(controller.displayName, "片段")
+        XCTAssertEqual(controller.placeholder, "搜索片段...")
+        XCTAssertEqual(controller.modeDescription, "浏览、复制或直接粘贴已保存的片段")
     }
 
     func testSnippetMode_helpText_matchesSnippetBehavior() {
@@ -123,16 +129,23 @@ final class ClipModeTests: XCTestCase {
 
         let helpText = controller.getHelpText()
 
-        XCTAssertTrue(helpText.contains("Browse and copy saved snippets"))
-        XCTAssertTrue(helpText.contains("Press Enter to copy the selected snippet"))
-        XCTAssertTrue(helpText.contains("Press Shift+Enter to paste the selected snippet directly"))
-        XCTAssertTrue(helpText.contains("Press Option to switch back to clipboard history"))
+        XCTAssertEqual(
+            helpText,
+            [
+                "浏览并复制已保存的片段",
+                "按 Enter 将选中片段复制到剪贴板",
+                "按 Shift+Enter 直接粘贴选中片段",
+                "按 Option 切回剪贴板历史",
+                "输入关键词过滤片段，按 Esc 退出",
+            ]
+        )
     }
 
     func testClipboardMode_defaultDisplayNamePlaceholderAndDescription() {
-        XCTAssertEqual(controller.displayName, "Clipboard History")
-        XCTAssertEqual(controller.placeholder, "Search clipboard history...")
-        XCTAssertEqual(controller.modeDescription, "Browse and paste clipboard history (text/files)")
+        XCTAssertEqual(controller.displayName, "剪贴板历史")
+        XCTAssertEqual(controller.commandDisplayName, "剪贴板历史")
+        XCTAssertEqual(controller.placeholder, "搜索剪贴板历史...")
+        XCTAssertEqual(controller.modeDescription, "浏览剪贴板历史，支持文本和文件")
     }
 
     func testCleanup_resetsSnippetModeAndClearsItems() {

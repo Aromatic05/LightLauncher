@@ -114,10 +114,15 @@ class ConfigManager: ObservableObject {
                 # keyCode: 按键代码 (0表示仅修饰键, 49=Space, 36=Return 等)
 
                 # 功能模式配置
-                # killModeEnabled: 启用关闭应用模式 (/k)
-                # searchModeEnabled: 启用网页搜索模式 (/s)
-                # webModeEnabled: 启用网页打开模式 (/w)
-                # terminalModeEnabled: 启用终端执行模式 (>)
+                # enabled: 各功能模式开关
+                #   kill: 结束进程模式 (/k)
+                #   search: 网页搜索模式 (/s)
+                #   web: 网页打开模式 (/w)
+                #   clip: 剪贴板模式 (/v)
+                #   plugin: 插件模式 (/p)
+                #   terminal: 终端执行模式 (>)
+                #   file: 文件管理器模式 (/o)
+                #   keyword: 关键字搜索模式
                 # showCommandSuggestions: 输入 / 时显示命令提示
                 # defaultSearchEngine: 默认搜索引擎 (google, baidu, bing)
                 # preferredTerminal: 首选终端应用 (auto, terminal, iterm2, ghostty, kitty, alacritty, wezterm)

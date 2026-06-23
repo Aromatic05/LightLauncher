@@ -33,4 +33,16 @@ final class SearchBoxViewTests: XCTestCase {
 
         XCTAssertFalse(moved)
     }
+
+    func testHighRiskModePlaceholders_areLocalizedForSearchBox() {
+        KillModeController.shared.cleanup()
+        ClipModeController.shared.cleanup()
+        TerminalModeController.shared.cleanup()
+        PluginModeController.shared.cleanup()
+
+        XCTAssertEqual(LauncherMode.kill.placeholder, "搜索运行中的应用...")
+        XCTAssertEqual(LauncherMode.clip.placeholder, "搜索剪贴板历史...")
+        XCTAssertEqual(LauncherMode.terminal.placeholder, "输入要执行的终端命令...")
+        XCTAssertEqual(LauncherMode.plugin.placeholder, "输入插件命令...")
+    }
 }

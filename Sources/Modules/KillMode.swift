@@ -20,12 +20,12 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
     let mode: LauncherMode = .kill
     let prefix: String? = "/k"
     var displayName: String {
-        forceKillEnabled ? "Force Kill" : "Kill Process"
+        forceKillEnabled ? "强制结束" : "结束进程"
     }
-    let commandDisplayName: String = "Kill Process"
+    let commandDisplayName: String = "结束进程"
     let iconName: String = "xmark.circle"
-    let placeholder: String = "Search running apps to kill..."
-    let modeDescription: String? = "Force quit a running application"
+    let placeholder: String = "搜索运行中的应用..."
+    let modeDescription: String? = "结束正在运行的应用"
 
     @Published var displayableItems: [any DisplayableItem] = [] {
         didSet {
@@ -93,10 +93,10 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
 
     func getHelpText() -> [String] {
         return [
-            "Type to filter running applications",
-            "Press Enter to kill the selected process",
-            "Press Option to toggle force kill",
-            "Press Esc to exit",
+            "输入应用名过滤运行中的应用",
+            "按 Enter 结束选中的进程",
+            "按 Option 在普通结束和强制结束间切换",
+            "按 Esc 退出",
         ]
     }
 

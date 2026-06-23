@@ -64,6 +64,19 @@ final class LauncherViewModelTests: XCTestCase {
         XCTAssertTrue(hideWindowRecorder.requests.isEmpty)
     }
 
+    func testCommandSuggestions_useLocalizedModeCopy() {
+        let suggestionsByPrefix = Dictionary(
+            uniqueKeysWithValues: LauncherCommand.getSuggestions(for: "/").map {
+                ($0.prefix, $0)
+            }
+        )
+
+        XCTAssertEqual(suggestionsByPrefix["/k"]?.displayName, "结束进程")
+        XCTAssertEqual(suggestionsByPrefix["/v"]?.displayName, "剪贴板历史")
+        XCTAssertEqual(suggestionsByPrefix["/p"]?.displayName, "插件模式")
+        XCTAssertEqual(suggestionsByPrefix["/v"]?.description, "浏览剪贴板历史，支持文本和文件")
+    }
+
     func testEscapeKey_postsHideWindowNotification() async {
         KeyboardEventHandler.shared.keyEventPublisher.send(.escape)
         try? await Task.sleep(nanoseconds: 50_000_000)

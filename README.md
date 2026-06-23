@@ -20,9 +20,10 @@ LightLauncher 不仅仅是一个应用启动器，它是一个集成多种功能
 - **快速访问**: 数字键 1-6 快速选择
 - **缩写支持**: 自定义应用缩写，如 "ps" → "Photoshop"
 
-### 💀 **应用管理** (`/k`)
-- **快速关闭**: 搜索并关闭运行中的应用
-- **批量操作**: 连续关闭多个应用而不退出模式
+### 💀 **结束进程** (`/k`)
+- **快速结束**: 搜索并结束运行中的应用
+- **强制结束**: 按 `Option` 在普通结束和强制结束间切换
+- **批量操作**: 连续结束多个应用而不退出模式
 - **安全过滤**: 排除系统关键进程
 - **状态显示**: 清晰显示应用运行状态
 
@@ -38,10 +39,20 @@ LightLauncher 不仅仅是一个应用启动器，它是一个集成多种功能
 - **历史记录**: 智能匹配浏览器历史
 - **智能补全**: 自动匹配最相关的网页
 
+### 📋 **剪贴板历史** (`/v`)
+- **历史搜索**: 搜索最近的文本和文件剪贴板内容
+- **片段切换**: 按 `Option` 在剪贴板历史和片段间切换
+- **动作明确**: 按 `Enter` 复制到剪贴板，按 `Shift+Enter` 直接粘贴
+
+### 🧩 **插件模式** (`/p`)
+- **插件列表**: 输入 `/p` 查看可用插件
+- **命令调用**: 选择插件后继续输入参数
+- **本地扩展**: 通过插件扩展自定义工作流
+
 ### 🖥️ **终端执行** (`>`)
 - **多终端支持**: Terminal.app、iTerm2、Ghostty、Kitty、Alacritty、WezTerm
 - **智能检测**: 自动检测可用终端应用
-- **安全执行**: 在用户选择的终端中执行命令
+- **明确执行**: 按 `Enter` 在用户选择的终端中执行命令
 - **历史记录**: 保存常用命令以便快速重用
 
 ### 📁 **文件管理器** (`/o`)
@@ -74,9 +85,11 @@ LightLauncher 不仅仅是一个应用启动器，它是一个集成多种功能
 
 输入 `/` 查看所有可用斜杠命令，也可以直接输入 `>` 进入终端模式：
 
-- `/k` + 应用名 → 关闭应用
+- `/k` + 应用名 → 结束进程
 - `/s` + 搜索词 → 网页搜索  
 - `/w` + 网址/关键词 → 打开网页
+- `/v` + 关键词 → 搜索剪贴板历史
+- `/p` + 插件命令 → 调用插件
 - `>` + 命令 → 执行终端命令
 - `/o` + 文件名 → 浏览文件
 
@@ -103,11 +116,15 @@ searchDirectories:
 
 # 功能模式设置
 modes:
-  killModeEnabled: true
-  searchModeEnabled: true
-  webModeEnabled: true
-  terminalModeEnabled: true
-  fileModeEnabled: true
+  enabled:
+    kill: true
+    search: true
+    web: true
+    terminal: true
+    file: true
+    clip: true
+    plugin: true
+    keyword: true
   showCommandSuggestions: true
   defaultSearchEngine: "google"
   preferredTerminal: "auto"
@@ -194,7 +211,7 @@ LightLauncher 采用现代化的 Swift 架构设计：
 
 1. **Fork** 本仓库
 2. **创建特性分支**: `git checkout -b feature/amazing-feature`
-3. **提交更改**: `git commit -m 'Add amazing feature'`
+3. **提交更改**: `git commit -m 'feat: add amazing feature'`
 4. **推送分支**: `git push origin feature/amazing-feature`
 5. **提交 Pull Request**
 

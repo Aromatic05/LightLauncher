@@ -42,15 +42,15 @@ class ClipboardManager {
 
     // MARK: - Monitoring
 
-    /// 开始监听剪切板变化
+    /// 开始监听剪贴板变化
     func startMonitoring() {
-        // 检查剪切板权限（虽然通常不需要特殊权限，但保持一致性）
+        // 检查剪贴板权限（虽然通常不需要特殊权限，但保持一致性）
         guard PermissionManager.shared.checkClipboardPermissions() else {
             Task { @MainActor in
                 let alert = NSAlert()
                 alert.alertStyle = .informational
-                alert.messageText = "剪切板功能"
-                alert.informativeText = "剪切板历史记录功能已启用。如果遇到问题，请检查应用权限设置。"
+                alert.messageText = "剪贴板功能"
+                alert.informativeText = "剪贴板历史记录功能已启用。如果遇到问题，请检查应用权限设置。"
                 alert.addButton(withTitle: "确定")
                 alert.runModal()
             }
@@ -71,7 +71,7 @@ class ClipboardManager {
         timer = nil
     }
 
-    /// 检查剪切板内容是否有变化
+    /// 检查剪贴板内容是否有变化
     private func checkPasteboard() async {
         if pasteboard.changeCount != changeCount {
             changeCount = pasteboard.changeCount
@@ -348,7 +348,7 @@ class ClipboardManager {
                 self.history = []
             }
         } catch {
-            Logger.shared.error("剪切板历史加载失败: \(error)", owner: self)
+            Logger.shared.error("剪贴板历史加载失败: \(error)", owner: self)
             self.history = []
         }
     }
@@ -362,7 +362,7 @@ class ClipboardManager {
             let data = try JSONEncoder().encode(toSave)
             try data.write(to: historyFileURL)
         } catch {
-            Logger.shared.error("剪切板历史保存失败: \(error)", owner: self)
+            Logger.shared.error("剪贴板历史保存失败: \(error)", owner: self)
         }
     }
 

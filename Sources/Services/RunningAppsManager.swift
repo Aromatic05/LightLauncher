@@ -44,7 +44,7 @@ class RunningAppsManager: @unchecked Sendable {
         }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    /// 结束应用，支持强制 kill
+    /// 结束应用，支持强制结束
     func killApp(_ app: RunningAppInfo, force: Bool = false) -> Bool {
         // 检查进程管理权限
         guard PermissionManager.shared.checkProcessManagementPermissions() else {
