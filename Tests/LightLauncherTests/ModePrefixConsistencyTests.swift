@@ -3,6 +3,15 @@ import XCTest
 
 @MainActor
 final class ModePrefixConsistencyTests: XCTestCase {
+    func testCommandReference_returnsControllerPrefix() {
+        XCTAssertEqual(KillModeController.shared.commandReference(), "/k")
+        XCTAssertEqual(SearchModeController.shared.commandReference(), "/s")
+    }
+
+    func testCommandReference_canIncludeTrailingSpace() {
+        XCTAssertEqual(SearchModeController.shared.commandReference(includeTrailingSpace: true), "/s ")
+    }
+
     func testClipModeSettingsTitle_usesActualPrefix() {
         XCTAssertEqual(
             ClipModeController.shared.settingsTitle("剪贴板模式"),
@@ -21,6 +30,13 @@ final class ModePrefixConsistencyTests: XCTestCase {
         XCTAssertEqual(
             TerminalModeController.shared.getHelpText().first,
             "Type after > to enter a shell command"
+        )
+    }
+
+    func testSearchHelpText_usesActualPrefix() {
+        XCTAssertEqual(
+            SearchModeController.shared.getHelpText().first,
+            "Type after /s to search the web"
         )
     }
 }

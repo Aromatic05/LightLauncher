@@ -82,7 +82,9 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
                     icon: "xmark.circle",
                     iconColor: hasSearchText ? .red.opacity(0.5) : .red.opacity(0.7),
                     title: hasSearchText ? "未找到运行中的应用" : "暂无可关闭的应用",
-                    description: hasSearchText ? "请尝试其他搜索关键词" : "输入 /k 后可搜索应用进程",
+                    description: hasSearchText
+                        ? "请尝试其他搜索关键词"
+                        : "输入 \(commandReference()) 后可搜索应用进程",
                     helpTexts: getHelpText()
                 ))
         }

@@ -71,7 +71,9 @@ struct ModeSettingsView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("• 搜索并选择要关闭的应用")
                                 Text("• 使用数字键 1-6 快速选择")
-                                Text("• 删除 /k 前缀自动返回启动模式")
+                                Text(
+                                    "• 删除 \(KillModeController.shared.commandReference()) 前缀自动返回启动模式"
+                                )
                             }
                             .font(.subheadline)
                             .foregroundColor(.secondary)
@@ -192,7 +194,9 @@ struct ModeSettingsView: View {
                                 .pickerStyle(MenuPickerStyle())
                             }
 
-                            Text("输入 /s 后空格，然后输入搜索关键词")
+                            Text(
+                                "输入 \(SearchModeController.shared.commandReference(includeTrailingSpace: true))后输入搜索关键词"
+                            )
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }

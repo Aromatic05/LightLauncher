@@ -47,6 +47,14 @@ protocol ModeStateController: AnyObject {
 }
 
 extension ModeStateController {
+    func commandReference(includeTrailingSpace: Bool = false) -> String {
+        guard let prefix, !prefix.isEmpty else {
+            return ""
+        }
+
+        return includeTrailingSpace ? "\(prefix) " : prefix
+    }
+
     func settingsTitle(_ baseTitle: String) -> String {
         guard let prefix, !prefix.isEmpty else {
             return baseTitle

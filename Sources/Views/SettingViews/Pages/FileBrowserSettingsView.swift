@@ -15,7 +15,9 @@ struct FileBrowserPathSettingsView: View {
                     .font(.headline)
                     .fontWeight(.semibold)
 
-                Text("Configure directories that appear when entering file browser mode (/o)")
+                Text(
+                    "Configure directories that appear when entering file browser mode (\(FileModeController.shared.commandReference()))"
+                )
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }

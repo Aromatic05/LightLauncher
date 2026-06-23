@@ -58,7 +58,7 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
 
     func getHelpText() -> [String] {
         return [
-            "Type after /s to search the web",
+            "Type after \(commandReference()) to search the web",
             "Press Enter to execute the search",
             "Press Esc to exit",
         ]
