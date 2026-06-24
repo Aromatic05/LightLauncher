@@ -4,7 +4,7 @@ struct PluginDetailView: View {
     let plugin: Plugin
     let onReload: @MainActor () async -> Void
     @State private var configData: [String: Any] = [:]
-    @State private var hasConfig = false
+    private var hasConfig: Bool { !configData.isEmpty }
 
     var body: some View {
         ScrollView {
@@ -190,13 +190,6 @@ struct PluginDetailView: View {
     }
 
     private func loadConfig() {
-        let config = PluginConfigManager.shared.loadConfig(for: plugin.name)
-        if !config.settings.isEmpty {
-            configData = config.settings.mapValues { $0.value }
-            hasConfig = true
-        } else {
-            configData = [:]
-            hasConfig = false
-        }
+        configData = PluginConfigManager.shared.loadConfig(for: plugin.name).settings.mapValues { $0.value }
     }
 }

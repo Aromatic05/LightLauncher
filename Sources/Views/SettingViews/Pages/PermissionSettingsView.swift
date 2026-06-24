@@ -166,9 +166,7 @@ struct PermissionSettingsView: View {
                                     }
                                     Spacer()
                                     Button("立即设置") {
-                                        Task {
-                                            permissionSettingsService.promptForMissingPermissions()
-                                        }
+                                        permissionSettingsService.promptForMissingPermissions()
                                     }
                                     .buttonStyle(.borderedProminent)
                                 }
