@@ -42,6 +42,7 @@ final class WindowManager: NSObject, NSWindowDelegate {
 
     /// 用于防止在隐藏动画期间重复调用 hideWindow。
     private var isHidingWindow = false
+    private var reactivatePreviousAppTask: Task<Void, Never>?
 
     // MARK: - 依赖
 
@@ -170,25 +171,27 @@ final class WindowManager: NSObject, NSWindowDelegate {
 
         if !shouldActivatePreviousApp {
             // 如果不需要激活前一个应用，简单重置标志位即可。
-            DispatchQueue.main.async { self.isHidingWindow = false }
+            isHidingWindow = false
             return
         }
 
         // 只有当前没有处于激活状态的应用时，才激活记录的前一个应用
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            guard let self = self else { return }
+        reactivatePreviousAppTask?.cancel()
+        reactivatePreviousAppTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            guard !Task.isCancelled, let self else { return }
             let hasActivatedApp = NSWorkspace.shared.runningApplications.contains {
                 $0.isActive && !$0.isHidden && $0.bundleIdentifier != Bundle.main.bundleIdentifier
             }
             if !hasActivatedApp,
-                let previousApp = self.previousFrontmostApp,
+                let previousApp = previousFrontmostApp,
                 previousApp.bundleIdentifier != Bundle.main.bundleIdentifier
             {
                 previousApp.activate(options: [])
             }
             // 清空记录，避免下次误用
-            self.previousFrontmostApp = nil
-            Task { @MainActor in self.isHidingWindow = false }
+            previousFrontmostApp = nil
+            isHidingWindow = false
         }
 
     }

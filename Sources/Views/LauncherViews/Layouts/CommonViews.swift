@@ -8,6 +8,7 @@ struct CommandSuggestionsView: View {
     // 【修改】接收的数据类型从 [LauncherCommand] 变为 [CommandRecord]
     let commands: [CommandRecord]
     @Binding var selectedIndex: Int
+    @State private var selectionScrollTask: Task<Void, Never>?
     // 【修改】回调的参数类型变为 CommandRecord
     let onCommandSelected: (CommandRecord) -> Void
 
@@ -59,7 +60,10 @@ struct CommandSuggestionsView: View {
                     .frame(maxHeight: 400)
                     .onChange(of: selectedIndex) { newIndex in
                         proxy.scrollTo(newIndex, anchor: .center)
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+                        selectionScrollTask?.cancel()
+                        selectionScrollTask = Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 10_000_000)
+                            guard !Task.isCancelled else { return }
                             withAnimation(.easeInOut(duration: 0.1)) {
                                 proxy.scrollTo(newIndex, anchor: .center)
                             }

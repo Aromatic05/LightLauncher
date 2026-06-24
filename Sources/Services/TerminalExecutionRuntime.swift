@@ -1,15 +1,13 @@
 import Foundation
 
 @MainActor
-final class TerminalExecutorService {
-    static let shared = TerminalExecutorService()
+final class TerminalExecutionRuntime {
+    static let shared = TerminalExecutionRuntime()
 
-    /// 定义了所有支持的终端策略及其优先级（用于自动检测）
     private let executors: [TerminalExecutor]
 
     private init() {
-        // 在这里定义所有支持的终端和它们的优先级顺序
-        self.executors = [
+        executors = [
             ITerm2Executor.shared,
             ModernTerminalExecutor.sharedGhostty,
             ModernTerminalExecutor.sharedKitty,
@@ -19,11 +17,12 @@ final class TerminalExecutorService {
         ]
     }
 
-    /// 公共的执行入口点
     func execute(command: String) -> Bool {
-        // 检查终端执行权限
         guard PermissionManager.shared.checkTerminalPermissions() else {
-            Logger.shared.warning("Terminal execution blocked: automation permission missing", owner: self)
+            Logger.shared.warning(
+                "Terminal execution blocked: automation permission missing",
+                owner: self
+            )
             Task { @MainActor in
                 PermissionPromptService.shared.prompt(for: .automation)
             }
@@ -36,43 +35,46 @@ final class TerminalExecutorService {
         let preferredTerminalName = ConfigManager.shared.config.modes.preferredTerminal
         Logger.shared.debug(
             "Executing terminal command with preferred terminal '\(preferredTerminalName)'",
-            owner: self)
+            owner: self
+        )
 
-        // 如果用户有偏好设置
         if preferredTerminalName != "auto",
             let preferredExecutor = executors.first(where: {
                 $0.name.lowercased() == preferredTerminalName.lowercased()
             })
         {
-            // 尝试使用偏好的终端，如果失败，则回退到自动检测
             if preferredExecutor.execute(command: cleanCommand) {
                 Logger.shared.info(
                     "Executed terminal command via preferred terminal '\(preferredExecutor.name)'",
-                    owner: self)
+                    owner: self
+                )
                 return true
             }
 
             Logger.shared.warning(
                 "Preferred terminal '\(preferredExecutor.name)' failed, falling back to auto detection",
-                owner: self)
+                owner: self
+            )
         }
 
-        // 自动检测
         return executeWithAutoDetection(command: cleanCommand)
     }
 
     private func executeWithAutoDetection(command: String) -> Bool {
-        // 按优先级顺序遍历所有执行器，找到第一个已安装的并执行
         for executor in executors {
             if executor.execute(command: command) {
                 Logger.shared.info(
                     "Executed terminal command via auto-detected terminal '\(executor.name)'",
-                    owner: self)
+                    owner: self
+                )
                 return true
             }
         }
 
-        Logger.shared.error("Failed to execute terminal command in any supported terminal", owner: self)
-        return false  // 如果所有终端都失败
+        Logger.shared.error(
+            "Failed to execute terminal command in any supported terminal",
+            owner: self
+        )
+        return false
     }
 }

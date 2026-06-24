@@ -5,6 +5,8 @@ struct SearchBoxView: View {
     @ObservedObject var viewModel = LauncherViewModel.shared
     @Binding var searchText: String
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var focusTask: Task<Void, Never>?
+    @State private var caretTask: Task<Void, Never>?
     let mode: LauncherMode
 
     // 接收来自父视图 LauncherView 的窗口状态
@@ -58,21 +60,31 @@ struct SearchBoxView: View {
 
         .onChange(of: isWindowKey) { newIsKey in
             if newIsKey {
-                // 使用一小段延迟可以确保窗口的过渡动画完成后再获取焦点，体验更平滑。
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    isSearchFieldFocused = true
-                    moveCaretToEndAfterProgrammaticFocus()
-                }
+                scheduleProgrammaticFocus(after: 100_000_000)
             }
         }
         .onReceive(viewModel.focusSearchField) { _ in
-            self.isSearchFieldFocused = true
+            scheduleProgrammaticFocus()
+        }
+    }
+
+    private func scheduleProgrammaticFocus(after delayNanoseconds: UInt64 = 0) {
+        focusTask?.cancel()
+        focusTask = Task { @MainActor in
+            if delayNanoseconds > 0 {
+                try? await Task.sleep(nanoseconds: delayNanoseconds)
+            }
+            guard !Task.isCancelled else { return }
+            isSearchFieldFocused = true
             moveCaretToEndAfterProgrammaticFocus()
         }
     }
 
     private func moveCaretToEndAfterProgrammaticFocus() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
+        caretTask?.cancel()
+        caretTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 10_000_000)
+            guard !Task.isCancelled else { return }
             _ = SearchBoxView.moveCaretToEnd(in: NSApp.keyWindow?.firstResponder)
         }
     }

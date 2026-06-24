@@ -92,7 +92,8 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         case .enterWithModifiers(modifierRawValue: UInt(NSEvent.ModifierFlags.shift.rawValue)):
             // 处理带修饰键的 Enter
             NotificationCenter.default.post(name: .hideWindow, object: nil)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
                 _ = self.executeInputAction(at: LauncherViewModel.shared.selectedIndex)
             }
             return true
@@ -232,7 +233,10 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     nonisolated private static func defaultRestoreScheduler(_ action: @escaping @Sendable () -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: action)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            action()
+        }
     }
 
     nonisolated private static func defaultEventPoster(

@@ -9,8 +9,8 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     private override init() {}
 
     // MARK: - Dependencies
-    /// 唯一的依赖项：终端执行服务
-    let terminalExecutor = TerminalExecutorService.shared
+    /// 唯一的依赖项：终端执行运行时
+    let terminalExecutor = TerminalExecutionRuntime.shared
 
     let mode: LauncherMode = .terminal
     let prefix: String? = ">"
