@@ -40,9 +40,7 @@ class ConfigManager: ObservableObject {
             Self.loadPluginsConfig(from: pluginsConfigURL) ?? PluginsConfig(plugins: [])
 
         // 加载模式设置到 SettingsManager
-        Task { @MainActor in
-            loadModeSettings()
-        }
+        loadModeSettings()
     }
 
     // 创建默认配置

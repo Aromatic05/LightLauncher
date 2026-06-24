@@ -24,9 +24,7 @@ class SystemCommandManager: ObservableObject {
                             "osascript -e 'tell application \"System Events\" to keystroke \"q\" using {control down, command down}'"
                         )
                     } else {
-                        Task { @MainActor in
-                            PermissionPromptService.shared.prompt(for: .accessibility)
-                        }
+                        PermissionPromptService.shared.prompt(for: .accessibility)
                     }
                 }
             ),

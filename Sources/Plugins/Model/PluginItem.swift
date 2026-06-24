@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import Foundation
 import SwiftUI
 
@@ -18,16 +19,12 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     let iconName: String?  // SF Symbol 名称或 Base64 图片字符串
     let action: PluginItemAction?
     var id: String {
-        let actionKey: String
-        switch action {
-        case .selectPlugin(let command):
-            actionKey = "select:\(command)"
-        case .runPluginAction(let identifier):
-            actionKey = "run:\(identifier)"
-        case nil:
-            actionKey = "none"
-        }
-        return [title, subtitle ?? "", iconName ?? "", actionKey].joined(separator: "|")
+        stableDigest([
+            title,
+            subtitle ?? "",
+            iconName ?? "",
+            String(reflecting: action),
+        ])
     }
     var icon: NSImage? {
         // 根据 iconName 的类型返回对应的 NSImage
@@ -103,4 +100,10 @@ struct PluginResult {
     var count: Int {
         return items.count
     }
+}
+
+private func stableDigest(_ components: [String]) -> String {
+    let input = components.joined(separator: "\u{1F}")
+    let digest = SHA256.hash(data: Data(input.utf8))
+    return digest.map { String(format: "%02x", $0) }.joined()
 }

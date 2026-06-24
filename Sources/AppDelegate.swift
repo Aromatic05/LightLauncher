@@ -15,11 +15,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Logger.shared.apply(config: configManager.config.logging)
 
         // 启动权限检查
-        Task { @MainActor in
-            PermissionPromptService.shared.showReminder(
-                for: PermissionManager.shared.getMissingPermissions()
-            )
-        }
+        PermissionPromptService.shared.showReminder(
+            for: PermissionManager.shared.getMissingPermissions()
+        )
 
         // 使用定时任务管理器定期扫描应用程序（每5分钟扫描一次）
         ScheduledTaskManager.shared.addTask(
@@ -81,33 +79,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func customHotkeyDidTrigger(notification: Notification) {
         guard let hotkeyID = notification.userInfo?["hotkeyID"] as? UInt32 else { return }
 
-        Task { @MainActor in
-            guard let config = HotkeyManager.shared.getConfig(for: hotkeyID) else { return }
-            if config.type == "open" {
-                let filePath = (config.text as NSString).expandingTildeInPath
-                let fileURL = URL(fileURLWithPath: filePath)
-                if fileAccess.fileExists(at: fileURL) {
-                    NSWorkspace.shared.open(fileURL)
-                    return
-                }
-                Logger.shared.warning("文件不存在，无法打开：\(fileURL.path)", owner: self)
+        guard let config = HotkeyManager.shared.getConfig(for: hotkeyID) else { return }
+        if config.type == "open" {
+            let filePath = (config.text as NSString).expandingTildeInPath
+            let fileURL = URL(fileURLWithPath: filePath)
+            if fileAccess.fileExists(at: fileURL) {
+                NSWorkspace.shared.open(fileURL)
                 return
-            } else if config.type == "web" {
-                if WebUtils.openWebURL(config.text) {
-                    return
-                }
-                Logger.shared.warning("无法识别的 URL：\(config.text)", owner: self)
-                return
-            } else if config.type == "search" {
-                if WebUtils.performWebSearch(query: config.text) {
-                    return
-                }
-                Logger.shared.warning("无法执行网络搜索，查询为空：\(config.text)", owner: self)
-                return
-            } else {
-                // 默认行为：显示主窗口并更新查询
-                self.windowManager?.showMainWindow(query: config.text)
             }
+            Logger.shared.warning("文件不存在，无法打开：\(fileURL.path)", owner: self)
+            return
+        } else if config.type == "web" {
+            if WebUtils.openWebURL(config.text) {
+                return
+            }
+            Logger.shared.warning("无法识别的 URL：\(config.text)", owner: self)
+            return
+        } else if config.type == "search" {
+            if WebUtils.performWebSearch(query: config.text) {
+                return
+            }
+            Logger.shared.warning("无法执行网络搜索，查询为空：\(config.text)", owner: self)
+            return
+        } else {
+            // 默认行为：显示主窗口并更新查询
+            self.windowManager?.showMainWindow(query: config.text)
         }
     }
 
