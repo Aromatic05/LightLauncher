@@ -5,6 +5,7 @@ import Foundation
 final class PermissionPromptService {
     static let shared = PermissionPromptService()
 
+    private let alertService = AlertService.shared
     private var shownPermissionAlerts: [AppPermissionType: Date] = [:]
     private let alertCooldownInterval: TimeInterval = 300
     private var isShowingPermissionAlert = false
@@ -17,16 +18,14 @@ final class PermissionPromptService {
 
         isShowingPermissionAlert = true
         shownPermissionAlerts[type] = Date()
+        defer { isShowingPermissionAlert = false }
 
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = "需要\(type.rawValue)权限"
-        alert.informativeText = type.description
-        alert.addButton(withTitle: "前往设置")
-        alert.addButton(withTitle: "取消")
-
-        let response = alert.runModal()
-        isShowingPermissionAlert = false
+        let response = alertService.presentAlert(
+            style: .informational,
+            title: "需要\(type.rawValue)权限",
+            message: type.description,
+            buttons: ["前往设置", "取消"]
+        )
 
         if response == .alertFirstButtonReturn {
             PermissionManager.shared.openSystemPreferences(for: type)
@@ -42,19 +41,17 @@ final class PermissionPromptService {
 
         isShowingPermissionAlert = true
         shownPermissionAlerts[reminderKey] = Date()
-
-        let alert = NSAlert()
-        alert.alertStyle = .warning
-        alert.messageText = "需要授权以下权限"
         let permissionList = missingPermissions
             .map { "• \($0.rawValue)：\($0.description)" }
             .joined(separator: "\n")
-        alert.informativeText = "为了正常使用所有功能，需要授权以下权限：\n\n\(permissionList)\n\n建议逐个授权这些权限。"
-        alert.addButton(withTitle: "逐个设置")
-        alert.addButton(withTitle: "忽略")
+        defer { isShowingPermissionAlert = false }
 
-        let response = alert.runModal()
-        isShowingPermissionAlert = false
+        let response = alertService.presentAlert(
+            style: .warning,
+            title: "需要授权以下权限",
+            message: "为了正常使用所有功能，需要授权以下权限：\n\n\(permissionList)\n\n建议逐个授权这些权限。",
+            buttons: ["逐个设置", "忽略"]
+        )
 
         guard response == .alertFirstButtonReturn else { return }
         for permission in missingPermissions {

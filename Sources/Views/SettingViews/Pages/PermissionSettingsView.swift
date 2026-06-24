@@ -6,7 +6,7 @@ struct PermissionSettingsView: View {
     @StateObject private var permissionManager = PermissionManager.shared
     @State private var permissionSummary: AppPermissionSummary?
     @State private var isRefreshing: Bool = false
-    @State private var refreshTask: Task<Void, Never>?
+    private let permissionSettingsService = PermissionSettingsService.shared
 
     var body: some View {
         ScrollView {
@@ -105,7 +105,11 @@ struct PermissionSettingsView: View {
                                             permissionType: permissionType,
                                             isGranted: summary.allPermissions[permissionType]
                                                 == true,
-                                            isRequired: true
+                                            isRequired: true,
+                                            onRequestPermission: {
+                                                permissionSettingsService.promptForPermission(
+                                                    permissionType)
+                                            }
                                         )
                                     }
                                 }
@@ -126,7 +130,11 @@ struct PermissionSettingsView: View {
                                             permissionType: permissionType,
                                             isGranted: summary.allPermissions[permissionType]
                                                 == true,
-                                            isRequired: false
+                                            isRequired: false,
+                                            onRequestPermission: {
+                                                permissionSettingsService.promptForPermission(
+                                                    permissionType)
+                                            }
                                         )
                                     }
                                 }
@@ -158,10 +166,8 @@ struct PermissionSettingsView: View {
                                     }
                                     Spacer()
                                     Button("立即设置") {
-                                        Task { @MainActor in
-                                            PermissionPromptService.shared.showReminder(
-                                                for: permissionManager.getMissingPermissions()
-                                            )
+                                        Task {
+                                            permissionSettingsService.promptForMissingPermissions()
                                         }
                                     }
                                     .buttonStyle(.borderedProminent)
@@ -173,7 +179,9 @@ struct PermissionSettingsView: View {
 
                             HStack(spacing: 12) {
                                 Button(action: {
-                                    refreshPermissionStatus()
+                                    Task {
+                                        await refreshPermissionStatus()
+                                    }
                                 }) {
                                     HStack(spacing: 6) {
                                         if isRefreshing {
@@ -189,12 +197,12 @@ struct PermissionSettingsView: View {
                                 .disabled(isRefreshing)
 
                                 Button("生成诊断报告") {
-                                    copyDiagnosticsToClipboard()
+                                    permissionSettingsService.copyDiagnosticsToClipboard()
                                 }
                                 .buttonStyle(.bordered)
 
                                 Button("打开系统偏好设置") {
-                                    openSystemPreferences()
+                                    permissionSettingsService.openPrivacySettings()
                                 }
                                 .buttonStyle(.bordered)
                             }
@@ -255,36 +263,18 @@ struct PermissionSettingsView: View {
             }
             .padding(32)
         }
-        .onAppear {
-            refreshPermissionStatus()
+        .task {
+            await refreshPermissionStatus()
         }
     }
 
     // MARK: - 辅助方法
 
-    private func refreshPermissionStatus() {
-        refreshTask?.cancel()
+    @MainActor
+    private func refreshPermissionStatus() async {
         isRefreshing = true
-        refreshTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            guard !Task.isCancelled else { return }
-            permissionSummary = permissionManager.getPermissionSummary()
-            isRefreshing = false
-        }
-    }
-
-    private func copyDiagnosticsToClipboard() {
-        let diagnostics = permissionManager.generatePermissionDiagnostics()
-        ClipboardService.shared.copy(diagnostics)
-        AlertService.shared.showInformation(
-            title: "诊断报告已复制",
-            message: "权限诊断报告已复制到剪贴板，您可以粘贴到文本编辑器中查看。"
-        )
-    }
-
-    private func openSystemPreferences() {
-        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security")!
-        NSWorkspace.shared.open(url)
+        defer { isRefreshing = false }
+        permissionSummary = await permissionSettingsService.refreshSummary()
     }
 }
 
@@ -293,6 +283,7 @@ struct PermissionRowView: View {
     let permissionType: AppPermissionType
     let isGranted: Bool
     let isRequired: Bool
+    let onRequestPermission: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -339,14 +330,10 @@ struct PermissionRowView: View {
 
             // 操作按钮
             if !isGranted {
-                Button("设置") {
-                    Task { @MainActor in
-                        PermissionPromptService.shared.prompt(for: permissionType)
-                    }
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
-                .foregroundColor(.blue)
+                Button("设置", action: onRequestPermission)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .foregroundColor(.blue)
             }
         }
         .padding(.vertical, 8)
