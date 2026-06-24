@@ -19,17 +19,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             for: PermissionManager.shared.getMissingPermissions()
         )
 
-        // 使用定时任务管理器定期扫描应用程序（每5分钟扫描一次）
-        ScheduledTaskManager.shared.addTask(
-            id: "AppScanner",
-            interval: 300,  // 5分钟
-            executeImmediately: true
-        ) {
-            AppScanner.shared.scanForApplications()
-        }
+        setupStartupTasks()
 
         PreferencePaneScanner.shared.scanForPreferencePanes()
         NSApp.setActivationPolicy(.accessory)
+
+        // 预热单例服务
         _ = ClipboardManager.shared
         _ = PermissionManager.shared
 
@@ -44,6 +39,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupPluginSystem()
 
         setupHotkeyObservers()
+    }
+
+    private func setupStartupTasks() {
+        // 定期扫描应用程序（每5分钟扫描一次）
+        ScheduledTaskManager.shared.addTask(
+            id: "AppScanner",
+            interval: 300,
+            executeImmediately: true
+        ) {
+            AppScanner.shared.scanForApplications()
+        }
+
+        // web 模式启用时，在启动阶段预热并定期刷新浏览器数据
+        if settingsManager.isModeEnabled(LauncherMode.web.rawValue) {
+            BrowserDataManager.shared.startScheduledRefresh()
+        } else {
+            BrowserDataManager.shared.stopScheduledRefresh()
+        }
     }
 
     /// 统一设置所有热键。

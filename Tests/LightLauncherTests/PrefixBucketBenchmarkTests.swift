@@ -1,5 +1,5 @@
-import XCTest
 import Foundation
+import XCTest
 
 final class PrefixBucketBenchmarkTests: XCTestCase {
 
@@ -10,123 +10,238 @@ final class PrefixBucketBenchmarkTests: XCTestCase {
         let visitCount: Int
     }
 
-    // Very small, pragmatic prefix-bucket prototype for benchmarking
-    final class PrefixBucketIndex {
-        private var buckets: [String: [TestItem]] = [:]
-        private let prefixLength: Int
+    private let prefixKeyLength = 3
+    private let shortQueryThreshold = 2
+    private let topKResults = 100
 
-        init(items: [TestItem], prefixLength: Int = 3) {
-            self.prefixLength = max(1, prefixLength)
-            build(items: items)
-        }
-
-        private func searchable(_ url: String, _ title: String) -> String {
-            // Simple searchable string: host + path + title, lowercased
-            if let comps = URLComponents(string: url), let host = comps.host {
-                let path = comps.path
-                return (host + path + " " + title).lowercased()
-            }
-            return (url + " " + title).lowercased()
-        }
-
-        private func build(items: [TestItem]) {
-            var map: [String: [TestItem]] = [:]
-            for item in items {
-                let s = searchable(item.url, item.title)
-                let key = String(s.prefix(prefixLength))
-                map[key, default: []].append(item)
-            }
-            // keep buckets as-is; for small prototype we won't pre-sort deeply
-            buckets = map
-        }
-
-        func search(_ query: String, limit: Int = 10) -> [TestItem] {
-            let q = query.lowercased()
-            if q.isEmpty { return [] }
-            let key = String(q.prefix(prefixLength))
-            guard let candidates = buckets[key] else { return [] }
-
-            // Filter candidates where searchable starts with query OR contains query
-            let filtered = candidates.filter { item in
-                let s = searchable(item.url, item.title)
-                if s.hasPrefix(q) { return true }
-                return s.contains(q)
-            }
-
-            // Score: simple combination of visitCount (log) + prefix bonus
-            let scored = filtered.map { item -> (TestItem, Double) in
-                var score = log(Double(item.visitCount + 1))
-                if (item.url + " " + item.title).lowercased().hasPrefix(q) {
-                    score += 5.0
-                }
-                return (item, score)
-            }
-
-            return scored.sorted { $0.1 > $1.1 }.prefix(limit).map { $0.0 }
-        }
+    private struct LegacyIndex {
+        let items: [TestItem]
+        let buckets: [String: [Int]]
     }
 
-    // linear scan version for baseline
-    private func linearSearch(_ items: [TestItem], _ query: String, limit: Int = 10) -> [TestItem] {
+    private struct ImprovedIndex {
+        let items: [TestItem]
+        let buckets: [String: [Int]]
+    }
+
+    private func searchableUrl(for url: String) -> String {
+        guard let components = URLComponents(string: url) else {
+            return url.lowercased()
+        }
+
+        let host = components.host ?? ""
+        let path = components.path
+        return (host + path).lowercased()
+    }
+
+    private func score(_ item: TestItem, query: String) -> Double? {
+        let searchable = searchableUrl(for: item.url)
+        let title = item.title.lowercased()
+        var queryScore = 0.0
+
+        if searchable.hasPrefix(query) {
+            queryScore += 18.0
+        }
+        if title.hasPrefix(query) {
+            queryScore += 6.0
+        }
+
+        guard queryScore > 0 else { return nil }
+        return log(Double(item.visitCount + 1)) + queryScore + 5.0
+    }
+
+    private func legacyBuckets(for items: [TestItem]) -> [String: [Int]] {
+        var buckets: [String: [Int]] = [:]
+        for (index, item) in items.enumerated() {
+            let key = String(searchableUrl(for: item.url).prefix(prefixKeyLength))
+            buckets[key, default: []].append(index)
+        }
+        return buckets
+    }
+
+    private func improvedBuckets(for items: [TestItem]) -> [String: [Int]] {
+        var buckets: [String: [Int]] = [:]
+
+        for (index, item) in items.enumerated() {
+            var keys = Set<String>()
+
+            for text in [searchableUrl(for: item.url), item.title.lowercased()] {
+                guard !text.isEmpty else { continue }
+                let maxLength = min(prefixKeyLength, text.count)
+                for length in 1...maxLength {
+                    keys.insert(String(text.prefix(length)))
+                }
+            }
+
+            for key in keys {
+                buckets[key, default: []].append(index)
+            }
+        }
+
+        return buckets
+    }
+
+    private func makeLegacyIndex(items: [TestItem]) -> LegacyIndex {
+        LegacyIndex(items: items, buckets: legacyBuckets(for: items))
+    }
+
+    private func makeImprovedIndex(items: [TestItem]) -> ImprovedIndex {
+        ImprovedIndex(items: items, buckets: improvedBuckets(for: items))
+    }
+
+    private func searchLegacy(_ index: LegacyIndex, query: String) -> [TestItem] {
         let q = query.lowercased()
-        let filtered = items.filter { item in
-            let s = (item.url + " " + item.title).lowercased()
-            if s.contains(q) { return true }
-            return false
+        guard !q.isEmpty else { return [] }
+
+        if q.count <= shortQueryThreshold {
+            let key = String(q.prefix(prefixKeyLength))
+            guard let indices = index.buckets[key], !indices.isEmpty else {
+                return linearShortPrefixSearch(index.items, query: q)
+            }
+
+            return indices
+                .compactMap { itemIndex -> (TestItem, Double)? in
+                    guard let score = score(index.items[itemIndex], query: q) else { return nil }
+                    return (index.items[itemIndex], score)
+                }
+                .sorted { $0.1 > $1.1 }
+                .prefix(topKResults)
+                .map(\.0)
         }
-        let scored = filtered.map { item -> (TestItem, Double) in
-            return (item, log(Double(item.visitCount + 1)))
+
+        return []
+    }
+
+    private func searchImproved(_ index: ImprovedIndex, query: String) -> [TestItem] {
+        let q = query.lowercased()
+        guard !q.isEmpty else { return [] }
+
+        if q.count <= shortQueryThreshold {
+            guard let indices = index.buckets[q], !indices.isEmpty else { return [] }
+
+            return indices
+                .compactMap { itemIndex -> (TestItem, Double)? in
+                    guard let score = score(index.items[itemIndex], query: q) else { return nil }
+                    return (index.items[itemIndex], score)
+                }
+                .sorted { $0.1 > $1.1 }
+                .prefix(topKResults)
+                .map(\.0)
         }
-        return scored.sorted { $0.1 > $1.1 }.prefix(limit).map { $0.0 }
+
+        return []
+    }
+
+    private func linearShortPrefixSearch(_ items: [TestItem], query: String) -> [TestItem] {
+        items
+            .compactMap { item -> (TestItem, Double)? in
+                guard let score = score(item, query: query) else { return nil }
+                return (item, score)
+            }
+            .sorted { $0.1 > $1.1 }
+            .map(\.0)
     }
 
     private func makeItems(count: Int) -> [TestItem] {
         let hosts = (1...200).map { "host\($0).example.com" }
+        let titlePrefixes = [
+            "alpha docs", "beta wiki", "gamma notes", "delta board", "go links", "git repo",
+        ]
+
         var items: [TestItem] = []
         items.reserveCapacity(count)
+
         for i in 0..<count {
-            let host = hosts[Int.random(in: 0..<hosts.count)]
-            let path = "/path/segment/\(Int.random(in: 1...1000))"
+            let host = hosts[i % hosts.count]
+            let path = "/path/segment/\(i)"
             let url = "https://\(host)\(path)"
-            let title = "Title \(Int.random(in: 1...10000))"
-            let visit = Int.random(in: 0...500)
-            items.append(TestItem(id: i, url: url, title: title, visitCount: visit))
+            let titlePrefix = titlePrefixes[i % titlePrefixes.count]
+            let title = "\(titlePrefix) \(i)"
+            let visitCount = (i * 13) % 500
+            items.append(TestItem(id: i, url: url, title: title, visitCount: visitCount))
         }
+
         return items
     }
 
+    private func measureMillis(_ block: () -> Void) -> Double {
+        let start = CFAbsoluteTimeGetCurrent()
+        block()
+        return (CFAbsoluteTimeGetCurrent() - start) * 1000.0
+    }
+
+    func testLegacyIndexFallsBackForTwoCharacterHostPrefix() {
+        let items = [
+            TestItem(id: 1, url: "https://google.com/search", title: "Search", visitCount: 20)
+        ]
+
+        let legacy = legacyBuckets(for: items)
+        let improved = improvedBuckets(for: items)
+
+        XCTAssertNil(legacy["go"], "Legacy 3-char URL-only buckets should miss a 2-char query key")
+        XCTAssertEqual(improved["go"]?.count, 1)
+    }
+
+    func testImprovedIndexCapturesTitlePrefixesWithoutLinearFallback() {
+        let items = [
+            TestItem(id: 1, url: "https://example.com/page", title: "Go Links", visitCount: 10)
+        ]
+
+        let legacy = legacyBuckets(for: items)
+        let improved = improvedBuckets(for: items)
+        let improvedIndex = makeImprovedIndex(items: items)
+
+        XCTAssertNil(legacy["go"], "Legacy buckets do not index title prefixes")
+        XCTAssertEqual(improved["go"]?.count, 1)
+        XCTAssertEqual(searchImproved(improvedIndex, query: "go").first?.title, "Go Links")
+    }
+
     func testPrefixBucketBenchmark() {
-        let sizes = [1000, 10_000, 50_000]
-        let queries = ["ho", "host1", "host12/path", "title 5"]
+        let sizes = [1_000, 10_000, 50_000]
+        let queries = ["go", "gi", "ho"]
 
         for size in sizes {
             let items = makeItems(count: size)
-            let index = PrefixBucketIndex(items: items, prefixLength: 3)
 
-            // warmup
-            _ = index.search("host1", limit: 5)
-            _ = linearSearch(items, "host1", limit: 5)
-
-            var linearTimes: [Double] = []
-            var bucketTimes: [Double] = []
-
-            for q in queries {
-                let startL = Date()
-                _ = linearSearch(items, q, limit: 10)
-                linearTimes.append(Date().timeIntervalSince(startL) * 1000.0)
-
-                let startB = Date()
-                _ = index.search(q, limit: 10)
-                bucketTimes.append(Date().timeIntervalSince(startB) * 1000.0)
+            let buildLegacy = measureMillis {
+                _ = makeLegacyIndex(items: items)
+            }
+            let buildImproved = measureMillis {
+                _ = makeImprovedIndex(items: items)
             }
 
-            let avgLinear = linearTimes.reduce(0, +) / Double(linearTimes.count)
-            let avgBucket = bucketTimes.reduce(0, +) / Double(bucketTimes.count)
+            let legacyIndex = makeLegacyIndex(items: items)
+            let improvedIndex = makeImprovedIndex(items: items)
 
-            print("\nBenchmark size=\(size)\n  linear avg(ms)=\(String(format: "%.3f", avgLinear))\n  bucket avg(ms)=\(String(format: "%.3f", avgBucket))")
+            _ = searchLegacy(legacyIndex, query: "go")
+            _ = searchImproved(improvedIndex, query: "go")
+
+            var legacyTimes: [Double] = []
+            var improvedTimes: [Double] = []
+
+            for query in queries {
+                legacyTimes.append(measureMillis {
+                    _ = searchLegacy(legacyIndex, query: query)
+                })
+                improvedTimes.append(measureMillis {
+                    _ = searchImproved(improvedIndex, query: query)
+                })
+            }
+
+            let legacyAverage = legacyTimes.reduce(0, +) / Double(legacyTimes.count)
+            let improvedAverage = improvedTimes.reduce(0, +) / Double(improvedTimes.count)
+
+            print(
+                """
+                \nPrefix bucket benchmark size=\(size)
+                  legacy build(ms)=\(String(format: "%.3f", buildLegacy))
+                  improved build(ms)=\(String(format: "%.3f", buildImproved))
+                  legacy avg(ms)=\(String(format: "%.3f", legacyAverage))
+                  improved avg(ms)=\(String(format: "%.3f", improvedAverage))
+                """
+            )
         }
 
-        // simple assertion to make test succeed
         XCTAssertTrue(true)
     }
 }

@@ -63,16 +63,20 @@ private struct BoundedMinHeap {
 class BrowserDataManager {
     static let shared = BrowserDataManager()
 
+    private let scheduledTasks = ScheduledTaskManager.shared
+    private let refreshTaskID = "BrowserDataManager.refresh"
+    private let refreshInterval: TimeInterval = 300
     private var allItems: [PreScoredItem] = []
     private var lastLoadTime: Date?
     private var enabledBrowsers: Set<BrowserType>
+    private var refreshGeneration = 0
     // 前缀桶索引（仅用于短查询路径）: key -> indices into allItems
     private var prefixBuckets: [String: [Int]] = [:]
     private let PREFIX_KEY_LENGTH = 3
     // 在 short-query 中使用 top-k 堆最多返回的候选数（假设值，可再调）
     private let TOP_K_RESULTS = 100
 
-    private let URL_SEGMENT_MAX_LENGTH = 35
+    private nonisolated static let URL_SEGMENT_MAX_LENGTH = 35
     // 新增：定义分层搜索的阈值
     private let SHORT_QUERY_THRESHOLD = 2
 
@@ -83,6 +87,7 @@ class BrowserDataManager {
     func setEnabledBrowsers(_ browsers: Set<BrowserType>) {
         enabledBrowsers = browsers
         lastLoadTime = nil
+        refreshGeneration += 1
         prefixBuckets = [:]
     }
 
@@ -96,28 +101,54 @@ class BrowserDataManager {
         refreshBrowserDataIfNeeded()
     }
 
+    func startScheduledRefresh() {
+        scheduledTasks.addTask(
+            id: refreshTaskID,
+            interval: refreshInterval,
+            executeImmediately: true
+        ) {
+            self.loadBrowserData()
+        }
+    }
+
+    func stopScheduledRefresh() {
+        scheduledTasks.removeTask(id: refreshTaskID)
+    }
+
     private func refreshBrowserDataIfNeeded() {
 
         if let lastLoad = lastLoadTime, Date().timeIntervalSince(lastLoad) < 300 { return }
+
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        let browsers = enabledBrowsers
 
         Task.detached(priority: .utility) {
             var allBookmarks: [BrowserItem] = []
             var allHistory: [BrowserItem] = []
 
-            for browser in await self.enabledBrowsers where browser.isInstalled {
+            for browser in browsers where browser.isInstalled {
                 let (bookmarks, history) = await Self.loadBrowserData(for: browser)
                 allBookmarks.append(contentsOf: bookmarks)
                 allHistory.append(contentsOf: history)
             }
 
-            let preScoredItems = await self.prepareAndPreScoreItems(
+            let initialItems = Self.prepareInitialItems(
                 bookmarks: allBookmarks, history: allHistory)
 
-            await MainActor.run { [weak self] in
-                self?.allItems = preScoredItems
-                self?.lastLoadTime = Date()
-                // 构建短查询用的前缀桶索引（在主线程更新引用）
-                self?.buildPrefixBuckets()
+            await MainActor.run {
+                guard self.refreshGeneration == generation else { return }
+                self.allItems = initialItems
+                self.lastLoadTime = Date()
+                self.buildPrefixBuckets()
+            }
+
+            let enrichedItems = Self.enrichItemsWithSearchableUrls(initialItems)
+
+            await MainActor.run {
+                guard self.refreshGeneration == generation else { return }
+                self.allItems = enrichedItems
+                self.buildPrefixBuckets()
             }
         }
     }
@@ -125,12 +156,31 @@ class BrowserDataManager {
     private func buildPrefixBuckets() {
         var map: [String: [Int]] = [:]
         for (idx, pre) in allItems.enumerated() {
-            let s = pre.searchableUrl
-            let key = String(s.prefix(PREFIX_KEY_LENGTH))
-            map[key, default: []].append(idx)
+            let searchableKeys = prefixBucketKeys(for: pre.searchableUrl)
+            let titleKeys = prefixBucketKeys(for: pre.lowercasedTitle)
+
+            for key in searchableKeys {
+                map[key, default: []].append(idx)
+            }
+
+            for key in titleKeys where !searchableKeys.contains(key) {
+                map[key, default: []].append(idx)
+            }
         }
         // 不对桶做全量排序（避免构建时昂贵的排序），搜索时使用 top-k 堆进行合并
         prefixBuckets = map
+    }
+
+    private func prefixBucketKeys(for text: String) -> [String] {
+        guard !text.isEmpty else { return [] }
+
+        let maxLength = min(PREFIX_KEY_LENGTH, text.count)
+        var keys: [String] = []
+        keys.reserveCapacity(maxLength)
+        for length in 1...maxLength {
+            keys.append(String(text.prefix(length)))
+        }
+        return keys
     }
 
     private struct SearchWeights {
@@ -149,22 +199,35 @@ class BrowserDataManager {
         let baseScore: Double
         let isBookmark: Bool
         let lowercasedTitle: String
+        let hostLowercased: String
+        let path: String
         let searchableUrl: String
     }
 
-    private func createSearchableUrl(from urlString: String) -> String {
+    private nonisolated static func parseURLData(from urlString: String) -> (
+        hostLowercased: String, path: String
+    ) {
         guard let urlComponents = URLComponents(string: urlString) else {
-            return urlString.lowercased()
+            let lowercased = urlString.lowercased()
+            return (hostLowercased: lowercased, path: "")
         }
-        let host = urlComponents.host ?? ""
-        let pathSegments = urlComponents.path.split(separator: "/")
-        let filteredPath = pathSegments.filter {
-            return $0.count < URL_SEGMENT_MAX_LENGTH || !$0.contains(where: \.isNumber)
-        }.joined(separator: "/")
-        return (host + "/" + filteredPath).lowercased()
+        return (
+            hostLowercased: (urlComponents.host ?? "").lowercased(),
+            path: urlComponents.path
+        )
     }
 
-    private func prepareAndPreScoreItems(bookmarks: [BrowserItem], history: [BrowserItem])
+    private nonisolated static func createSearchableUrl(hostLowercased: String, path: String)
+        -> String
+    {
+        let pathSegments = path.split(separator: "/")
+        let filteredPath = pathSegments.filter {
+            return $0.count < Self.URL_SEGMENT_MAX_LENGTH || !$0.contains(where: \.isNumber)
+        }.joined(separator: "/")
+        return (hostLowercased + "/" + filteredPath).lowercased()
+    }
+
+    private nonisolated static func prepareInitialItems(bookmarks: [BrowserItem], history: [BrowserItem])
         -> [PreScoredItem]
     {
         var uniqueItems: [String: BrowserItem] = [:]
@@ -187,12 +250,32 @@ class BrowserDataManager {
                         * (1.0 - (Double(daysAgo) / SearchWeights.recencyDecayDays))
                 }
             }
+            let urlData = parseURLData(from: item.url)
             return PreScoredItem(
                 item: item,
                 baseScore: baseScore,
                 isBookmark: isBookmark,
                 lowercasedTitle: item.title.lowercased(),
-                searchableUrl: createSearchableUrl(from: item.url)
+                hostLowercased: urlData.hostLowercased,
+                path: urlData.path,
+                searchableUrl: urlData.hostLowercased
+            )
+        }
+    }
+
+    private nonisolated static func enrichItemsWithSearchableUrls(_ items: [PreScoredItem]) -> [PreScoredItem] {
+        items.map { item in
+            PreScoredItem(
+                item: item.item,
+                baseScore: item.baseScore,
+                isBookmark: item.isBookmark,
+                lowercasedTitle: item.lowercasedTitle,
+                hostLowercased: item.hostLowercased,
+                path: item.path,
+                searchableUrl: createSearchableUrl(
+                    hostLowercased: item.hostLowercased,
+                    path: item.path
+                )
             )
         }
     }
@@ -209,7 +292,7 @@ class BrowserDataManager {
         if queryLower.count <= SHORT_QUERY_THRESHOLD {
             // --- 快速路径：仅限前缀匹配，保证极速响应 ---
             // 使用 prefix-bucket 加速短查询
-            let key = String(queryLower.prefix(PREFIX_KEY_LENGTH))
+            let key = queryLower
             if let indices = prefixBuckets[key], !indices.isEmpty {
                 // 使用有界最小堆选出 top-k，避免对整个桶排序
                 var heap = BoundedMinHeap(capacity: TOP_K_RESULTS)
@@ -234,25 +317,7 @@ class BrowserDataManager {
                 let top = heap.sortedDescending()
                 searchResults = top.map { (item: allItems[$0.idx].item, score: $0.score) }
             } else {
-                // 回退到线性扫描以保证正确性（极少见）
-                searchResults = allItems.compactMap {
-                    preScoredItem -> (item: BrowserItem, score: Double)? in
-                    var queryScore: Double = 0.0
-
-                    if preScoredItem.searchableUrl.hasPrefix(queryLower) {
-                        queryScore += SearchWeights.urlMatch + SearchWeights.hostMatchBonus
-                    }
-
-                    if preScoredItem.lowercasedTitle.hasPrefix(queryLower) {
-                        queryScore += SearchWeights.titleMatch
-                    }
-
-                    if queryScore == 0 { return nil }
-
-                    let finalScore =
-                        preScoredItem.baseScore + queryScore + SearchWeights.prefixMatchBonus
-                    return (item: preScoredItem.item, score: finalScore)
-                }
+                searchResults = []
             }
         } else {
             // --- 完整路径：执行高精度加权搜索 ---
