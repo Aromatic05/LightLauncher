@@ -91,14 +91,12 @@ class BrowserDataManager {
     }
 
     func loadBrowserData() {
-        // 检查是否有完全磁盘访问权限
-        guard PermissionManager.shared.checkBrowserDataPermissions() else {
-            // 如果没有权限，显示权限请求
-            Task { @MainActor in
-                PermissionPromptService.shared.prompt(for: .fullDiskAccess)
-            }
-            return
-        }
+        guard PermissionManager.shared.checkBrowserDataPermissions() else { return }
+
+        refreshBrowserDataIfNeeded()
+    }
+
+    private func refreshBrowserDataIfNeeded() {
 
         if let lastLoad = lastLoadTime, Date().timeIntervalSince(lastLoad) < 300 { return }
 
@@ -297,6 +295,10 @@ class BrowserDataManager {
             .sorted { $0.baseScore > $1.baseScore }
             .prefix(limit)
             .map { $0.item }
+    }
+
+    func canAccessBrowserData() -> Bool {
+        PermissionManager.shared.checkBrowserDataPermissions()
     }
 
     private static func loadBrowserData(for browser: BrowserType) async -> (

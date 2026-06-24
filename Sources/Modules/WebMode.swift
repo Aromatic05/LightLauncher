@@ -7,9 +7,7 @@ import SwiftUI
 @MainActor
 final class WebModeController: NSObject, ModeStateController, ObservableObject {
     static let shared = WebModeController()
-    private override init() {
-        BrowserDataManager.shared.loadBrowserData()
-    }
+    private override init() {}
 
     // 1. 身份与元数据
     let mode: LauncherMode = .web
@@ -39,10 +37,15 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
         )
         items.append(inputItem)
 
-        if query.isEmpty {
-            items += BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
-        } else {
-            items += BrowserDataManager.shared.searchBrowserData(query: query)
+        if BrowserDataManager.shared.canAccessBrowserData() {
+            BrowserDataManager.shared.loadBrowserData()
+            if query.isEmpty {
+                items += BrowserDataManager.shared.getDefaultBrowserItems(limit: 10)
+            } else {
+                items += BrowserDataManager.shared.searchBrowserData(query: query)
+            }
+        } else if !query.isEmpty {
+            PermissionPromptService.shared.prompt(for: .fullDiskAccess)
         }
 
         self.displayableItems = items

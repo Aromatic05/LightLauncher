@@ -130,13 +130,14 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
 
     @Published private var showStartPaths: Bool = true
     @Published private var currentPath: String = NSHomeDirectory()
+    private let fileAccess = FileAccessService.shared
 
     func navigateToDirectory(_ url: URL) {
         let standardizedURL = url.standardized
 
         var isDirectory: ObjCBool = false
         guard
-            FileManager.default.fileExists(atPath: standardizedURL.path, isDirectory: &isDirectory),
+            fileAccess.itemExists(atPath: standardizedURL.path, isDirectory: &isDirectory),
             isDirectory.boolValue
         else {
             showPathError(message: "Cannot access directory at '\(url.path)'")
@@ -192,14 +193,14 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
 
     private func getFileItems(path: String, query: String) -> [FileItem] {
         var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+        guard fileAccess.itemExists(atPath: path, isDirectory: &isDirectory),
             isDirectory.boolValue
         else {
             return []
         }
 
-        let allFiles = FileManager_LightLauncher.shared.getFiles(at: path)
-        return FileManager_LightLauncher.shared.filterFiles(allFiles, query: query)
+        let allFiles = FileBrowserService.shared.getFiles(at: path)
+        return FileBrowserService.shared.filterFiles(allFiles, query: query)
     }
 
     func openInFinder() {
@@ -219,7 +220,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
             let resolvedPath = resolvePath(from: pathToResolve)
 
             var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: resolvedPath, isDirectory: &isDirectory),
+            if fileAccess.itemExists(atPath: resolvedPath, isDirectory: &isDirectory),
                 isDirectory.boolValue
             {
                 return (resolvedPath, "")

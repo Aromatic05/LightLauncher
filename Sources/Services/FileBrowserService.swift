@@ -3,10 +3,10 @@ import Combine
 import Foundation
 import SwiftUI
 
-// MARK: - 文件管理器管理类
+// MARK: - 文件浏览服务
 @MainActor
-class FileManager_LightLauncher {
-    static let shared = FileManager_LightLauncher()
+final class FileBrowserService {
+    static let shared = FileBrowserService()
     private let fileAccess = FileAccessService.shared
     private let alertService = AlertService.shared
 
