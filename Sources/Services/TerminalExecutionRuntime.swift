@@ -23,9 +23,7 @@ final class TerminalExecutionRuntime {
                 "Terminal execution blocked: automation permission missing",
                 owner: self
             )
-            Task { @MainActor in
-                PermissionPromptService.shared.prompt(for: .automation)
-            }
+            PermissionPromptService.shared.prompt(for: .automation)
             return false
         }
 

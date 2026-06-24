@@ -41,7 +41,7 @@ class ScheduledTaskManager {
 
         // 创建定时器
         let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 task()
             }
         }
@@ -82,7 +82,7 @@ class ScheduledTaskManager {
 
         // 重新创建定时器
         let timer = Timer.scheduledTimer(withTimeInterval: task.interval, repeats: true) { _ in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 taskClosure()
             }
         }

@@ -52,9 +52,7 @@ class RunningAppsManager: @unchecked Sendable {
                 PermissionManager.shared.hasPermission(for: .accessibility)
                 ? .automation
                 : .accessibility
-            Task { @MainActor in
-                PermissionPromptService.shared.prompt(for: missingPermission)
-            }
+            PermissionPromptService.shared.prompt(for: missingPermission)
             return false
         }
 
