@@ -15,9 +15,7 @@ struct ResultsListView: View {
                         item.makeRowView(isSelected: index == viewModel.selectedIndex, index: index)
                             .id(index)
                             .onTapGesture {
-                                if viewModel.executeSelectedAction(at: index) {
-                                    NotificationCenter.default.post(name: .hideWindow, object: nil)
-                                }
+                                viewModel.executeSelectedActionAndHideIfNeeded(at: index)
                             }
                     }
                 }

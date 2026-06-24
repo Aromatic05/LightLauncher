@@ -104,13 +104,11 @@ class LauncherViewModel: ObservableObject {
                 let selectedCommand = commandSuggestions[selectedIndex]
                 applySelectedCommand(selectedCommand)
             } else {
-                if executeSelectedAction(at: selectedIndex) {
-                    NotificationCenter.default.post(name: .hideWindow, object: nil)
-                }
+                executeSelectedActionAndHideIfNeeded(at: selectedIndex)
             }
             return
         case .escape:
-            NotificationCenter.default.post(name: .hideWindow, object: nil)
+            hideWindow()
             return
         default: break
         }
@@ -268,6 +266,16 @@ class LauncherViewModel: ObservableObject {
         searchText = command.prefix + " "
         showCommandSuggestions = false
         commandSuggestions = []
+    }
+
+    func hideWindow() {
+        NotificationCenter.default.post(name: .hideWindow, object: nil)
+    }
+
+    func executeSelectedActionAndHideIfNeeded(at index: Int) {
+        if executeSelectedAction(at: index) {
+            hideWindow()
+        }
     }
 
     func executeSelectedAction(at index: Int) -> Bool {

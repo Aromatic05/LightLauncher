@@ -45,7 +45,7 @@ final class KillModeController: NSObject, ModeStateController, ObservableObject 
         switch keyEvent {
         case .numeric(let number) where number >= 1 && number <= 6:
             if selectKillAppByNumber(Int(number)) {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
+                LauncherViewModel.shared.hideWindow()
             }
             return true
         case .optionFlagChanged:

@@ -85,7 +85,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
             return true
         case .enterWithModifiers(modifierRawValue: UInt(NSEvent.ModifierFlags.shift.rawValue)):
             // 处理带修饰键的 Enter
-            NotificationCenter.default.post(name: .hideWindow, object: nil)
+            LauncherViewModel.shared.hideWindow()
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 _ = self.executeInputAction(at: LauncherViewModel.shared.selectedIndex)

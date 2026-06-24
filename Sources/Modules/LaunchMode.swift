@@ -43,7 +43,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
         case .numeric(let number) where number >= 1 && number <= 6:
             // 使用已存在的 selectAppByNumber 方法，该方法会做索引边界检查，避免数组越界导致崩溃
             if selectAppByNumber(Int(number)) {
-                NotificationCenter.default.post(name: .hideWindow, object: nil)
+                LauncherViewModel.shared.hideWindow()
             }
             return true
         default:
