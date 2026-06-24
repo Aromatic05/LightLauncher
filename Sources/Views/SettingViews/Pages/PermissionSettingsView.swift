@@ -6,6 +6,7 @@ struct PermissionSettingsView: View {
     @StateObject private var permissionManager = PermissionManager.shared
     @State private var permissionSummary: AppPermissionSummary?
     @State private var isRefreshing: Bool = false
+    @State private var refreshTask: Task<Void, Never>?
 
     var body: some View {
         ScrollView {
@@ -262,8 +263,11 @@ struct PermissionSettingsView: View {
     // MARK: - 辅助方法
 
     private func refreshPermissionStatus() {
+        refreshTask?.cancel()
         isRefreshing = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        refreshTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
             permissionSummary = permissionManager.getPermissionSummary()
             isRefreshing = false
         }

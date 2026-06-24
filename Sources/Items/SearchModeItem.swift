@@ -1,6 +1,8 @@
 import SwiftUI
 
 private func loadIcon(named iconName: String?) -> NSImage? {
+    let fileAccess = FileAccessService.shared
+
     // Return a sensible default early if no name provided
     guard let iconName = iconName, !iconName.isEmpty else {
         return NSImage(
@@ -19,14 +21,14 @@ private func loadIcon(named iconName: String?) -> NSImage? {
                 return img
             }
             // Fallback: try reading data safely and constructing image from data.
-            if let data = try? Data(contentsOf: url), let img = NSImage(data: data) {
+            if let data = try? fileAccess.readData(from: url), let img = NSImage(data: data) {
                 return img
             }
             return nil
         }
 
         // For non-file URLs, attempt to read data with try? and build image from data.
-        if let data = try? Data(contentsOf: url), let img = NSImage(data: data) {
+        if let data = try? fileAccess.readData(from: url), let img = NSImage(data: data) {
             return img
         }
 

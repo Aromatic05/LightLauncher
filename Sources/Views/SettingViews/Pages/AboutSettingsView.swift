@@ -8,6 +8,19 @@ struct AboutSettingsView: View {
     @State private var showingCleanConfirm = false
     private let fileAccess = FileAccessService.shared
 
+    private func loggingBinding<Value>(
+        _ keyPath: WritableKeyPath<AppConfig.LoggingConfig, Value>
+    ) -> Binding<Value> {
+        Binding(
+            get: { configManager.config.logging[keyPath: keyPath] },
+            set: { newValue in
+                configManager.config.logging[keyPath: keyPath] = newValue
+                configManager.saveConfig()
+                Logger.shared.apply(config: configManager.config.logging)
+            }
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
@@ -117,31 +130,13 @@ struct AboutSettingsView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Toggle(
-                            isOn: Binding(
-                                get: { configManager.config.logging.printToTerminal },
-                                set: { new in
-                                    configManager.config.logging.printToTerminal = new
-                                    Task { @MainActor in
-                                        configManager.saveConfig()
-                                    }
-                                    Logger.shared.apply(config: configManager.config.logging)
-                                }
-                            )
+                            isOn: loggingBinding(\.printToTerminal)
                         ) {
                             Text("在终端显示日志")
                         }
 
                         Toggle(
-                            isOn: Binding(
-                                get: { configManager.config.logging.logToFile },
-                                set: { new in
-                                    configManager.config.logging.logToFile = new
-                                    Task { @MainActor in
-                                        configManager.saveConfig()
-                                    }
-                                    Logger.shared.apply(config: configManager.config.logging)
-                                }
-                            )
+                            isOn: loggingBinding(\.logToFile)
                         ) {
                             Text("写入日志文件（默认关闭）")
                         }
@@ -152,16 +147,7 @@ struct AboutSettingsView: View {
                             Spacer()
                             Picker(
                                 "控制台日志等级",
-                                selection: Binding(
-                                    get: { configManager.config.logging.consoleLevel },
-                                    set: { new in
-                                        configManager.config.logging.consoleLevel = new
-                                        Task { @MainActor in
-                                            configManager.saveConfig()
-                                        }
-                                        Logger.shared.apply(config: configManager.config.logging)
-                                    }
-                                )
+                                selection: loggingBinding(\.consoleLevel)
                             ) {
                                 Text("Debug").tag(AppConfig.LoggingConfig.LogLevel.debug)
                                 Text("Info").tag(AppConfig.LoggingConfig.LogLevel.info)
@@ -177,16 +163,7 @@ struct AboutSettingsView: View {
                             Spacer()
                             Picker(
                                 "文件日志等级",
-                                selection: Binding(
-                                    get: { configManager.config.logging.fileLevel },
-                                    set: { new in
-                                        configManager.config.logging.fileLevel = new
-                                        Task { @MainActor in
-                                            configManager.saveConfig()
-                                        }
-                                        Logger.shared.apply(config: configManager.config.logging)
-                                    }
-                                )
+                                selection: loggingBinding(\.fileLevel)
                             ) {
                                 Text("Debug").tag(AppConfig.LoggingConfig.LogLevel.debug)
                                 Text("Info").tag(AppConfig.LoggingConfig.LogLevel.info)
