@@ -17,6 +17,27 @@ final class ModeRegistry {
 
     private init() {}
 
+    /// 在应用启动时调用一次,触发所有内置 controller 的 `.shared`,
+    /// 进而通过 `register(_:)` 完成 mode 索引、类型索引、CommandPrefix 三处注册。
+    ///
+    /// Swift 没有原生类型发现机制,eager 注册必须显式枚举 controller 类型。
+    /// 这是当前设计中**唯一**显式列举 controller 的中心点:
+    /// 之前在 `LauncherViewModel` 里的 typed accessor + 中心数组已删除,
+    /// 但这一份清单无法去除——任何 controller 必须先被访问才能 self-register。
+    ///
+    /// 新增一个 controller 需要 1 个新文件 + 在此处加 1 行。
+    func bootstrap() {
+        _ = LaunchModeController.shared
+        _ = KillModeController.shared
+        _ = FileModeController.shared
+        _ = SearchModeController.shared
+        _ = WebModeController.shared
+        _ = ClipModeController.shared
+        _ = TerminalModeController.shared
+        _ = PluginModeController.shared
+        _ = KeywordModeController.shared
+    }
+
     /// 一站式注册:mode 索引 + 类型索引 + CommandRegistry。
     @discardableResult
     func register<T: ModeStateController>(_ controller: T) -> T {

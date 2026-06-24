@@ -47,8 +47,9 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Initialization
     private init() {
-        // 触发 launch controller 的 self-register,确保初始 mode 已注册到 ModeRegistry
-        _ = LaunchModeController.shared
+        // 触发所有内置 controller 的 self-register,
+        // 后续 ModeRegistry.controller(for:) 才能命中,CommandRegistry 才有命令前缀
+        ModeRegistry.shared.bootstrap()
         self.activeController = ModeRegistry.shared.controller(for: .launch)
         bindSearchText()
         setupKeyboardSubscription()
