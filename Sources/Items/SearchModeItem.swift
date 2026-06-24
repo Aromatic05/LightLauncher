@@ -1,86 +1,11 @@
 import SwiftUI
 
-private func loadIcon(named iconName: String?) -> NSImage? {
-    let fileAccess = FileAccessService.shared
-    let userIconsDirectory = fileAccess.homeDirectory.appendingPathComponent(
-        ".config/LightLauncher/icons",
-        isDirectory: true
-    )
-
-    guard let iconName = iconName, !iconName.isEmpty else {
-        return NSImage(
-            systemSymbolName: "magnifyingglass",
-            accessibilityDescription: "Default search icon")
-    }
-
-    func loadImage(from url: URL) -> NSImage? {
-        if url.isFileURL {
-            if let image = NSImage(contentsOf: url) { return image }
-        }
-
-        guard let data = try? fileAccess.readData(from: url) else { return nil }
-        return NSImage(data: data)
-    }
-
-    func firstAvailableImage(from candidates: [URL?]) -> NSImage? {
-        for case let url? in candidates {
-            if let image = loadImage(from: url) {
-                return image
-            }
-        }
-        return nil
-    }
-
-    func bundleResourceURLs(baseName: String, extensionName: String) -> [URL?] {
-        var urls: [URL?] = []
-        #if SWIFT_PACKAGE
-            urls.append(Bundle.module.url(forResource: baseName, withExtension: extensionName))
-        #endif
-        urls.append(Bundle.main.url(forResource: baseName, withExtension: extensionName))
-        return urls
-    }
-
-    let pathName = iconName as NSString
-    let baseName = pathName.deletingPathExtension
-    let extensionName = pathName.pathExtension
-
-    var candidates = bundleResourceURLs(baseName: baseName, extensionName: extensionName)
-
-    if iconName.hasPrefix("/") {
-        candidates.append(URL(fileURLWithPath: iconName))
-    } else if let fileURL = URL(string: iconName), fileURL.isFileURL {
-        candidates.append(fileURL)
-    } else {
-        candidates.append(userIconsDirectory.appendingPathComponent(iconName))
-    }
-
-    if extensionName.isEmpty {
-        let commonExtensions = ["png", "jpg", "jpeg", "gif", "pdf"]
-        for extensionName in commonExtensions {
-            candidates.append(contentsOf: bundleResourceURLs(baseName: baseName, extensionName: extensionName))
-            candidates.append(
-                userIconsDirectory
-                    .appendingPathComponent(baseName)
-                    .appendingPathExtension(extensionName)
-            )
-        }
-    }
-
-    if let image = firstAvailableImage(from: candidates) {
-        return image
-    }
-
-    return NSImage(
-        systemSymbolName: "magnifyingglass",
-        accessibilityDescription: "Default search icon")
-}
-
 struct KeywordSuggestionItem: DisplayableItem {
     let item: KeywordSearchItem
     var id: String { item.keyword }
     var title: String { item.keyword }
     var subtitle: String? { item.title }
-    var icon: NSImage? { loadIcon(named: item.icon) }
+    var icon: NSImage? { Self.loadIcon(named: item.icon) }
     @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         AnyView(
             KeywordRowView(
@@ -105,7 +30,7 @@ struct ActionableSearchItem: DisplayableItem {
         query.isEmpty ? item.title : item.title.replacingOccurrences(of: "{query}", with: query)
     }
     var subtitle: String? { "使用 \(item.title) 搜索: \(query)" }
-    var icon: NSImage? { loadIcon(named: item.icon) }
+    var icon: NSImage? { Self.loadIcon(named: item.icon) }
     @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         AnyView(
             KeywordRowView(

@@ -23,6 +23,49 @@ extension DisplayableItem {
         ).map { String(format: "%02x", $0) }.joined()
     }
 
+    static func loadIcon(named iconName: String?, defaultSystemSymbol: String = "magnifyingglass")
+        -> NSImage?
+    {
+        let fileAccess = FileAccessService.shared
+        let defaultIcon = NSImage(systemSymbolName: defaultSystemSymbol, accessibilityDescription: "Default icon")
+        guard let iconName, !iconName.isEmpty else { return defaultIcon }
+        if iconName.hasPrefix("SF:") {
+            return NSImage(systemSymbolName: String(iconName.dropFirst(3)), accessibilityDescription: nil)
+        }
+        if iconName.hasPrefix("base64:"),
+            let data = Data(base64Encoded: String(iconName.dropFirst(7))),
+            let image = NSImage(data: data)
+        {
+            return image
+        }
+
+        let userIconsDirectory = fileAccess.homeDirectory.appendingPathComponent(".config/LightLauncher/icons", isDirectory: true)
+        let pathName = iconName as NSString
+        let baseName = pathName.deletingPathExtension
+        let extensionName = pathName.pathExtension
+        var candidates: [URL?] = [Bundle.main.url(forResource: baseName, withExtension: extensionName)]
+        #if SWIFT_PACKAGE
+            candidates.insert(Bundle.module.url(forResource: baseName, withExtension: extensionName), at: 0)
+        #endif
+        candidates.append(iconName.hasPrefix("/") ? URL(fileURLWithPath: iconName) : (URL(string: iconName)?.isFileURL == true ? URL(string: iconName) : userIconsDirectory.appendingPathComponent(iconName)))
+        if extensionName.isEmpty {
+            for extensionName in ["png", "jpg", "jpeg", "gif", "pdf"] {
+                #if SWIFT_PACKAGE
+                    candidates.append(Bundle.module.url(forResource: baseName, withExtension: extensionName))
+                #endif
+                candidates.append(Bundle.main.url(forResource: baseName, withExtension: extensionName))
+                candidates.append(userIconsDirectory.appendingPathComponent(baseName).appendingPathExtension(extensionName))
+            }
+        }
+
+        for case let url? in candidates {
+            if let image = url.isFileURL ? NSImage(contentsOf: url) : ((try? fileAccess.readData(from: url)).flatMap(NSImage.init(data:))) {
+                return image
+            }
+        }
+        return defaultIcon
+    }
+
     private static func serializeStableIDComponent(_ component: Any?) -> String {
         guard let component else { return "nil" }
         return "\(String(reflecting: type(of: component))):\(String(reflecting: component))"

@@ -18,22 +18,7 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     let iconName: String?  // SF Symbol 名称或 Base64 图片字符串
     let action: PluginItemAction?
     var id: String { Self.stableID(title, subtitle, iconName, action) }
-    var icon: NSImage? {
-        // 根据 iconName 的类型返回对应的 NSImage
-        if let iconName = iconName {
-            if iconName.hasPrefix("SF:") {
-                return NSImage(
-                    systemSymbolName: String(iconName.dropFirst(3)), accessibilityDescription: nil)
-            } else if iconName.hasPrefix("base64:") {
-                if let data = Data(base64Encoded: String(iconName.dropFirst(7))),
-                    let image = NSImage(data: data)
-                {
-                    return image
-                }
-            }
-        }
-        return nil
-    }
+    var icon: NSImage? { Self.loadIcon(named: iconName, defaultSystemSymbol: "puzzlepiece.extension") }
 
     init(
         title: String, subtitle: String? = nil, iconName: String? = nil,
