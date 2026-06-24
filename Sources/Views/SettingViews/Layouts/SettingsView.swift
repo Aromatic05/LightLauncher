@@ -78,54 +78,14 @@ struct SettingsView: View {
                 VStack(spacing: 16) {
                     // 配置管理按钮组
                     VStack(spacing: 8) {
-                        Text("配置管理")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("配置管理").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
 
                         VStack(spacing: 6) {
-                            Button(action: {
-                                configManager.reloadConfig()
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "arrow.clockwise")
-                                        .frame(width: 12)
-                                    Text("重新加载配置")
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
+                            sidebarActionButton("重新加载配置", icon: "arrow.clockwise") { configManager.reloadConfig() }
+                            sidebarActionButton("编辑配置文件", icon: "doc.text") { NSWorkspace.shared.open(configManager.configURL) }
+                            sidebarActionButton("打开配置文件夹", icon: "folder") {
+                                NSWorkspace.shared.selectFile(configManager.configURL.path, inFileViewerRootedAtPath: "")
                             }
-                            .font(.caption)
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-
-                            Button(action: {
-                                NSWorkspace.shared.open(configManager.configURL)
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "doc.text")
-                                        .frame(width: 12)
-                                    Text("编辑配置文件")
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
-                            .font(.caption)
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-
-                            Button(action: {
-                                NSWorkspace.shared.selectFile(
-                                    configManager.configURL.path, inFileViewerRootedAtPath: "")
-                            }) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "folder")
-                                        .frame(width: 12)
-                                    Text("打开配置文件夹")
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
-                            .font(.caption)
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
                         }
                     }
 
@@ -198,5 +158,19 @@ struct SettingsView: View {
         .onAppear {
             settingsManager.checkAutoStartStatus()
         }
+    }
+
+    private func sidebarActionButton(_ title: String, icon: String, action: @escaping () -> Void)
+        -> some View
+    {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon).frame(width: 12)
+                Text(title).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .font(.caption)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 }
