@@ -85,7 +85,9 @@ final class WindowManager: NSObject, NSWindowDelegate {
 
         isHidingWindow = false
         centerWindow(window)
-        inputMethodManager.switchToEnglish()
+        if ConfigManager.shared.config.restorePreviousInputMethod {
+            inputMethodManager.switchToEnglish()
+        }
 
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -167,7 +169,9 @@ final class WindowManager: NSObject, NSWindowDelegate {
         viewModel?.isLauncherWindowKey = false
         viewModel?.clearSearch()
 
-        inputMethodManager.restorePreviousInputMethod()
+        if ConfigManager.shared.config.restorePreviousInputMethod {
+            inputMethodManager.restorePreviousInputMethod()
+        }
 
         if !shouldActivatePreviousApp {
             // 如果不需要激活前一个应用，简单重置标志位即可。

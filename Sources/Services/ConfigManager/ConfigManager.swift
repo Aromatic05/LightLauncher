@@ -47,6 +47,7 @@ class ConfigManager: ObservableObject {
     private static func createDefaultConfig() -> AppConfig {
         return AppConfig(
             hotKey: AppConfig.HotKeyConfig(),
+            restorePreviousInputMethod: AppConfigDefaults.restorePreviousInputMethod,
             customHotKeys: AppConfigDefaults.customHotKeys,
             searchDirectories: AppConfigDefaults.searchDirectories,
             commonAbbreviations: AppConfigDefaults.commonAbbreviations,
@@ -86,6 +87,7 @@ class ConfigManager: ObservableObject {
             let oldConfig = try decoder.decode(OldAppConfig.self, from: yamlString)
             return AppConfig(
                 hotKey: oldConfig.hotKey,
+                restorePreviousInputMethod: AppConfigDefaults.restorePreviousInputMethod,
                 customHotKeys: oldConfig.customHotKeys,
                 searchDirectories: oldConfig.searchDirectories.map { SearchDirectory(path: $0) },
                 commonAbbreviations: oldConfig.commonAbbreviations,
@@ -110,6 +112,7 @@ class ConfigManager: ObservableObject {
                 # modifiers: 修饰键组合 (可选值: 256=Cmd, 512=Shift, 1024=Option, 2048=Ctrl)
                 # 特殊值: 1048592=右Cmd, 1048640=右Option
                 # keyCode: 按键代码 (0表示仅修饰键, 49=Space, 36=Return 等)
+                # restorePreviousInputMethod: 显示启动器时切到英文并在关闭后恢复之前输入法
 
                 # 功能模式配置
                 # enabled: 各功能模式开关

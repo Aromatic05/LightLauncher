@@ -3,6 +3,7 @@ import Foundation
 // 配置数据结构
 struct AppConfig: Codable {
     var hotKey: HotKeyConfig
+    var restorePreviousInputMethod: Bool
     var customHotKeys: [CustomHotKeyConfig]  // 新增自定义快捷键数组
     var searchDirectories: [SearchDirectory]
     var commonAbbreviations: [String: [String]]
@@ -124,6 +125,68 @@ struct AppConfig: Codable {
                 fileBrowserStartPaths
             case keywordModeConfig
         }
+    }
+
+    init(
+        hotKey: HotKeyConfig,
+        restorePreviousInputMethod: Bool = AppConfigDefaults.restorePreviousInputMethod,
+        customHotKeys: [CustomHotKeyConfig],
+        searchDirectories: [SearchDirectory],
+        commonAbbreviations: [String: [String]],
+        logging: LoggingConfig,
+        modes: ModesConfig
+    ) {
+        self.hotKey = hotKey
+        self.restorePreviousInputMethod = restorePreviousInputMethod
+        self.customHotKeys = customHotKeys
+        self.searchDirectories = searchDirectories
+        self.commonAbbreviations = commonAbbreviations
+        self.logging = logging
+        self.modes = modes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        hotKey = try container.decode(HotKeyConfig.self, forKey: .hotKey)
+        restorePreviousInputMethod =
+            try container.decodeIfPresent(Bool.self, forKey: .restorePreviousInputMethod)
+            ?? AppConfigDefaults.restorePreviousInputMethod
+        customHotKeys =
+            try container.decodeIfPresent([CustomHotKeyConfig].self, forKey: .customHotKeys)
+            ?? AppConfigDefaults.customHotKeys
+        searchDirectories =
+            try container.decodeIfPresent([SearchDirectory].self, forKey: .searchDirectories)
+            ?? AppConfigDefaults.searchDirectories
+        commonAbbreviations =
+            try container.decodeIfPresent([String: [String]].self, forKey: .commonAbbreviations)
+            ?? AppConfigDefaults.commonAbbreviations
+        logging =
+            try container.decodeIfPresent(LoggingConfig.self, forKey: .logging)
+            ?? AppConfigDefaults.logging
+        modes =
+            try container.decodeIfPresent(ModesConfig.self, forKey: .modes)
+            ?? AppConfigDefaults.modes
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(hotKey, forKey: .hotKey)
+        try container.encode(restorePreviousInputMethod, forKey: .restorePreviousInputMethod)
+        try container.encode(customHotKeys, forKey: .customHotKeys)
+        try container.encode(searchDirectories, forKey: .searchDirectories)
+        try container.encode(commonAbbreviations, forKey: .commonAbbreviations)
+        try container.encode(logging, forKey: .logging)
+        try container.encode(modes, forKey: .modes)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case hotKey
+        case restorePreviousInputMethod
+        case customHotKeys
+        case searchDirectories
+        case commonAbbreviations
+        case logging
+        case modes
     }
 }
 

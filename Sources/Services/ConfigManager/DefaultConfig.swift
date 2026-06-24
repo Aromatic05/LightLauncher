@@ -51,6 +51,7 @@ enum AppConfigDefaults {
 
     static let modeEnabled: [String: Bool] = Dictionary(
         uniqueKeysWithValues: AppConfig.ModesConfig.allModes.map { ($0, true) })
+    static let restorePreviousInputMethod: Bool = false
     static let showCommandSuggestions: Bool = true
     static let defaultSearchEngine: String = "Google"
     static let preferredTerminal: String = "auto"
@@ -147,6 +148,7 @@ enum AppConfigDefaults {
 
     static let defaultConfig: AppConfig = AppConfig(
         hotKey: hotKey,
+        restorePreviousInputMethod: restorePreviousInputMethod,
         customHotKeys: customHotKeys,
         searchDirectories: searchDirectories,
         commonAbbreviations: commonAbbreviations,

@@ -1,6 +1,11 @@
 import Foundation
 
 extension ConfigManager {
+    func updateRestorePreviousInputMethod(_ enabled: Bool) {
+        config.restorePreviousInputMethod = enabled
+        saveConfig()
+    }
+
     // MARK: Modes
     func updateModeSettings() {
         let settingsManager = SettingsManager.shared
