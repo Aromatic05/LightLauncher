@@ -5,7 +5,7 @@ import SwiftUI
 struct AppInfo: Identifiable, Hashable, DisplayableItem {
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
+        erasedRowView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
     }
     let name: String
     let url: URL
@@ -51,7 +51,7 @@ struct SystemCommandItem: DisplayableItem {
 
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(SystemCommandRowView(command: self, isSelected: isSelected, index: index))
+        erasedRowView(SystemCommandRowView(command: self, isSelected: isSelected, index: index))
     }
 
     // Hashable/Equatable 实现，使用 id 唯一
@@ -86,7 +86,7 @@ struct PreferencePaneItem: DisplayableItem {
 
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(PreferencePaneRowView(pane: self, isSelected: isSelected, index: index))
+        erasedRowView(PreferencePaneRowView(pane: self, isSelected: isSelected, index: index))
     }
 
     @MainActor

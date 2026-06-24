@@ -14,6 +14,15 @@ protocol DisplayableItem: Hashable, Identifiable {
     func executeAction() -> Bool  // 返回结果确定是否隐藏启动器
 }
 
+extension DisplayableItem {
+    var icon: NSImage? { nil }
+
+    @MainActor
+    func erasedRowView<Content: View>(_ view: Content) -> AnyView {
+        AnyView(view)
+    }
+}
+
 // MARK: - 模式状态控制器协议（清晰版）
 @MainActor
 protocol ModeStateController: AnyObject {

@@ -7,7 +7,7 @@ struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(RunningAppRowView(app: self, isSelected: isSelected, index: index))
+        erasedRowView(RunningAppRowView(app: self, isSelected: isSelected, index: index))
     }
     let name: String
     let bundleIdentifier: String

@@ -9,14 +9,14 @@ struct TerminalHistoryItem: Codable, Identifiable, Hashable, DisplayableItem {
     let timestamp: Date
     var title: String { command }
     var subtitle: String? { "终端命令" }
-    var icon: NSImage? { nil }
 
     @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         if index == 0 {
-            return AnyView(TerminalCurrentCommandRowView(command: command, isSelected: isSelected))
+            return erasedRowView(
+                TerminalCurrentCommandRowView(command: command, isSelected: isSelected))
         } else {
-            return AnyView(
+            return erasedRowView(
                 TerminalHistoryRowView(
                     item: self, isSelected: isSelected, index: index,
                     onDelete: {

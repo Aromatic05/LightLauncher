@@ -97,11 +97,9 @@ struct ClipboardItem: Codable, Hashable, DisplayableItem {
         }
     }
 
-    var icon: NSImage? { nil }
-
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(ClipItemRowView(item: self, isSelected: isSelected, index: index))
+        erasedRowView(ClipItemRowView(item: self, isSelected: isSelected, index: index))
     }
 
     @MainActor
@@ -155,11 +153,9 @@ struct SnippetItem: Codable, Equatable, DisplayableItem, Identifiable {
 
     var title: String { name }
     var subtitle: String? { keyword.isEmpty ? nil : keyword }
-    var icon: NSImage? { nil }
-
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(SnippetItemRowView(item: self, isSelected: isSelected, index: index))
+        erasedRowView(SnippetItemRowView(item: self, isSelected: isSelected, index: index))
     }
 
     @MainActor

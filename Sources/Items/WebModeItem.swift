@@ -41,7 +41,6 @@ struct BrowserItem: Identifiable, Hashable, DisplayableItem {
     let subtitle: String?
     let iconName: String?
     let actionHint: String?
-    var icon: NSImage? { nil }
     var displaySubtitle: String? { subtitle ?? url }
 
     init(
@@ -62,7 +61,7 @@ struct BrowserItem: Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(BrowserItemRowView(item: self, isSelected: isSelected, index: index))
+        erasedRowView(BrowserItemRowView(item: self, isSelected: isSelected, index: index))
     }
 
     @MainActor

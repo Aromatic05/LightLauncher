@@ -11,7 +11,7 @@ enum PluginItemAction: Hashable, Sendable {
 struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(PluginItemRowView(item: self, isSelected: isSelected, index: index))
+        erasedRowView(PluginItemRowView(item: self, isSelected: isSelected, index: index))
     }
     let id = UUID()
     let title: String

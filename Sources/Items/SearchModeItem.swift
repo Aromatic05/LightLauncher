@@ -82,7 +82,7 @@ struct KeywordSuggestionItem: DisplayableItem {
     var subtitle: String? { item.title }
     var icon: NSImage? { loadIcon(named: item.icon) }
     @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(
+        erasedRowView(
             KeywordRowView(
                 keyword: title, title: subtitle ?? "", icon: icon, isSelected: isSelected))
     }
@@ -107,7 +107,7 @@ struct ActionableSearchItem: DisplayableItem {
     var subtitle: String? { "使用 \(item.title) 搜索: \(query)" }
     var icon: NSImage? { loadIcon(named: item.icon) }
     @ViewBuilder @MainActor func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(
+        erasedRowView(
             KeywordRowView(
                 keyword: title, title: subtitle ?? "", icon: icon, isSelected: isSelected))
     }
@@ -127,12 +127,11 @@ struct ActionableSearchItem: DisplayableItem {
 struct CurrentQueryItem: DisplayableItem {
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(SearchCurrentQueryView(query: title, isSelected: isSelected))
+        erasedRowView(SearchCurrentQueryView(query: title, isSelected: isSelected))
     }
     let id = UUID()
     let title: String
     var subtitle: String? { "当前搜索" }
-    var icon: NSImage? { nil }
     @MainActor
     func executeAction() -> Bool {
         return WebUtils.performWebSearch(query: title)
@@ -157,7 +156,7 @@ struct SearchHistoryItem: Codable, Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(
+        erasedRowView(
             SearchHistoryRowView(
                 item: self, isSelected: isSelected, index: index,
                 onDelete: {

@@ -34,7 +34,7 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(FileRowView(file: self, isSelected: isSelected, index: index))
+        erasedRowView(FileRowView(file: self, isSelected: isSelected, index: index))
     }
 
     func hash(into hasher: inout Hasher) {
@@ -106,7 +106,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        AnyView(StartPathRowView(startPath: self, isSelected: isSelected, index: index))
+        erasedRowView(StartPathRowView(startPath: self, isSelected: isSelected, index: index))
     }
 
     func hash(into hasher: inout Hasher) {
