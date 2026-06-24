@@ -17,7 +17,6 @@ class LauncherViewModel: ObservableObject {
     @Published var shouldHideWindowAfterAction = true
     @Published var isLauncherWindowKey = false
 
-    private(set) var controllers: [LauncherMode: any ModeStateController] = [:]
     @Published private(set) var activeController: (any ModeStateController)? {
         didSet {
             setupControllerSubscription()
@@ -48,24 +47,11 @@ class LauncherViewModel: ObservableObject {
 
     // MARK: - Initialization
     private init() {
-        setupControllersAndRegisterCommands()
-        self.activeController = controllers[.launch]
+        // 触发 launch controller 的 self-register,确保初始 mode 已注册到 ModeRegistry
+        _ = LaunchModeController.shared
+        self.activeController = ModeRegistry.shared.controller(for: .launch)
         bindSearchText()
         setupKeyboardSubscription()
-    }
-
-    private func setupControllersAndRegisterCommands() {
-        let allControllers: [any ModeStateController] = [
-            LaunchModeController.shared, KillModeController.shared,
-            FileModeController.shared, PluginModeController.shared,
-            SearchModeController.shared, WebModeController.shared,
-            ClipModeController.shared, TerminalModeController.shared,
-            KeywordModeController.shared,
-        ]
-        allControllers.forEach { controller in
-            controllers[controller.mode] = controller
-            CommandRegistry.shared.register(controller)
-        }
     }
 
     // MARK: - Keyboard Handling
@@ -157,7 +143,7 @@ class LauncherViewModel: ObservableObject {
             if self.mode != .launch {
                 self.mode = .launch
             }
-            controllers[.launch]?.handleInput(arguments: "")
+            ModeRegistry.shared.controller(for: .launch)?.handleInput(arguments: "")
             return
         }
         if let (record, arguments) = CommandRegistry.shared.findCommand(for: text) {
@@ -180,7 +166,7 @@ class LauncherViewModel: ObservableObject {
             self.mode = .launch
         }
 
-        controllers[.launch]?.handleInput(arguments: text)
+        ModeRegistry.shared.controller(for: .launch)?.handleInput(arguments: text)
     }
 
     // MARK: - Mode & Controller Switching
@@ -191,10 +177,10 @@ class LauncherViewModel: ObservableObject {
     }
 
     func switchController(from oldMode: LauncherMode?, to newMode: LauncherMode) {
-        if let mode = oldMode, let oldController = controllers[mode] {
+        if let mode = oldMode, let oldController = ModeRegistry.shared.controller(for: mode) {
             oldController.cleanup()
         }
-        activeController = controllers[newMode]
+        activeController = ModeRegistry.shared.controller(for: newMode)
         selectedIndex = 0
     }
 
@@ -283,18 +269,4 @@ class LauncherViewModel: ObservableObject {
         else { return false }
         return displayableItems[index].executeAction()
     }
-}
-
-// MARK: - Typed Controller Accessors
-// 视图层不要直接 `as?` 强转或访问单例,统一从这里取。
-extension LauncherViewModel {
-    var launchController: LaunchModeController? { controllers[.launch] as? LaunchModeController }
-    var killController: KillModeController? { controllers[.kill] as? KillModeController }
-    var fileController: FileModeController? { controllers[.file] as? FileModeController }
-    var searchController: SearchModeController? { controllers[.search] as? SearchModeController }
-    var webController: WebModeController? { controllers[.web] as? WebModeController }
-    var terminalController: TerminalModeController? { controllers[.terminal] as? TerminalModeController }
-    var clipController: ClipModeController? { controllers[.clip] as? ClipModeController }
-    var pluginController: PluginModeController? { controllers[.plugin] as? PluginModeController }
-    var keywordController: KeywordModeController? { controllers[.keyword] as? KeywordModeController }
 }

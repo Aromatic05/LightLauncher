@@ -20,7 +20,7 @@ struct AppMatch {
 // MARK: - 启动模式控制器
 @MainActor
 final class LaunchModeController: NSObject, ModeStateController, ObservableObject {
-    static let shared = LaunchModeController()
+    static let shared: LaunchModeController = ModeRegistry.shared.register(LaunchModeController())
     private let systemCommandManager = SystemCommandManager.shared
 
     // 1. 身份与元数据

@@ -27,7 +27,7 @@ struct PluginModeView: View {
                 // 空状态视图
                 PluginEmptyStateView(
                     viewModel: viewModel,
-                    pluginController: viewModel.pluginController)
+                    pluginController: ModeRegistry.shared[PluginModeController.self])
             } else {
                 // 插件结果列表
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in

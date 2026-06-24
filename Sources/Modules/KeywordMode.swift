@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 final class KeywordModeController: NSObject, ModeStateController, ObservableObject {
-    static let shared = KeywordModeController()
+    static let shared: KeywordModeController = ModeRegistry.shared.register(KeywordModeController())
     private override init() { super.init() }
 
     // 1. 身份与元数据

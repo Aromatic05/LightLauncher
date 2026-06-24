@@ -4,7 +4,7 @@ import Foundation
 
 @MainActor
 final class SearchModeController: NSObject, ModeStateController, ObservableObject {
-    static let shared = SearchModeController()
+    static let shared: SearchModeController = ModeRegistry.shared.register(SearchModeController())
     private override init() {}
     // 1. 身份与元数据
     let mode: LauncherMode = .search

@@ -35,7 +35,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
             handleInput(arguments: "")
         }
     }
-    static let shared = ClipModeController()
+    static let shared: ClipModeController = ModeRegistry.shared.register(ClipModeController())
     private override init() {}
 
     // MARK: - ModeStateController Protocol Implementation

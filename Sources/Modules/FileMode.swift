@@ -4,7 +4,7 @@ import Foundation
 // MARK: - 文件模式控制器
 @MainActor
 final class FileModeController: NSObject, ModeStateController, ObservableObject {
-    static let shared = FileModeController()
+    static let shared: FileModeController = ModeRegistry.shared.register(FileModeController())
     private override init() {}
 
     // MARK: - ModeStateController 协议实现

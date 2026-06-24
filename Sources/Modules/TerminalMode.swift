@@ -5,7 +5,7 @@ import Foundation
 final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
     // 终端命令历史管理器
     let historyManager = TerminalHistoryManager.shared
-    static let shared = TerminalModeController()
+    static let shared: TerminalModeController = ModeRegistry.shared.register(TerminalModeController())
     private override init() {}
 
     // MARK: - Dependencies

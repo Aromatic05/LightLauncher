@@ -7,19 +7,19 @@ enum LauncherMode: String, CaseIterable {
     case launch, kill, search, web, terminal, file, clip, plugin, keyword
     @MainActor
     var displayName: String {
-        LauncherViewModel.shared.controllers[self]?.displayName ?? self.rawValue
+        ModeRegistry.shared.controller(for: self)?.displayName ?? self.rawValue
     }
     @MainActor
     var iconName: String {
-        LauncherViewModel.shared.controllers[self]?.iconName ?? "questionmark"
+        ModeRegistry.shared.controller(for: self)?.iconName ?? "questionmark"
     }
     @MainActor
     var placeholder: String {
-        LauncherViewModel.shared.controllers[self]?.placeholder ?? ""
+        ModeRegistry.shared.controller(for: self)?.placeholder ?? ""
     }
     @MainActor
     var description: String? {
-        LauncherViewModel.shared.controllers[self]?.modeDescription
+        ModeRegistry.shared.controller(for: self)?.modeDescription
     }
 
     /// 检查模式是否在设置中启用，此功能依然需要。

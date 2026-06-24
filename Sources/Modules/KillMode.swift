@@ -6,7 +6,7 @@ import Foundation
 
 @MainActor
 final class KillModeController: NSObject, ModeStateController, ObservableObject {
-    static let shared = KillModeController()
+    static let shared: KillModeController = ModeRegistry.shared.register(KillModeController())
     private override init() {}
     @Published var forceKillEnabled: Bool = false {
         didSet {

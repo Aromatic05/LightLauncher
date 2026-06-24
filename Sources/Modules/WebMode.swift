@@ -5,7 +5,7 @@ import Foundation
 // MARK: - 网页模式控制器
 @MainActor
 final class WebModeController: NSObject, ModeStateController, ObservableObject {
-    static let shared = WebModeController()
+    static let shared: WebModeController = ModeRegistry.shared.register(WebModeController())
     private override init() {}
 
     // 1. 身份与元数据

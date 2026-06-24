@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 final class PluginModeController: ObservableObject, ModeStateController {
-    static let shared = PluginModeController()
+    static let shared: PluginModeController = ModeRegistry.shared.register(PluginModeController())
 
     // MARK: - ModeStateController Protocol Implementation
     let mode: LauncherMode = .plugin
