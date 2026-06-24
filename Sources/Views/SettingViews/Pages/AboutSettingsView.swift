@@ -221,45 +221,33 @@ struct AboutSettingsView: View {
     }
 
     private func loadConfigContent() {
-        do {
-            configContent = try fileAccess.readString(from: configManager.configURL)
-        } catch {
-            configContent = "无法读取配置文件: \(error.localizedDescription)"
-        }
+        configContent =
+            (try? fileAccess.readString(from: configManager.configURL))
+            ?? "无法读取配置文件"
     }
 
     // MARK: - Logs helpers
     private func logsDirectoryPath() -> String {
-        if let custom = configManager.config.logging.customFilePath, !custom.isEmpty {
-            return (custom as NSString).expandingTildeInPath
-        }
-        let cacheDir = fileAccess.homeDirectory
-            .appendingPathComponent(".cache/LightLauncher", isDirectory: true)
-        return cacheDir.path
+        if let custom = configManager.config.logging.customFilePath, !custom.isEmpty { return (custom as NSString).expandingTildeInPath }
+        return fileAccess.homeDirectory.appendingPathComponent(".cache/LightLauncher", isDirectory: true).path
     }
 
     private func openLogsDirectory() {
-        let path = logsDirectoryPath()
-        let url = URL(fileURLWithPath: path, isDirectory: true)
-        // If directory doesn't exist, open parent
-        let target = fileAccess.fileExists(at: url) ? url : url.deletingLastPathComponent()
-        NSWorkspace.shared.open(target)
+        let url = URL(fileURLWithPath: logsDirectoryPath(), isDirectory: true)
+        NSWorkspace.shared.open(fileAccess.fileExists(at: url) ? url : url.deletingLastPathComponent())
     }
 
     private func cleanLogs() {
-        let path = logsDirectoryPath()
-        let url = URL(fileURLWithPath: path, isDirectory: true)
-        Task {
-            do {
-                if fileAccess.directoryExists(at: url) {
-                    try fileAccess.clearDirectoryContents(at: url)
-                    Logger.shared.info("已清理日志目录: \(url.path)")
-                } else {
-                    Logger.shared.info("日志目录不存在，无需清理: \(url.path)")
-                }
-            } catch {
-                Logger.shared.error("清理日志失败: \(error.localizedDescription)")
+        let url = URL(fileURLWithPath: logsDirectoryPath(), isDirectory: true)
+        do {
+            if fileAccess.directoryExists(at: url) {
+                try fileAccess.clearDirectoryContents(at: url)
+                Logger.shared.info("已清理日志目录: \(url.path)")
+            } else {
+                Logger.shared.info("日志目录不存在，无需清理: \(url.path)")
             }
+        } catch {
+            Logger.shared.error("清理日志失败: \(error.localizedDescription)")
         }
     }
 }
