@@ -5,6 +5,7 @@ struct PluginDetailView: View {
     let onReload: @MainActor () async -> Void
     @State private var configData: [String: Any] = [:]
     private var hasConfig: Bool { !configData.isEmpty }
+    private var pluginStatus: (text: String, color: Color) { plugin.isEnabled ? ("已启用", .green) : ("已禁用", .orange) }
 
     var body: some View {
         ScrollView {
@@ -17,12 +18,7 @@ struct PluginDetailView: View {
             }
             .padding(32)
         }
-        .onAppear {
-            loadConfig()
-        }
-        .onChange(of: plugin.name) { _ in
-            loadConfig()
-        }
+        .task(id: plugin.name) { loadConfig() }
     }
 
     private var pluginBasicInfoSection: some View {
@@ -42,23 +38,13 @@ struct PluginDetailView: View {
                             .padding(.vertical, 2)
                             .background(Color.secondary.opacity(0.2))
                             .cornerRadius(4)
-                        if plugin.isEnabled {
-                            Text("已启用")
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color.green.opacity(0.2))
-                                .foregroundColor(.green)
-                                .cornerRadius(4)
-                        } else {
-                            Text("已禁用")
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.2))
-                                .foregroundColor(.orange)
-                                .cornerRadius(4)
-                        }
+                        Text(pluginStatus.text)
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(pluginStatus.color.opacity(0.2))
+                            .foregroundColor(pluginStatus.color)
+                            .cornerRadius(4)
                     }
                 }
                 Spacer()
@@ -83,7 +69,7 @@ struct PluginDetailView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                if let shouldHide = plugin.manifest.shouldHideWindowAfterAction, shouldHide {
+                if plugin.manifest.shouldHideWindowAfterAction == true {
                     HStack {
                         Image(systemName: "eye.slash")
                             .foregroundColor(.secondary)
@@ -171,11 +157,7 @@ struct PluginDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.bordered)
-                Button("重新加载插件") {
-                    Task {
-                        await onReload()
-                    }
-                }
+                Button("重新加载插件") { Task { await onReload() } }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.bordered)
                 Button("删除配置文件") {
