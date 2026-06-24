@@ -204,8 +204,7 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func openInFinder() {
-        let url = URL(fileURLWithPath: currentPath)
-        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
+        FileBrowserService.shared.openInFinder(URL(fileURLWithPath: currentPath))
     }
 
     // MARK: - 路径解析与导航辅助方法

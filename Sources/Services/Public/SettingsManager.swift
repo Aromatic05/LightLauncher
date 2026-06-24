@@ -111,9 +111,7 @@ class SettingsManager: ObservableObject {
     func setMode(_ key: String, enabled: Bool) {
         modeEnabled[key] = enabled
         saveSettings()
-        Task { @MainActor in
-            ConfigManager.shared.updateModeSettings()
-        }
+        ConfigManager.shared.updateModeSettings()
     }
     func isModeEnabled(_ key: String) -> Bool {
         modeEnabled[key] ?? true

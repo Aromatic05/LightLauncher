@@ -9,18 +9,13 @@ final class FileBrowserService {
     static let shared = FileBrowserService()
     private let fileAccess = FileAccessService.shared
     private let alertService = AlertService.shared
+    private let permissionManager = PermissionManager.shared
+    private let permissionPromptService = PermissionPromptService.shared
 
     private init() {}
 
     func getFiles(at path: String) -> [FileItem] {
-        // 检查文件访问权限
-        guard PermissionManager.shared.checkFileBrowsingPermissions() else {
-            // 如果没有权限，返回空数组并显示权限请求
-            Task { @MainActor in
-                PermissionPromptService.shared.prompt(for: .fileAccess)
-            }
-            return []
-        }
+        guard ensureFileBrowsingPermission() else { return [] }
 
         let originalURL = URL(fileURLWithPath: path)
 
@@ -32,97 +27,23 @@ final class FileBrowserService {
         if !fileAccess.fileExists(at: url) {
             // 如果解析后路径不存在，但原始路径本身存在（可能指向一个坏链接），给出针对符号链接的提示
             if fileAccess.fileExists(at: originalURL) {
-                Task { @MainActor in
-                    alertService.showBrokenSymlinkError(forPath: path)
-                }
+                alertService.showBrokenSymlinkError(forPath: path)
                 return []
             }
 
             // 原始路径本身也不存在 — 保持原有错误处理风格
-            Task { @MainActor in
-                alertService.showDirectoryAccessError(forPath: path)
-            }
+            alertService.showDirectoryAccessError(forPath: path)
             return []
         }
 
         do {
-            let contents = try fileAccess.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: [
-                    .isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey,
-                ],
-                options: []  // 不跳过隐藏文件
-            )
-
-            var files: [FileItem] = []
-
-            // 添加返回上级目录项（除了根目录）
-            if url.path != "/" {
-                // 为返回上级目录展示父目录（基于解析后的目标路径）
-                let parentURL = url.deletingLastPathComponent()
-                files.append(
-                    FileItem(
-                        name: "..",
-                        url: parentURL,
-                        isDirectory: true,
-                        size: nil,
-                        modificationDate: nil
-                    ))
-            }
-
-            // 处理目录内容
-            for fileURL in contents {
-                // 尝试获取资源信息，优先判断是否目录并处理符号链接（但继续列出项以便用户看到它）
-                var isDirectory: ObjCBool = false
-                let exists = fileAccess.itemExists(atPath: fileURL.path, isDirectory: &isDirectory)
-
-                if exists {
-                    let resourceValues = try? fileURL.resourceValues(forKeys: [
-                        .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey,
-                    ])
-
-                    // 如果当前项是一个符号链接并且它指向目录，您可能希望在 UI 上把它当成目录处理；这里不强制跟随目标，只是标记为目录（当目标为目录时）
-                    var finalIsDirectory = isDirectory.boolValue
-                    if let isSymlink = resourceValues?.isSymbolicLink, isSymlink {
-                        // 尝试解析符号链接目标并判断目标是否为目录
-                        let resolved = fileAccess.resolveSymlinks(for: fileURL)
-                        var resolvedIsDir: ObjCBool = false
-                        if fileAccess.itemExists(
-                            atPath: resolved.path, isDirectory: &resolvedIsDir)
-                        {
-                            finalIsDirectory = resolvedIsDir.boolValue
-                        }
-                    }
-
-                    files.append(
-                        FileItem(
-                            name: fileURL.lastPathComponent,
-                            url: fileURL,
-                            isDirectory: finalIsDirectory,
-                            size: resourceValues?.fileSize.map { Int64($0) },
-                            modificationDate: resourceValues?.contentModificationDate
-                        ))
-                }
-            }
-
-            // 排序：目录在前，然后按名称排序
-            return files.sorted { file1, file2 in
-                if file1.name == ".." { return true }
-                if file2.name == ".." { return false }
-                if file1.isDirectory != file2.isDirectory {
-                    return file1.isDirectory && !file2.isDirectory
-                }
-                return file1.name.localizedCaseInsensitiveCompare(file2.name) == .orderedAscending
-            }
+            return try loadFiles(at: url)
 
         } catch {
             Logger.shared.error("Error reading directory: \(error)", owner: self)
 
             // 如果读取失败，可能是权限问题，显示更具体的错误信息
-            Task { @MainActor in
-                alertService.showDirectoryAccessError(forPath: path, error: error)
-            }
-
+            alertService.showDirectoryAccessError(forPath: path, error: error)
             return []
         }
     }
@@ -157,13 +78,7 @@ final class FileBrowserService {
     }
 
     func openInFinder(_ url: URL) {
-        // 检查文件访问权限
-        guard PermissionManager.shared.checkFileBrowsingPermissions() else {
-            Task { @MainActor in
-                PermissionPromptService.shared.prompt(for: .fileAccess)
-            }
-            return
-        }
+        guard ensureFileBrowsingPermission() else { return }
 
         if url.hasDirectoryPath {
             // 如果是目录，在 Finder 中显示该目录
@@ -173,5 +88,85 @@ final class FileBrowserService {
             NSWorkspace.shared.selectFile(
                 url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
         }
+    }
+
+    private func ensureFileBrowsingPermission() -> Bool {
+        guard permissionManager.checkFileBrowsingPermissions() else {
+            permissionPromptService.prompt(for: .fileAccess)
+            return false
+        }
+        return true
+    }
+
+    private func loadFiles(at url: URL) throws -> [FileItem] {
+        let contents = try fileAccess.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: [
+                .isDirectoryKey, .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey,
+            ],
+            options: []
+        )
+
+        var files = parentDirectoryItem(for: url).map { [$0] } ?? []
+        files += contents.compactMap(buildFileItem(from:))
+
+        return files.sorted { file1, file2 in
+            if file1.name == ".." { return true }
+            if file2.name == ".." { return false }
+            if file1.isDirectory != file2.isDirectory {
+                return file1.isDirectory && !file2.isDirectory
+            }
+            return file1.name.localizedCaseInsensitiveCompare(file2.name) == .orderedAscending
+        }
+    }
+
+    private func parentDirectoryItem(for url: URL) -> FileItem? {
+        guard url.path != "/" else { return nil }
+
+        return FileItem(
+            name: "..",
+            url: url.deletingLastPathComponent(),
+            isDirectory: true,
+            size: nil,
+            modificationDate: nil
+        )
+    }
+
+    private func buildFileItem(from fileURL: URL) -> FileItem? {
+        var isDirectory: ObjCBool = false
+        guard fileAccess.itemExists(atPath: fileURL.path, isDirectory: &isDirectory) else {
+            return nil
+        }
+
+        let resourceValues = try? fileURL.resourceValues(forKeys: [
+            .fileSizeKey, .contentModificationDateKey, .isSymbolicLinkKey,
+        ])
+
+        return FileItem(
+            name: fileURL.lastPathComponent,
+            url: fileURL,
+            isDirectory: resolvedDirectoryFlag(
+                for: fileURL,
+                resourceValues: resourceValues,
+                fallback: isDirectory.boolValue
+            ),
+            size: resourceValues?.fileSize.map { Int64($0) },
+            modificationDate: resourceValues?.contentModificationDate
+        )
+    }
+
+    private func resolvedDirectoryFlag(
+        for fileURL: URL,
+        resourceValues: URLResourceValues?,
+        fallback: Bool
+    ) -> Bool {
+        guard resourceValues?.isSymbolicLink == true else { return fallback }
+
+        let resolved = fileAccess.resolveSymlinks(for: fileURL)
+        var resolvedIsDirectory: ObjCBool = false
+        guard fileAccess.itemExists(atPath: resolved.path, isDirectory: &resolvedIsDirectory) else {
+            return fallback
+        }
+        return resolvedIsDirectory.boolValue
     }
 }
