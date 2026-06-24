@@ -6,6 +6,7 @@ struct AboutSettingsView: View {
     @State private var showingConfigContent = false
     @State private var configContent = ""
     @State private var showingCleanConfirm = false
+    private let fileAccess = FileAccessService.shared
 
     var body: some View {
         ScrollView {
@@ -244,7 +245,7 @@ struct AboutSettingsView: View {
 
     private func loadConfigContent() {
         do {
-            configContent = try String(contentsOf: configManager.configURL, encoding: .utf8)
+            configContent = try fileAccess.readString(from: configManager.configURL)
         } catch {
             configContent = "无法读取配置文件: \(error.localizedDescription)"
         }
@@ -255,7 +256,7 @@ struct AboutSettingsView: View {
         if let custom = configManager.config.logging.customFilePath, !custom.isEmpty {
             return (custom as NSString).expandingTildeInPath
         }
-        let cacheDir = FileManager.default.homeDirectoryForCurrentUser
+        let cacheDir = fileAccess.homeDirectory
             .appendingPathComponent(".cache/LightLauncher", isDirectory: true)
         return cacheDir.path
     }
@@ -264,10 +265,7 @@ struct AboutSettingsView: View {
         let path = logsDirectoryPath()
         let url = URL(fileURLWithPath: path, isDirectory: true)
         // If directory doesn't exist, open parent
-        var target = url
-        if !FileManager.default.fileExists(atPath: url.path) {
-            target = url.deletingLastPathComponent()
-        }
+        let target = fileAccess.fileExists(at: url) ? url : url.deletingLastPathComponent()
         NSWorkspace.shared.open(target)
     }
 
@@ -276,12 +274,8 @@ struct AboutSettingsView: View {
         let url = URL(fileURLWithPath: path, isDirectory: true)
         Task {
             do {
-                if FileManager.default.fileExists(atPath: url.path) {
-                    let items = try FileManager.default.contentsOfDirectory(
-                        at: url, includingPropertiesForKeys: nil)
-                    for item in items {
-                        try FileManager.default.removeItem(at: item)
-                    }
+                if fileAccess.directoryExists(at: url) {
+                    try fileAccess.clearDirectoryContents(at: url)
                     Logger.shared.info("已清理日志目录: \(url.path)")
                 } else {
                     Logger.shared.info("日志目录不存在，无需清理: \(url.path)")

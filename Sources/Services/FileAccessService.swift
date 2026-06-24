@@ -23,6 +23,15 @@ final class FileAccessService: @unchecked Sendable {
         fileManager.fileExists(atPath: url.path)
     }
 
+    func directoryExists(atPath path: String) -> Bool {
+        var isDirectory = ObjCBool(false)
+        return itemExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    func directoryExists(at url: URL) -> Bool {
+        directoryExists(atPath: url.path)
+    }
+
     func itemExists(atPath path: String, isDirectory: inout ObjCBool) -> Bool {
         fileManager.fileExists(atPath: path, isDirectory: &isDirectory)
     }
@@ -89,6 +98,12 @@ final class FileAccessService: @unchecked Sendable {
     func removeItemIfExists(at url: URL) throws {
         guard fileExists(at: url) else { return }
         try removeItem(at: url)
+    }
+
+    func clearDirectoryContents(at url: URL) throws {
+        for item in try contentsOfDirectory(at: url) {
+            try removeItem(at: item)
+        }
     }
 
     func moveItem(at sourceURL: URL, to targetURL: URL) throws {

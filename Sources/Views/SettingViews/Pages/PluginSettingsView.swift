@@ -7,6 +7,11 @@ struct PluginSettingsView: View {
     @State private var showingPluginFolder = false
     @State private var refreshTrigger = false
     @State private var allPlugins: [Plugin] = []
+    private let fileAccess = FileAccessService.shared
+
+    private var pluginsDirectoryURL: URL {
+        fileAccess.homeDirectory.appendingPathComponent(".config/LightLauncher/plugins")
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -78,9 +83,7 @@ struct PluginSettingsView: View {
 
     private var openFolderButton: some View {
         Button(action: {
-            let pluginsDir = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".config/LightLauncher/plugins")
-            NSWorkspace.shared.open(pluginsDir)
+            NSWorkspace.shared.open(pluginsDirectoryURL)
         }) {
             Image(systemName: "folder")
                 .font(.system(size: 16))
@@ -108,12 +111,8 @@ struct PluginSettingsView: View {
             }
 
             Button("打开插件文件夹") {
-                let pluginsDir = FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent(".config/LightLauncher/plugins")
-
-                try? FileManager.default.createDirectory(
-                    at: pluginsDir, withIntermediateDirectories: true)
-                NSWorkspace.shared.open(pluginsDir)
+                try? fileAccess.ensureDirectory(pluginsDirectoryURL)
+                NSWorkspace.shared.open(pluginsDirectoryURL)
             }
             .buttonStyle(.borderedProminent)
         }

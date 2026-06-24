@@ -7,6 +7,7 @@ struct FileBrowserPathSettingsView: View {
     @State private var startPaths: [String] = []
     @State private var showingFilePicker = false
     @State private var newPath = ""
+    private let fileAccess = FileAccessService.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -143,14 +144,7 @@ struct FileBrowserPathSettingsView: View {
         let trimmedPath = newPath.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPath.isEmpty else { return }
 
-        // 检查路径是否存在
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: trimmedPath, isDirectory: &isDirectory),
-            isDirectory.boolValue
-        else {
-            // 可以在这里显示错误提示
-            return
-        }
+        guard fileAccess.directoryExists(atPath: trimmedPath) else { return }
 
         // 避免重复添加
         guard !startPaths.contains(trimmedPath) else {
@@ -233,8 +227,6 @@ struct StartPathRow: View {
     }
 
     private var pathExists: Bool {
-        var isDirectory: ObjCBool = false
-        return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
-            && isDirectory.boolValue
+        FileAccessService.shared.directoryExists(atPath: path)
     }
 }
