@@ -9,12 +9,7 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
     let isDirectory: Bool
     let size: Int64?
     let modificationDate: Date?
-    var id: String {
-        if name == ".." {
-            return "parent:\(url.standardizedFileURL.path)"
-        }
-        return url.standardizedFileURL.path
-    }
+    var id: String { name == ".." ? "parent:\(url.standardizedFileURL.path)" : url.standardizedFileURL.path }
 
     // DisplayableItem 协议实现
     var title: String { name }

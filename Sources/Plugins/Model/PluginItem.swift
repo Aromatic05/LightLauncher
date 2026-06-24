@@ -18,14 +18,7 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     let subtitle: String?
     let iconName: String?  // SF Symbol 名称或 Base64 图片字符串
     let action: PluginItemAction?
-    var id: String {
-        stableDigest([
-            title,
-            subtitle ?? "",
-            iconName ?? "",
-            String(reflecting: action),
-        ])
-    }
+    var id: String { stableDigest(title, subtitle ?? "", iconName ?? "", String(reflecting: action)) }
     var icon: NSImage? {
         // 根据 iconName 的类型返回对应的 NSImage
         if let iconName = iconName {
@@ -102,7 +95,7 @@ struct PluginResult {
     }
 }
 
-private func stableDigest(_ components: [String]) -> String {
+private func stableDigest(_ components: String...) -> String {
     let input = components.joined(separator: "\u{1F}")
     let digest = SHA256.hash(data: Data(input.utf8))
     return digest.map { String(format: "%02x", $0) }.joined()

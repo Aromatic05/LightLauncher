@@ -11,9 +11,7 @@ struct AppInfo: Identifiable, Hashable, DisplayableItem {
     let url: URL
 
     // 使用 URL 路径作为唯一标识符，避免重复应用
-    var id: String {
-        url.path
-    }
+    var id: String { url.path }
 
     var icon: NSImage? {
         NSWorkspace.shared.icon(forFile: url.path)
