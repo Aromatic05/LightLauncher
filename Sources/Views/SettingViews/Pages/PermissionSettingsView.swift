@@ -9,260 +9,226 @@ struct PermissionSettingsView: View {
     private let permissionSettingsService = PermissionSettingsService.shared
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                // 标题
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("权限管理")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    Text("管理应用所需的系统权限以确保功能正常运行")
-                        .font(.subheadline)
+        SettingsPage {
+            PageHeader(title: "权限管理", subtitle: "管理应用所需的系统权限以确保功能正常运行")
+
+            if let summary = permissionSummary {
+                permissionOverview(summary: summary)
+
+                Divider()
+
+                permissionDetails(summary: summary)
+
+                Divider()
+
+                permissionActions(summary: summary)
+
+                Divider()
+
+                permissionInfo
+            } else {
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                    Text("正在检查权限状态...")
+                        .font(.headline)
                         .foregroundColor(.secondary)
                 }
-
-                if let summary = permissionSummary {
-                    // 权限状态概览
-                    VStack(alignment: .leading, spacing: 20) {
-                        HStack {
-                            Image(systemName: "shield.checkered")
-                                .foregroundColor(.blue)
-                            Text("权限状态概览")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
-
-                        // 状态卡片
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("授权完成度")
-                                        .font(.headline)
-                                    Text("\(summary.granted) / \(summary.totalRequired) 个必需权限已授权")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                VStack(alignment: .trailing, spacing: 4) {
-                                    Text("\(Int(summary.completionPercentage * 100))%")
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(
-                                            summary.isFullyAuthorized ? .green : .orange)
-                                    HStack(spacing: 4) {
-                                        Image(
-                                            systemName: summary.isFullyAuthorized
-                                                ? "checkmark.circle.fill"
-                                                : "exclamationmark.triangle.fill"
-                                        )
-                                        .foregroundColor(
-                                            summary.isFullyAuthorized ? .green : .orange
-                                        )
-                                        .font(.caption)
-                                        Text(summary.isFullyAuthorized ? "已完成" : "未完成")
-                                            .font(.caption)
-                                            .foregroundColor(
-                                                summary.isFullyAuthorized ? .green : .orange)
-                                    }
-                                }
-                            }
-
-                            ProgressView(value: summary.completionPercentage)
-                                .progressViewStyle(
-                                    LinearProgressViewStyle(
-                                        tint: summary.isFullyAuthorized ? .green : .orange)
-                                )
-                                .scaleEffect(y: 2)
-                        }
-                        .padding(20)
-                        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-                        .cornerRadius(12)
-                    }
-
-                    Divider()
-
-                    // 权限详情列表
-                    VStack(alignment: .leading, spacing: 20) {
-                        HStack {
-                            Image(systemName: "list.bullet.clipboard")
-                                .foregroundColor(.blue)
-                            Text("权限详情")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
-
-                        VStack(spacing: 12) {
-                            // 必需权限
-                            let requiredPermissions = permissionManager.getRequiredPermissions()
-                            if !requiredPermissions.isEmpty {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("必需权限")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-
-                                    ForEach(requiredPermissions, id: \.rawValue) { permissionType in
-                                        PermissionRowView(
-                                            permissionType: permissionType,
-                                            isGranted: summary.allPermissions[permissionType]
-                                                == true,
-                                            isRequired: true,
-                                            onRequestPermission: {
-                                                permissionSettingsService.promptForPermission(
-                                                    permissionType)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            // 可选权限
-                            let optionalPermissions = AppPermissionType.allCases.filter {
-                                !requiredPermissions.contains($0)
-                            }
-                            if !optionalPermissions.isEmpty {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("可选权限")
-                                        .font(.headline)
-                                        .foregroundColor(.secondary)
-
-                                    ForEach(optionalPermissions, id: \.rawValue) { permissionType in
-                                        PermissionRowView(
-                                            permissionType: permissionType,
-                                            isGranted: summary.allPermissions[permissionType]
-                                                == true,
-                                            isRequired: false,
-                                            onRequestPermission: {
-                                                permissionSettingsService.promptForPermission(
-                                                    permissionType)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Divider()
-
-                    // 操作按钮
-                    VStack(alignment: .leading, spacing: 20) {
-                        HStack {
-                            Image(systemName: "gear")
-                                .foregroundColor(.blue)
-                            Text("权限管理操作")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
-
-                        VStack(spacing: 12) {
-                            if !summary.isFullyAuthorized {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("批量授权缺失权限")
-                                            .font(.headline)
-                                        Text("一次性设置所有必需的权限")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    Button("立即设置") {
-                                        permissionSettingsService.promptForMissingPermissions()
-                                    }
-                                    .buttonStyle(.borderedProminent)
-                                }
-                                .padding(16)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(10)
-                            }
-
-                            HStack(spacing: 12) {
-                                Button(action: {
-                                    Task {
-                                        await refreshPermissionStatus()
-                                    }
-                                }) {
-                                    HStack(spacing: 6) {
-                                        if isRefreshing {
-                                            ProgressView()
-                                                .scaleEffect(0.8)
-                                        } else {
-                                            Image(systemName: "arrow.clockwise")
-                                        }
-                                        Text("刷新状态")
-                                    }
-                                }
-                                .buttonStyle(.bordered)
-                                .disabled(isRefreshing)
-
-                                Button("生成诊断报告") {
-                                    permissionSettingsService.copyDiagnosticsToClipboard()
-                                }
-                                .buttonStyle(.bordered)
-
-                                Button("打开系统偏好设置") {
-                                    permissionSettingsService.openPrivacySettings()
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
-                    }
-
-                    Divider()
-
-                    // 权限说明
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Image(systemName: "info.circle")
-                                .foregroundColor(.blue)
-                            Text("权限说明")
-                                .font(.title2)
-                                .fontWeight(.semibold)
-                        }
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            PermissionInfoCard(
-                                title: "高风险权限",
-                                icon: "exclamationmark.shield",
-                                iconColor: .red,
-                                description: "这些权限提供对系统的深度访问，请谨慎授权",
-                                examples: ["辅助功能", "完全磁盘访问", "输入监控"]
-                            )
-
-                            PermissionInfoCard(
-                                title: "中等风险权限",
-                                icon: "shield.lefthalf.filled",
-                                iconColor: .orange,
-                                description: "这些权限访问特定功能，通常是安全的",
-                                examples: ["自动化", "文件访问", "屏幕录制"]
-                            )
-
-                            PermissionInfoCard(
-                                title: "低风险权限",
-                                icon: "shield",
-                                iconColor: .green,
-                                description: "这些权限对系统影响最小",
-                                examples: ["网络访问", "通知权限"]
-                            )
-                        }
-                    }
-                } else {
-                    // 加载状态
-                    VStack(spacing: 20) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                        Text("正在检查权限状态...")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 200)
-                }
-
-                Spacer()
+                .frame(maxWidth: .infinity, minHeight: 200)
             }
-            .padding(32)
         }
         .task {
             await refreshPermissionStatus()
+        }
+    }
+
+    private func permissionOverview(summary: AppPermissionSummary) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            SectionHeader(title: "权限状态概览", icon: "shield.checkered")
+
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("授权完成度")
+                            .font(.headline)
+                        Text("\(summary.granted) / \(summary.totalRequired) 个必需权限已授权")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("\(Int(summary.completionPercentage * 100))%")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(
+                                summary.isFullyAuthorized ? .green : .orange)
+                        HStack(spacing: 4) {
+                            Image(
+                                systemName: summary.isFullyAuthorized
+                                    ? "checkmark.circle.fill"
+                                    : "exclamationmark.triangle.fill"
+                            )
+                            .foregroundColor(
+                                summary.isFullyAuthorized ? .green : .orange
+                            )
+                            .font(.caption)
+                            Text(summary.isFullyAuthorized ? "已完成" : "未完成")
+                                .font(.caption)
+                                .foregroundColor(
+                                    summary.isFullyAuthorized ? .green : .orange)
+                        }
+                    }
+                }
+
+                ProgressView(value: summary.completionPercentage)
+                    .progressViewStyle(
+                        LinearProgressViewStyle(
+                            tint: summary.isFullyAuthorized ? .green : .orange)
+                    )
+                    .scaleEffect(y: 2)
+            }
+            .padding(20)
+            .settingsCard(opacity: 0.5)
+        }
+    }
+
+    private func permissionDetails(summary: AppPermissionSummary) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            SectionHeader(title: "权限详情", icon: "list.bullet.clipboard")
+
+            VStack(spacing: 12) {
+                let requiredPermissions = permissionManager.getRequiredPermissions()
+                if !requiredPermissions.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("必需权限")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+
+                        ForEach(requiredPermissions, id: \.rawValue) { permissionType in
+                            PermissionRowView(
+                                permissionType: permissionType,
+                                isGranted: summary.allPermissions[permissionType] == true,
+                                isRequired: true,
+                                onRequestPermission: {
+                                    permissionSettingsService.promptForPermission(permissionType)
+                                }
+                            )
+                        }
+                    }
+                }
+
+                let optionalPermissions = AppPermissionType.allCases.filter {
+                    !requiredPermissions.contains($0)
+                }
+                if !optionalPermissions.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("可选权限")
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+
+                        ForEach(optionalPermissions, id: \.rawValue) { permissionType in
+                            PermissionRowView(
+                                permissionType: permissionType,
+                                isGranted: summary.allPermissions[permissionType] == true,
+                                isRequired: false,
+                                onRequestPermission: {
+                                    permissionSettingsService.promptForPermission(permissionType)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func permissionActions(summary: AppPermissionSummary) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            SectionHeader(title: "权限管理操作", icon: "gear")
+
+            VStack(spacing: 12) {
+                if !summary.isFullyAuthorized {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("批量授权缺失权限")
+                                .font(.headline)
+                            Text("一次性设置所有必需的权限")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button("立即设置") {
+                            permissionSettingsService.promptForMissingPermissions()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(16)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(10)
+                }
+
+                HStack(spacing: 12) {
+                    Button(action: {
+                        Task {
+                            await refreshPermissionStatus()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            if isRefreshing {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            Text("刷新状态")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isRefreshing)
+
+                    Button("生成诊断报告") {
+                        permissionSettingsService.copyDiagnosticsToClipboard()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("打开系统偏好设置") {
+                        permissionSettingsService.openPrivacySettings()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private var permissionInfo: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SectionHeader(title: "权限说明", icon: "info.circle")
+
+            VStack(alignment: .leading, spacing: 12) {
+                PermissionInfoCard(
+                    title: "高风险权限",
+                    icon: "exclamationmark.shield",
+                    iconColor: .red,
+                    description: "这些权限提供对系统的深度访问，请谨慎授权",
+                    examples: ["辅助功能", "完全磁盘访问", "输入监控"]
+                )
+
+                PermissionInfoCard(
+                    title: "中等风险权限",
+                    icon: "shield.lefthalf.filled",
+                    iconColor: .orange,
+                    description: "这些权限访问特定功能，通常是安全的",
+                    examples: ["自动化", "文件访问", "屏幕录制"]
+                )
+
+                PermissionInfoCard(
+                    title: "低风险权限",
+                    icon: "shield",
+                    iconColor: .green,
+                    description: "这些权限对系统影响最小",
+                    examples: ["网络访问", "通知权限"]
+                )
+            }
         }
     }
 

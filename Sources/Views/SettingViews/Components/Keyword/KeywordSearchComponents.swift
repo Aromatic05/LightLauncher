@@ -46,8 +46,7 @@ struct KeywordSearchInfoCard: View {
             .padding(.leading, 20)
         }
         .padding(20)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
+        .settingsCard(opacity: 1.0)
     }
 }
 

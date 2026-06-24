@@ -7,14 +7,11 @@ struct KeywordSearchSettingsView: View {
     @State private var editingItem: KeywordSearchItem?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                headerView
-                KeywordSearchInfoCard()
-                Divider()
-                searchItemsSection
-            }
-            .padding(32)
+        SettingsPage {
+            PageHeader(title: "关键词搜索", subtitle: "管理自定义搜索引擎和快速搜索关键词")
+            KeywordSearchInfoCard()
+            Divider()
+            searchItemsSection
         }
         .sheet(isPresented: $showingAddSheet) {
             KeywordSearchItemEditView(
@@ -31,17 +28,6 @@ struct KeywordSearchSettingsView: View {
                     updateKeywordSearchItem(updatedItem)
                 }
             )
-        }
-    }
-
-    private var headerView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("关键词搜索")
-                .font(.title)
-                .fontWeight(.bold)
-            Text("管理自定义搜索引擎和快速搜索关键词")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
         }
     }
 

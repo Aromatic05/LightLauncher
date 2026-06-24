@@ -7,14 +7,11 @@ struct CustomHotKeySettingsView: View {
     @State private var editingHotKey: CustomHotKeyConfig?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                headerView
-                CustomHotKeyInfoCard()
-                Divider()
-                hotKeysSection
-            }
-            .padding(32)
+        SettingsPage {
+            PageHeader(title: "自定义快捷键", subtitle: "设置全局快捷键来快速输入文本或执行命令")
+            CustomHotKeyInfoCard()
+            Divider()
+            hotKeysSection
         }
         .sheet(isPresented: $showingAddSheet) {
             CustomHotKeyEditView(
@@ -36,20 +33,8 @@ struct CustomHotKeySettingsView: View {
         }
     }
 
-    private var headerView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("自定义快捷键")
-                .font(.title)
-                .fontWeight(.bold)
-            Text("设置全局快捷键来快速输入文本或执行命令")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-    }
-
     private var hotKeysSection: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // 列表头（添加按钮）
             HStack {
                 Text("快捷键配置")
                     .font(.title2)
@@ -156,7 +141,6 @@ struct CustomHotKeyInfoCard: View {
             .padding(.leading, 20)
         }
         .padding(20)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
+        .settingsCard(opacity: 1.0)
     }
 }

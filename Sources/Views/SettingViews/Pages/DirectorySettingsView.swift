@@ -17,7 +17,7 @@ struct AddDirectorySection: View {
                 TextField("输入目录路径 (如: ~/Applications)", text: $newDirectory)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .focused($isTextFieldFocused)
-                    .id("newDirectoryTextField")  // 确保 TextField 的稳定性
+                    .id("newDirectoryTextField")
 
                 Button("浏览") {
                     showingDirectoryPicker = true
@@ -31,8 +31,7 @@ struct AddDirectorySection: View {
                 .disabled(newDirectory.isEmpty)
             }
             .padding(16)
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-            .cornerRadius(12)
+            .settingsCard(opacity: 0.5)
         }
     }
 }
@@ -53,50 +52,31 @@ struct DirectorySettingsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                // 标题
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("搜索目录")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    Text("配置应用程序搜索目录，支持 ~ 符号表示用户主目录")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+        SettingsPage {
+            PageHeader(title: "搜索目录", subtitle: "配置应用程序搜索目录，支持 ~ 符号表示用户主目录")
 
-                // 添加新目录
-                AddDirectorySection(
-                    newDirectory: $newDirectory,
-                    showingDirectoryPicker: $showingDirectoryPicker
-                ) {
-                    addDirectory()
-                }
+            AddDirectorySection(
+                newDirectory: $newDirectory,
+                showingDirectoryPicker: $showingDirectoryPicker
+            ) {
+                addDirectory()
+            }
 
-                // 目录列表
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Text("当前搜索目录")
-                            .font(.title2)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text("\(directoryCount) 个目录")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+            VStack(alignment: .leading, spacing: 16) {
+                SectionHeader(
+                    title: "当前搜索目录",
+                    count: directoryCount,
+                    countLabel: "个目录"
+                )
 
-                    LazyVStack(spacing: 8) {
-                        ForEach(searchDirectories) { directory in
-                            DirectoryRow(directory: directory.path) {
-                                removeDirectory(directory)
-                            }
+                LazyVStack(spacing: 8) {
+                    ForEach(searchDirectories) { directory in
+                        DirectoryRow(directory: directory.path) {
+                            removeDirectory(directory)
                         }
                     }
                 }
-
-                Spacer()
             }
-            .padding(32)
         }
         .fileImporter(
             isPresented: $showingDirectoryPicker,
