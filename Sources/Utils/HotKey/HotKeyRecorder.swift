@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - 快捷键录制管理器
 /// 负责处理快捷键的录制逻辑，使用新的 HotKey 结构
+@MainActor
 class HotKeyRecorder: ObservableObject {
     @Published var isRecording: Bool = false
     @Published var currentHotKey: HotKey?
@@ -11,7 +12,7 @@ class HotKeyRecorder: ObservableObject {
     // 跟踪物理修饰键以区分左右
     private var physicalModifierKeys: Set<UInt16> = []
     // 延迟提交仅修饰键的任务
-    private var modifierCommitWorkItem: DispatchWorkItem?
+    private var modifierCommitTask: Task<Void, Never>?
     private let modifierCommitDelay: TimeInterval = 0.35
     
     var onKeyRecorded: ((HotKey) -> Void)?
@@ -60,8 +61,8 @@ class HotKeyRecorder: ObservableObject {
         }
 
         physicalModifierKeys.removeAll()
-        modifierCommitWorkItem?.cancel()
-        modifierCommitWorkItem = nil
+        modifierCommitTask?.cancel()
+        modifierCommitTask = nil
     }
     
     // MARK: - Private Methods
@@ -80,9 +81,9 @@ class HotKeyRecorder: ObservableObject {
     /// 处理按键事件
     private func handleKeyDown(_ event: NSEvent) {
         // 如果正在等待提交仅修饰键，任何实际按键按下都应取消该等待
-        if let work = modifierCommitWorkItem {
-            work.cancel()
-            modifierCommitWorkItem = nil
+        if let task = modifierCommitTask {
+            task.cancel()
+            modifierCommitTask = nil
         }
 
         let keyCode = UInt16(event.keyCode)
@@ -136,13 +137,15 @@ class HotKeyRecorder: ObservableObject {
             // 所有修饰键都被释放，检查是否为仅修饰键热键
             if let hotkey = checkForModifierOnlyKey(code: code) {
                 // 使用延迟提交，以便用户有时间在释放修饰键后按下其他键来形成组合键
-                modifierCommitWorkItem?.cancel()
-                let work = DispatchWorkItem { [weak self] in
-                    guard let self = self else { return }
+                modifierCommitTask?.cancel()
+                let delay = modifierCommitDelay
+                modifierCommitTask = Task { @MainActor [weak self] in
+                    try? await Task.sleep(
+                        nanoseconds: UInt64(delay * 1_000_000_000)
+                    )
+                    guard !Task.isCancelled, let self else { return }
                     self.recordKey(hotkey: hotkey)
                 }
-                modifierCommitWorkItem = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + modifierCommitDelay, execute: work)
                 return
             }
         }
@@ -214,10 +217,5 @@ class HotKeyRecorder: ObservableObject {
         ]
         
         return validKeys.contains(keyCode)
-    }
-    
-    // MARK: - Cleanup
-    deinit {
-        stopRecording()
     }
 }
