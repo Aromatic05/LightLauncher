@@ -100,8 +100,6 @@ protocol ModeStateController: AnyObject {
     // 模式退出或切换时的清理操作
     func cleanup()
 
-    func makeContentView() -> AnyView
-
     func getHelpText() -> [String]
 }
 
@@ -132,14 +130,6 @@ extension ModeStateController {
 
     func handle(keyEvent: KeyEvent) -> Bool {
         return false
-    }
-
-    func makeContentView() -> AnyView {
-        if !displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        } else {
-            return AnyView(EmptyView())
-        }
     }
 
     func getHelpText() -> [String] {

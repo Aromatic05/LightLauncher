@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import SwiftUI
 
 @MainActor
 final class SearchModeController: NSObject, ModeStateController, ObservableObject {
@@ -50,10 +49,6 @@ final class SearchModeController: NSObject, ModeStateController, ObservableObjec
     func cleanup() {
         searchHistory = []
         currentQuery = ""
-    }
-
-    func makeContentView() -> AnyView {
-        return AnyView(SearchHistoryView(viewModel: LauncherViewModel.shared))
     }
 
     func getHelpText() -> [String] {

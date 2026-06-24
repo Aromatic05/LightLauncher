@@ -1,5 +1,5 @@
 import Combine
-import SwiftUI
+import Foundation
 
 @MainActor
 final class TerminalModeController: NSObject, ModeStateController, ObservableObject {
@@ -36,10 +36,6 @@ final class TerminalModeController: NSObject, ModeStateController, ObservableObj
     func cleanup() {
         self.currentQuery = ""
         dataDidChange.send()
-    }
-
-    func makeContentView() -> AnyView {
-        return AnyView(TerminalModeView(viewModel: LauncherViewModel.shared))
     }
 
     func getHelpText() -> [String] {

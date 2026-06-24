@@ -32,11 +32,9 @@ struct LauncherView: View {
                         viewModel.applySelectedCommand(command)
                     }
                 )
-            } else if let controller = viewModel.activeController {
-                controller.makeContentView()
-                    .padding(.bottom, 12)
             } else {
-                EmptyView()
+                ModeContentView(mode: viewModel.mode, viewModel: viewModel)
+                    .padding(.bottom, 12)
             }
         }
         .frame(width: 700, height: 550)

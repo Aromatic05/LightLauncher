@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import SwiftUI
 
 // MARK: - 应用匹配结果结构
 struct AppMatch {
@@ -72,29 +71,6 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     let dataDidChange = PassthroughSubject<Void, Never>()
 
     /// 创建 SwiftUI 视图
-    func makeContentView() -> AnyView {
-        if !self.displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        } else {
-            // 当没有搜索结果时，显示空状态视图
-            let hasSearchText = !LauncherViewModel.shared.searchText.isEmpty
-            let icon = hasSearchText ? "magnifyingglass" : "app.badge"
-            let iconColor: Color =
-                hasSearchText ? .secondary.opacity(0.5) : .accentColor.opacity(0.7)
-            let title = hasSearchText ? "未找到应用" : "开始输入以搜索应用"
-            let description = hasSearchText ? "请尝试其他搜索关键词" : nil
-            let helpTexts = getHelpText()
-            return AnyView(
-                EmptyStateView(
-                    icon: icon,
-                    iconColor: iconColor,
-                    title: title,
-                    description: description,
-                    helpTexts: helpTexts
-                ))
-        }
-    }
-
     /// 获取帮助文本
     func getHelpText() -> [String] {
         return [

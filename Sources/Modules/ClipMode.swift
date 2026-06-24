@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import SwiftUI
 
 // MARK: - 剪贴板模式控制器
 @MainActor
@@ -152,20 +151,6 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     func cleanup() {
         self.isSnippetMode = false
         self.displayableItems = []
-    }
-
-    func makeContentView() -> AnyView {
-        return AnyView(ClipModeView(viewModel: LauncherViewModel.shared))
-        // else {
-        //     let hasSearchText = !LauncherViewModel.shared.searchText.isEmpty
-        //     return AnyView(EmptyStateView(
-        //         icon: "doc.on.clipboard",
-        //         iconColor: hasSearchText ? .secondary.opacity(0.5) : .accentColor.opacity(0.7),
-        //         title: hasSearchText ? "未找到剪贴板内容" : "暂无剪贴板历史",
-        //         description: hasSearchText ? "请尝试其他搜索关键词" : nil,
-        //         helpTexts: getHelpText()
-        //     ))
-        // }
     }
 
     func getHelpText() -> [String] {

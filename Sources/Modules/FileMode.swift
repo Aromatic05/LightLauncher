@@ -1,5 +1,5 @@
 import Combine
-import SwiftUI
+import Foundation
 
 // MARK: - 文件模式控制器
 @MainActor
@@ -94,21 +94,6 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
         isInitialized = false
         lastProcessedQuery = ""
         lastInputAction = .input
-    }
-
-    func makeContentView() -> AnyView {
-        if !displayableItems.isEmpty {
-            return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
-        } else {
-            return AnyView(
-                EmptyStateView(
-                    icon: "folder.fill",
-                    iconColor: .blue.opacity(0.8),
-                    title: "File Browser",
-                    description: modeDescription,
-                    helpTexts: getHelpText()
-                ))
-        }
     }
 
     func getHelpText() -> [String] {

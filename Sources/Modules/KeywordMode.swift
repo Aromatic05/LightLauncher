@@ -1,6 +1,5 @@
 import Combine
 import Foundation
-import SwiftUI
 
 @MainActor
 final class KeywordModeController: NSObject, ModeStateController, ObservableObject {
@@ -37,10 +36,6 @@ final class KeywordModeController: NSObject, ModeStateController, ObservableObje
     func cleanup() {
         currentQuery = ""
         displayableItems = []
-    }
-
-    func makeContentView() -> AnyView {
-        AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
     }
 
     func getHelpText() -> [String] {

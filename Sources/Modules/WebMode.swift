@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import SwiftUI
 
 // MARK: - 网页模式控制器
 @MainActor
@@ -57,10 +56,6 @@ final class WebModeController: NSObject, ModeStateController, ObservableObject {
     func cleanup() {
         self.displayableItems = []
         self.currentQuery = ""  // 清理时也要重置
-    }
-
-    func makeContentView() -> AnyView {
-        return AnyView(ResultsListView(viewModel: LauncherViewModel.shared))
     }
 
     func getHelpText() -> [String] {

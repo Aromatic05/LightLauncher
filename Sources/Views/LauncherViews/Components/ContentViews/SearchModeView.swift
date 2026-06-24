@@ -11,12 +11,9 @@ struct SearchHistoryView: View {
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Spacer()
-                if !((viewModel.controllers[.search] as? SearchModeController)?.searchHistory
-                    .isEmpty ?? true)
-                {
+                if !(viewModel.searchController?.searchHistory.isEmpty ?? true) {
                     Button("清空") {
-                        (viewModel.controllers[.search] as? SearchModeController)?
-                            .clearSearchHistory()
+                        viewModel.searchController?.clearSearchHistory()
                     }
                     .buttonStyle(PlainButtonStyle())
                     .foregroundColor(.blue)

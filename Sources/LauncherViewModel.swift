@@ -284,3 +284,17 @@ class LauncherViewModel: ObservableObject {
         return displayableItems[index].executeAction()
     }
 }
+
+// MARK: - Typed Controller Accessors
+// 视图层不要直接 `as?` 强转或访问单例,统一从这里取。
+extension LauncherViewModel {
+    var launchController: LaunchModeController? { controllers[.launch] as? LaunchModeController }
+    var killController: KillModeController? { controllers[.kill] as? KillModeController }
+    var fileController: FileModeController? { controllers[.file] as? FileModeController }
+    var searchController: SearchModeController? { controllers[.search] as? SearchModeController }
+    var webController: WebModeController? { controllers[.web] as? WebModeController }
+    var terminalController: TerminalModeController? { controllers[.terminal] as? TerminalModeController }
+    var clipController: ClipModeController? { controllers[.clip] as? ClipModeController }
+    var pluginController: PluginModeController? { controllers[.plugin] as? PluginModeController }
+    var keywordController: KeywordModeController? { controllers[.keyword] as? KeywordModeController }
+}

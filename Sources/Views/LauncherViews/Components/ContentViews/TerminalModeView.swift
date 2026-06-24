@@ -11,9 +11,7 @@ struct TerminalModeView: View {
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Spacer()
-                if let terminalController = viewModel.controllers[.terminal]
-                    as? TerminalModeController
-                {
+                if let terminalController = viewModel.terminalController {
                     Button("清空") {
                         terminalController.clearHistory()
                     }
@@ -25,7 +23,18 @@ struct TerminalModeView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
 
-            ResultsListView(viewModel: viewModel)
+            if viewModel.displayableItems.isEmpty {
+                let hasSearchText = !viewModel.searchText.isEmpty
+                EmptyStateView(
+                    icon: "terminal",
+                    iconColor: .orange.opacity(hasSearchText ? 0.5 : 0.7),
+                    title: hasSearchText ? "未找到匹配的命令" : "暂无终端命令历史",
+                    description: hasSearchText ? "请尝试其他搜索关键词" : nil,
+                    helpTexts: viewModel.terminalController?.getHelpText() ?? []
+                )
+            } else {
+                ResultsListView(viewModel: viewModel)
+            }
         }
     }
 }

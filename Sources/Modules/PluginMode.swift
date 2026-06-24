@@ -1,5 +1,5 @@
 import Combine
-import SwiftUI
+import Foundation
 
 @MainActor
 final class PluginModeController: ObservableObject, ModeStateController {
@@ -45,10 +45,6 @@ final class PluginModeController: ObservableObject, ModeStateController {
         internalMode = .runningInstance
         lastInput = ""
         errorMessage = nil
-    }
-
-    func makeContentView() -> AnyView {
-        return AnyView(PluginModeView(viewModel: LauncherViewModel.shared))
     }
 
     func getHelpText() -> [String] {
