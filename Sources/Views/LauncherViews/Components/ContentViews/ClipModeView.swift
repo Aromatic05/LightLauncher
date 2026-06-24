@@ -4,87 +4,58 @@ import SwiftUI
 
 struct ClipModeView: View {
     @ObservedObject var viewModel: LauncherViewModel
-    @ObservedObject var clipController = ClipModeController.shared
-    @State private var previewItem: (any DisplayableItem)? = nil
+
+    private var clipController: ClipModeController? {
+        ModeRegistry.shared[ClipModeController.self]
+    }
+
+    private var isSnippetMode: Bool {
+        clipController?.isSnippetMode ?? false
+    }
+
+    /// 预览项由 VM 状态唯一推导:
+    /// - `selectedIndex` 变化时 `displayableItems` 已对应切换,直接取选中项
+    /// - `isSnippetMode` 切换后 `selectedIndex` 被 controller 重置为 0,`displayableItems` 也已刷新,自动落到首项
+    /// 不再需要 @State 跟踪 + onChange 兜底,VM 的 `viewSyncToken` 是唯一重渲染信号
+    private var previewItem: (any DisplayableItem)? {
+        let items = viewModel.displayableItems
+        if items.indices.contains(viewModel.selectedIndex) {
+            return items[viewModel.selectedIndex]
+        }
+        return items.first
+    }
 
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 4) {
                 // 顶部模式切换和清空按钮
                 HStack {
-                    Button(action: { clipController.isSnippetMode = false }) {
+                    Button(action: { clipController?.isSnippetMode = false }) {
                         Text("剪贴板")
-                            .fontWeight(clipController.isSnippetMode ? .regular : .bold)
-                            .foregroundColor(
-                                clipController.isSnippetMode ? .secondary : .accentColor)
+                            .fontWeight(isSnippetMode ? .regular : .bold)
+                            .foregroundColor(isSnippetMode ? .secondary : .accentColor)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    Button(action: { clipController.isSnippetMode = true }) {
+                    Button(action: { clipController?.isSnippetMode = true }) {
                         Text("片段")
-                            .fontWeight(clipController.isSnippetMode ? .bold : .regular)
-                            .foregroundColor(
-                                clipController.isSnippetMode ? .accentColor : .secondary)
+                            .fontWeight(isSnippetMode ? .bold : .regular)
+                            .foregroundColor(isSnippetMode ? .accentColor : .secondary)
                     }
                     .buttonStyle(PlainButtonStyle())
                     Spacer()
-                    if !clipController.isSnippetMode,
-                        !ClipboardManager.shared.getHistory().isEmpty
-                    {
-                        Button("清空") {
-                            ClipboardManager.shared.clearHistory()
-                            clipController.handleInput(arguments: "")
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .foregroundColor(.blue)
-                        .font(.caption)
-                    } else if clipController.isSnippetMode,
-                        !SnippetManager.shared.getSnippets().isEmpty
-                    {
-                        Button("清空") {
-                            SnippetManager.shared.clearSnippets()
-                            clipController.handleInput(arguments: "")
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .foregroundColor(.blue)
-                        .font(.caption)
-                    }
+                    clearButton
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
 
-                ResultsListView(
-                    viewModel: viewModel,
-                    onSelectionChanged: { idx in
-                        if viewModel.displayableItems.indices.contains(idx) {
-                            previewItem = viewModel.displayableItems[idx]
-                        } else {
-                            previewItem = nil
-                        }
-                    }
-                )
-                .onChange(of: clipController.isSnippetMode) { _ in
-                    if let first = viewModel.displayableItems.first {
-                        previewItem = first
-                    } else {
-                        previewItem = nil
-                    }
-                }
+                ResultsListView(viewModel: viewModel)
             }
 
             Divider()
 
             // 预览区域
             VStack {
-                let itemToShow: (any DisplayableItem)? = {
-                    if let item = previewItem {
-                        return item
-                    } else if let first = viewModel.displayableItems.first {
-                        return first
-                    } else {
-                        return nil
-                    }
-                }()
-                if let item = itemToShow {
+                if let item = previewItem {
                     previewView(for: item)
                 } else {
                     Text("暂无可预览的内容")
@@ -94,6 +65,29 @@ struct ClipModeView: View {
                 Spacer()
             }
             .frame(minWidth: 320, maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var clearButton: some View {
+        if let clipController = clipController {
+            if !clipController.isSnippetMode, !ClipboardManager.shared.getHistory().isEmpty {
+                Button("清空") {
+                    ClipboardManager.shared.clearHistory()
+                    clipController.handleInput(arguments: "")
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.blue)
+                .font(.caption)
+            } else if clipController.isSnippetMode, !SnippetManager.shared.getSnippets().isEmpty {
+                Button("清空") {
+                    SnippetManager.shared.clearSnippets()
+                    clipController.handleInput(arguments: "")
+                }
+                .buttonStyle(PlainButtonStyle())
+                .foregroundColor(.blue)
+                .font(.caption)
+            }
         }
     }
 
