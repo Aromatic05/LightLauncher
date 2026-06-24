@@ -271,16 +271,11 @@ struct PermissionSettingsView: View {
 
     private func copyDiagnosticsToClipboard() {
         let diagnostics = permissionManager.generatePermissionDiagnostics()
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(diagnostics, forType: .string)
-
-        // 显示成功提示
-        let alert = NSAlert()
-        alert.alertStyle = .informational
-        alert.messageText = "诊断报告已复制"
-        alert.informativeText = "权限诊断报告已复制到剪贴板，您可以粘贴到文本编辑器中查看。"
-        alert.addButton(withTitle: "确定")
-        alert.runModal()
+        ClipboardService.shared.copy(diagnostics)
+        AlertService.shared.showInformation(
+            title: "诊断报告已复制",
+            message: "权限诊断报告已复制到剪贴板，您可以粘贴到文本编辑器中查看。"
+        )
     }
 
     private func openSystemPreferences() {

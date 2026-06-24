@@ -37,4 +37,13 @@ final class AlertService {
         alert.addButton(withTitle: "确定")
         alert.runModal()
     }
+
+    func showInformation(title: String, message: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: "确定")
+        alert.runModal()
+    }
 }
