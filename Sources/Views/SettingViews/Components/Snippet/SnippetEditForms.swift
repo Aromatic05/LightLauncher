@@ -1,56 +1,37 @@
 import SwiftUI
 
-// MARK: - 片段编辑表单组件
 struct SnippetEditForms {
 
-    // MARK: - 基本信息表单
     struct BasicInfoForm: View {
         @Binding var name: String
         @Binding var keyword: String
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("基本信息")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("片段名称")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        TextField("例如：函数模板", text: $name)
-                            .textFieldStyle(.roundedBorder)
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("关键词")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        TextField("例如：func", text: $keyword)
-                            .textFieldStyle(.roundedBorder)
-                        Text("用于快速搜索和匹配的关键词")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+            SettingsCard(title: "基本信息", contentSpacing: 12) {
+                LabeledTextField(
+                    label: "片段名称",
+                    placeholder: "例如：函数模板",
+                    text: $name
+                )
+                VStack(alignment: .leading, spacing: 6) {
+                    LabeledTextField(
+                        label: "关键词",
+                        placeholder: "例如：func",
+                        text: $keyword
+                    )
+                    Text("用于快速搜索和匹配的关键词")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
-            .padding(20)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(12)
         }
     }
 
-    // MARK: - 内容编辑表单
     struct ContentForm: View {
         @Binding var snippetText: String
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("代码内容")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-
+            SettingsCard(title: "代码内容") {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("片段内容")
                         .font(.subheadline)
@@ -78,13 +59,9 @@ struct SnippetEditForms {
                         .foregroundColor(.secondary)
                 }
             }
-            .padding(20)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(12)
         }
     }
 
-    // MARK: - 预览卡片
     struct PreviewCard: View {
         let isValid: Bool
         let name: String
@@ -92,25 +69,14 @@ struct SnippetEditForms {
         let snippetText: String
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("预览")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-
+            SettingsCard(title: "预览", contentSpacing: 12) {
                 if isValid {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Text(name)
                                 .font(.headline)
                                 .fontWeight(.medium)
-
-                            Text(keyword)
-                                .font(.system(.caption, design: .monospaced))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.1))
-                                .foregroundColor(.blue)
-                                .cornerRadius(4)
+                            Badge(text: keyword, color: .blue)
                             Spacer()
                         }
 
@@ -127,9 +93,6 @@ struct SnippetEditForms {
                         .font(.subheadline)
                 }
             }
-            .padding(20)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(12)
         }
     }
 }

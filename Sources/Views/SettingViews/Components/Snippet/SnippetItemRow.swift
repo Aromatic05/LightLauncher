@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - 片段项行视图
 struct SnippetItemRow: View {
     let snippet: SnippetItem
     let onEdit: () -> Void
@@ -12,8 +11,7 @@ struct SnippetItemRow: View {
             actionButtons
         }
         .padding(16)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
+        .settingsCard(opacity: 1.0)
     }
 
     private var snippetInfo: some View {
@@ -24,13 +22,7 @@ struct SnippetItemRow: View {
                     .fontWeight(.medium)
 
                 if !snippet.keyword.isEmpty {
-                    Text(snippet.keyword)
-                        .font(.system(.caption, design: .monospaced))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
-                        .cornerRadius(4)
+                    Badge(text: snippet.keyword, color: .blue)
                 }
 
                 Spacer()
@@ -46,18 +38,14 @@ struct SnippetItemRow: View {
 
     private var actionButtons: some View {
         VStack(spacing: 8) {
-            Button("编辑") {
-                onEdit()
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
+            Button("编辑", action: onEdit)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
 
-            Button("删除") {
-                onDelete()
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .foregroundColor(.red)
+            Button("删除", action: onDelete)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .foregroundColor(.red)
         }
     }
 }

@@ -100,8 +100,7 @@ private struct SnippetRow: View {
             actionButtons
         }
         .padding(16)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
+        .settingsCard(opacity: 1.0)
     }
 
     private var snippetInfo: some View {
@@ -112,13 +111,7 @@ private struct SnippetRow: View {
                     .fontWeight(.medium)
 
                 if !snippet.keyword.isEmpty {
-                    Text(snippet.keyword)
-                        .font(.system(.caption, design: .monospaced))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
-                        .cornerRadius(4)
+                    Badge(text: snippet.keyword, color: .blue)
                 }
 
                 Spacer()
@@ -134,11 +127,11 @@ private struct SnippetRow: View {
 
     private var actionButtons: some View {
         VStack(spacing: 8) {
-            Button("编辑") { onEdit() }
+            Button("编辑", action: onEdit)
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
-            Button("删除") { onDelete() }
+            Button("删除", action: onDelete)
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .foregroundColor(.red)
@@ -171,26 +164,13 @@ struct SnippetEditView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // 标题栏
-            HStack {
-                Text(snippet == nil ? "添加代码片段" : "编辑代码片段")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                Spacer()
-
-                Button("取消") { dismiss() }
-                    .buttonStyle(.bordered)
-
-                Button("保存") { saveSnippet() }
-                    .disabled(!isValid)
-                    .buttonStyle(.borderedProminent)
-            }
-            .padding(20)
-
+            EditSheetHeader(
+                title: snippet == nil ? "添加代码片段" : "编辑代码片段",
+                isValid: isValid,
+                onSave: { saveSnippet() }
+            )
             Divider()
 
-            // 表单内容
             Form {
                 Section("基本信息") {
                     TextField("片段名称", text: $name)
@@ -212,12 +192,7 @@ struct SnippetEditView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text(name).fontWeight(.medium)
-                                Text(keyword)
-                                    .font(.caption)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(4)
+                                Badge(text: keyword, color: .blue)
                                 Spacer()
                             }
                             Text(snippetText)

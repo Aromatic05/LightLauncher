@@ -32,34 +32,15 @@ struct KeywordSearchItemEditView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            headerView
+            EditSheetHeader(
+                title: item == nil ? "添加搜索项" : "编辑搜索项",
+                isValid: isValid,
+                onSave: { saveItem() }
+            )
             Divider()
             contentView
         }
         .frame(width: 600, height: 700)
-        .background(Color(NSColor.windowBackgroundColor))
-    }
-
-    private var headerView: some View {
-        HStack {
-            Text(item == nil ? "添加搜索项" : "编辑搜索项")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Spacer()
-
-            Button("取消") {
-                dismiss()
-            }
-            .buttonStyle(.bordered)
-
-            Button("保存") {
-                saveItem()
-            }
-            .disabled(!isValid)
-            .buttonStyle(.borderedProminent)
-        }
-        .padding(20)
         .background(Color(NSColor.windowBackgroundColor))
     }
 

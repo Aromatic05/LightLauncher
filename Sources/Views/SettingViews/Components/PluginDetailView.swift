@@ -32,19 +32,8 @@ struct PluginDetailView: View {
                         .font(.title2)
                         .fontWeight(.bold)
                     HStack(spacing: 8) {
-                        Text(plugin.command)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Color.secondary.opacity(0.2))
-                            .cornerRadius(4)
-                        Text(pluginStatus.text)
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(pluginStatus.color.opacity(0.2))
-                            .foregroundColor(pluginStatus.color)
-                            .cornerRadius(4)
+                        Badge(text: plugin.command, color: .secondary)
+                        Badge(text: pluginStatus.text, color: pluginStatus.color)
                     }
                 }
                 Spacer()
@@ -99,49 +88,34 @@ struct PluginDetailView: View {
                 .controlSize(.small)
             }
             if hasConfig {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("配置选项:")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+                SettingsCard(title: "配置选项", contentSpacing: 8) {
                     ForEach(Array(configData.keys.sorted()), id: \.self) { key in
-                        HStack {
-                            Text(key)
-                                .font(.system(.body, design: .monospaced))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(String(describing: configData[key] ?? ""))")
-                                .font(.system(.body, design: .monospaced))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(NSColor.controlBackgroundColor))
-                                .cornerRadius(4)
-                        }
-                        .padding(.vertical, 2)
+                        KeyValueRow(
+                            key: key,
+                            value: "\(String(describing: configData[key] ?? ""))"
+                        )
                     }
                 }
-                .padding(12)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
             } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "doc.text")
-                        .font(.title2)
-                        .foregroundColor(.secondary.opacity(0.7))
-                    Text("该插件暂无配置文件")
+                SettingsCard(contentSpacing: 8) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "doc.text")
+                            .font(.title2)
+                            .foregroundColor(.secondary.opacity(0.7))
+                        Text("该插件暂无配置文件")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button("创建默认配置") {
+                            PluginConfigManager.shared.ensureConfigExists(for: plugin)
+                            loadConfig()
+                        }
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                    Button("创建默认配置") {
-                        PluginConfigManager.shared.ensureConfigExists(for: plugin)
-                        loadConfig()
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
                     }
-                    .font(.caption)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(24)
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
             }
         }
     }
@@ -158,8 +132,8 @@ struct PluginDetailView: View {
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.bordered)
                 Button("重新加载插件") { Task { await onReload() } }
-                .frame(maxWidth: .infinity)
-                .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.bordered)
                 Button("删除配置文件") {
                     _ = PluginConfigManager.shared.deleteConfig(for: plugin.name)
                     loadConfig()

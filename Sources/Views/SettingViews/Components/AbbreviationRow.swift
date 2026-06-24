@@ -57,8 +57,7 @@ struct AbbreviationRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-        .cornerRadius(10)
+        .settingsCard(opacity: 0.5)
     }
 }
 

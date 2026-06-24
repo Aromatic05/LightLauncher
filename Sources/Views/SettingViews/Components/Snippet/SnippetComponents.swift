@@ -1,43 +1,24 @@
 import SwiftUI
 
-// MARK: - 片段页面组件
 struct SnippetComponents {
 
-    // MARK: - 空状态视图
     struct EmptyStateView: View {
         let searchText: String
         let onAddSnippet: () -> Void
 
         var body: some View {
-            VStack(spacing: 16) {
-                Image(systemName: searchText.isEmpty ? "doc.text" : "magnifyingglass")
-                    .font(.system(size: 48))
-                    .foregroundColor(.secondary)
-
-                VStack(spacing: 8) {
-                    Text(searchText.isEmpty ? "暂无代码片段" : "未找到匹配的片段")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-
-                    Text(searchText.isEmpty ? "点击上方按钮添加您的第一个代码片段" : "尝试其他搜索关键词或添加新片段")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                if searchText.isEmpty {
-                    Button("添加片段") {
-                        onAddSnippet()
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(40)
+            EmptyStatePlaceholder(
+                icon: searchText.isEmpty ? "doc.text" : "magnifyingglass",
+                title: searchText.isEmpty ? "暂无代码片段" : "未找到匹配的片段",
+                description: searchText.isEmpty
+                    ? "点击上方按钮添加您的第一个代码片段"
+                    : "尝试其他搜索关键词或添加新片段",
+                actionTitle: searchText.isEmpty ? "添加片段" : nil,
+                action: searchText.isEmpty ? onAddSnippet : nil
+            )
         }
     }
 
-    // MARK: - 头部视图
     struct HeaderView: View {
         @Binding var searchText: String
         let hasSnippets: Bool
@@ -66,10 +47,7 @@ struct SnippetComponents {
 
                 Spacer()
 
-                Button("添加片段") {
-                    onAddSnippet()
-                }
-                .buttonStyle(.borderedProminent)
+                AddButton(title: "添加片段", systemImage: "plus", action: onAddSnippet)
             }
         }
 
@@ -86,11 +64,9 @@ struct SnippetComponents {
                 .cornerRadius(6)
 
                 if hasSnippets {
-                    Button("清空全部") {
-                        onClearAll()
-                    }
-                    .buttonStyle(.bordered)
-                    .foregroundColor(.red)
+                    Button("清空全部", action: onClearAll)
+                        .buttonStyle(.bordered)
+                        .foregroundColor(.red)
                 }
             }
         }

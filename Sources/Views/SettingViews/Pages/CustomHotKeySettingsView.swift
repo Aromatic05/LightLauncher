@@ -42,30 +42,17 @@ struct CustomHotKeySettingsView: View {
 
                 Spacer()
 
-                Button(action: { showingAddSheet = true }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus")
-                        Text("添加快捷键")
-                    }
+                AddButton(title: "添加快捷键", systemImage: "plus") {
+                    showingAddSheet = true
                 }
-                .buttonStyle(.borderedProminent)
             }
 
             if configManager.config.customHotKeys.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "command.circle")
-                        .font(.system(size: 40))
-                        .foregroundColor(.secondary)
-                    Text("暂无自定义快捷键")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    Text("点击\"添加快捷键\"按钮创建您的第一个自定义快捷键")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
+                EmptyStatePlaceholder(
+                    icon: "command.circle",
+                    title: "暂无自定义快捷键",
+                    description: "点击\"添加快捷键\"按钮创建您的第一个自定义快捷键"
+                )
             } else {
                 hotKeysList
             }
@@ -112,10 +99,9 @@ struct CustomHotKeySettingsView: View {
     }
 }
 
-// MARK: - 自定义快捷键说明卡片
 struct CustomHotKeyInfoCard: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        SettingsCard {
             HStack {
                 Image(systemName: "command")
                     .foregroundColor(.purple)
@@ -140,7 +126,5 @@ struct CustomHotKeyInfoCard: View {
             }
             .padding(.leading, 20)
         }
-        .padding(20)
-        .settingsCard(opacity: 1.0)
     }
 }

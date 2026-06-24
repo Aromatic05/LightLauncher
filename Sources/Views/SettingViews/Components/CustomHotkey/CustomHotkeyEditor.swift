@@ -43,7 +43,11 @@ struct CustomHotKeyEditView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            headerView
+            EditSheetHeader(
+                title: hotKey == nil ? "添加快捷键" : "编辑快捷键",
+                isValid: isValid && !hasConflict,
+                onSave: { saveHotKey() }
+            )
             Divider()
             contentView
         }
@@ -52,29 +56,6 @@ struct CustomHotKeyEditView: View {
         .onDisappear {
             hotKeyRecorder.stopRecording()
         }
-    }
-
-    private var headerView: some View {
-        HStack {
-            Text(hotKey == nil ? "添加快捷键" : "编辑快捷键")
-                .font(.title2)
-                .fontWeight(.semibold)
-
-            Spacer()
-
-            Button("取消") {
-                dismiss()
-            }
-            .buttonStyle(.bordered)
-
-            Button("保存") {
-                saveHotKey()
-            }
-            .disabled(!isValid || hasConflict)
-            .buttonStyle(.borderedProminent)
-        }
-        .padding(20)
-        .background(Color(NSColor.windowBackgroundColor))
     }
 
     private var contentView: some View {

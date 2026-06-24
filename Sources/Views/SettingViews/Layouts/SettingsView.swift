@@ -74,17 +74,23 @@ struct SettingsView: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 16)
 
-                // 底部操作按钮
                 VStack(spacing: 16) {
-                    // 配置管理按钮组
                     VStack(spacing: 8) {
-                        Text("配置管理").font(.caption2).foregroundColor(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                        Text("配置管理")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
                         VStack(spacing: 6) {
-                            sidebarActionButton("重新加载配置", icon: "arrow.clockwise") { configManager.reloadConfig() }
-                            sidebarActionButton("编辑配置文件", icon: "doc.text") { NSWorkspace.shared.open(configManager.configURL) }
-                            sidebarActionButton("打开配置文件夹", icon: "folder") {
-                                NSWorkspace.shared.selectFile(configManager.configURL.path, inFileViewerRootedAtPath: "")
+                            SidebarActionButton(title: "重新加载配置", systemImage: "arrow.clockwise") {
+                                configManager.reloadConfig()
+                            }
+                            SidebarActionButton(title: "编辑配置文件", systemImage: "doc.text") {
+                                NSWorkspace.shared.open(configManager.configURL)
+                            }
+                            SidebarActionButton(title: "打开配置文件夹", systemImage: "folder") {
+                                NSWorkspace.shared.selectFile(
+                                    configManager.configURL.path, inFileViewerRootedAtPath: "")
                             }
                         }
                     }
@@ -92,7 +98,6 @@ struct SettingsView: View {
                     Divider()
                         .padding(.horizontal, -4)
 
-                    // 主要操作按钮
                     VStack(spacing: 8) {
                         Button("重置为默认设置") {
                             configManager.resetToDefaults()
@@ -124,7 +129,6 @@ struct SettingsView: View {
 
             Divider()
 
-            // 右侧内容区域
             switch selectedTab {
             case .general:
                 GeneralSettingsView(
@@ -158,19 +162,5 @@ struct SettingsView: View {
         .onAppear {
             settingsManager.checkAutoStartStatus()
         }
-    }
-
-    private func sidebarActionButton(_ title: String, icon: String, action: @escaping () -> Void)
-        -> some View
-    {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: icon).frame(width: 12)
-                Text(title).frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .font(.caption)
-        .buttonStyle(.bordered)
-        .controlSize(.small)
     }
 }

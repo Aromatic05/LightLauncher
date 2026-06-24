@@ -164,7 +164,7 @@ struct PermissionSettingsView: View {
                     }
                     .padding(16)
                     .background(Color.blue.opacity(0.1))
-                    .cornerRadius(10)
+                    .cornerRadius(12)
                 }
 
                 HStack(spacing: 12) {
@@ -345,7 +345,7 @@ struct PermissionInfoCard: View {
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-        .cornerRadius(10)
+        .cornerRadius(12)
     }
 }
 

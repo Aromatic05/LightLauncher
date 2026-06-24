@@ -1,29 +1,18 @@
 import SwiftUI
 
-// MARK: - 关键词搜索空状态视图
 struct KeywordSearchEmptyView: View {
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "magnifyingglass.circle")
-                .font(.system(size: 40))
-                .foregroundColor(.secondary)
-            Text("暂无搜索项")
-                .font(.headline)
-                .foregroundColor(.secondary)
-            Text("点击\"添加搜索项\"按钮创建您的第一个关键词搜索")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        EmptyStatePlaceholder(
+            icon: "magnifyingglass.circle",
+            title: "暂无搜索项",
+            description: "点击\"添加搜索项\"按钮创建您的第一个关键词搜索"
+        )
     }
 }
 
-// MARK: - 关键词搜索说明卡片
 struct KeywordSearchInfoCard: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        SettingsCard {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.blue)
@@ -45,12 +34,9 @@ struct KeywordSearchInfoCard: View {
             }
             .padding(.leading, 20)
         }
-        .padding(20)
-        .settingsCard(opacity: 1.0)
     }
 }
 
-// MARK: - 关键词搜索列表头部
 struct KeywordSearchListHeader: View {
     let onAddAction: () -> Void
 
@@ -62,13 +48,7 @@ struct KeywordSearchListHeader: View {
 
             Spacer()
 
-            Button(action: onAddAction) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                    Text("添加搜索项")
-                }
-            }
-            .buttonStyle(.borderedProminent)
+            AddButton(title: "添加搜索项", systemImage: "plus", action: onAddAction)
         }
     }
 }

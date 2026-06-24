@@ -46,8 +46,7 @@ struct FileBrowserPathSettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity, minHeight: 100)
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
+                        .settingsCard(opacity: 0.1)
                     }
                 }
             }

@@ -1,6 +1,5 @@
 import SwiftUI
 
-// MARK: - 关键词搜索基本信息表单
 struct KeywordSearchBasicForm: View {
     @Binding var title: String
     @Binding var keyword: String
@@ -10,44 +9,31 @@ struct KeywordSearchBasicForm: View {
     private let fileAccess = FileAccessService.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("基本信息")
-                .font(.headline)
-                .fontWeight(.semibold)
-
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("搜索引擎名称")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    TextField("例如：Google", text: $title)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("关键词")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    TextField("例如：g", text: $keyword)
-                        .textFieldStyle(.roundedBorder)
-                        .textCase(.lowercase)
-                }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("图标文件 (可选)")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    HStack {
-                        Button(action: {
-                            isFileImporterPresented = true
-                        }) {
-                            Text("选择图标文件")
-                        }
-                        if !selectedIconName.isEmpty {
-                            Text(selectedIconName)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+        SettingsCard(title: "基本信息", contentSpacing: 12) {
+            LabeledTextField(
+                label: "搜索引擎名称",
+                placeholder: "例如：Google",
+                text: $title
+            )
+            LabeledTextField(
+                label: "关键词",
+                placeholder: "例如：g",
+                text: $keyword,
+                textCase: .lowercase
+            )
+            VStack(alignment: .leading, spacing: 6) {
+                Text("图标文件 (可选)")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                HStack {
+                    Button("选择图标文件") {
+                        isFileImporterPresented = true
+                    }
+                    .buttonStyle(.bordered)
+                    if !selectedIconName.isEmpty {
+                        Text(selectedIconName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -70,7 +56,6 @@ struct KeywordSearchBasicForm: View {
                         icon = url.lastPathComponent
                         selectedIconName = url.lastPathComponent
                     } catch {
-                        // 错误处理
                         selectedIconName = "文件保存失败"
                     }
                 }
@@ -78,65 +63,47 @@ struct KeywordSearchBasicForm: View {
                 selectedIconName = "未选择文件"
             }
         }
-        .padding(20)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
     }
 }
 
-// MARK: - 关键词搜索配置表单
 struct KeywordSearchConfigForm: View {
     @Binding var url: String
     @Binding var spaceEncoding: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("搜索配置")
-                .font(.headline)
-                .fontWeight(.semibold)
+        SettingsCard(title: "搜索配置", contentSpacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                LabeledTextField(
+                    label: "搜索 URL",
+                    placeholder: "https://www.google.com/search?q={query}",
+                    text: $url
+                )
+                Text("使用 {query} 作为查询占位符")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("搜索 URL")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    TextField("https://www.google.com/search?q={query}", text: $url)
-                        .textFieldStyle(.roundedBorder)
-                    Text("使用 {query} 作为查询占位符")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("空格编码")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Picker("空格编码", selection: $spaceEncoding) {
+                    Text("+").tag("+")
+                    Text("%20").tag("%20")
                 }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("空格编码")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                    Picker("空格编码", selection: $spaceEncoding) {
-                        Text("+").tag("+")
-                        Text("%20").tag("%20")
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
+                .pickerStyle(SegmentedPickerStyle())
             }
         }
-        .padding(20)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
     }
 }
 
-// MARK: - 关键词搜索预览
 struct KeywordSearchPreview: View {
     let isValid: Bool
     let keyword: String
     let url: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("预览")
-                .font(.headline)
-                .fontWeight(.semibold)
-
+        SettingsCard(title: "预览", contentSpacing: 12) {
             if isValid {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -179,8 +146,5 @@ struct KeywordSearchPreview: View {
                 }
             }
         }
-        .padding(20)
-        .background(Color(NSColor.controlBackgroundColor))
-        .cornerRadius(12)
     }
 }
