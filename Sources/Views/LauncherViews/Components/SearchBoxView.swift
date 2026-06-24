@@ -5,8 +5,7 @@ struct SearchBoxView: View {
     @ObservedObject var viewModel = LauncherViewModel.shared
     @Binding var searchText: String
     @FocusState private var isSearchFieldFocused: Bool
-    @State private var focusTask: Task<Void, Never>?
-    @State private var caretTask: Task<Void, Never>?
+    @State private var focusSequenceTask: Task<Void, Never>?
     let mode: LauncherMode
 
     // 接收来自父视图 LauncherView 的窗口状态
@@ -66,23 +65,19 @@ struct SearchBoxView: View {
         .onReceive(viewModel.focusSearchField) { _ in
             scheduleProgrammaticFocus()
         }
+        .onDisappear {
+            focusSequenceTask?.cancel()
+        }
     }
 
     private func scheduleProgrammaticFocus(after delayNanoseconds: UInt64 = 0) {
-        focusTask?.cancel()
-        focusTask = Task { @MainActor in
+        focusSequenceTask?.cancel()
+        focusSequenceTask = Task { @MainActor in
             if delayNanoseconds > 0 {
                 try? await Task.sleep(nanoseconds: delayNanoseconds)
             }
             guard !Task.isCancelled else { return }
             isSearchFieldFocused = true
-            moveCaretToEndAfterProgrammaticFocus()
-        }
-    }
-
-    private func moveCaretToEndAfterProgrammaticFocus() {
-        caretTask?.cancel()
-        caretTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 10_000_000)
             guard !Task.isCancelled else { return }
             _ = SearchBoxView.moveCaretToEnd(in: NSApp.keyWindow?.firstResponder)

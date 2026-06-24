@@ -59,20 +59,27 @@ struct CommandSuggestionsView: View {
                     }
                     .frame(maxHeight: 400)
                     .onChange(of: selectedIndex) { newIndex in
-                        proxy.scrollTo(newIndex, anchor: .center)
+                        scheduleSelectionScroll(to: newIndex, using: proxy)
+                    }
+                    .onDisappear {
                         selectionScrollTask?.cancel()
-                        selectionScrollTask = Task { @MainActor in
-                            try? await Task.sleep(nanoseconds: 10_000_000)
-                            guard !Task.isCancelled else { return }
-                            withAnimation(.easeInOut(duration: 0.1)) {
-                                proxy.scrollTo(newIndex, anchor: .center)
-                            }
-                        }
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private func scheduleSelectionScroll(to index: Int, using proxy: ScrollViewProxy) {
+        proxy.scrollTo(index, anchor: .center)
+        selectionScrollTask?.cancel()
+        selectionScrollTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 10_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.1)) {
+                proxy.scrollTo(index, anchor: .center)
+            }
+        }
     }
 }
 
