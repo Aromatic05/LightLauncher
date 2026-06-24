@@ -13,11 +13,22 @@ struct PluginItem: Identifiable, Hashable, Sendable, DisplayableItem {
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         AnyView(PluginItemRowView(item: self, isSelected: isSelected, index: index))
     }
-    let id = UUID()
     let title: String
     let subtitle: String?
     let iconName: String?  // SF Symbol 名称或 Base64 图片字符串
     let action: PluginItemAction?
+    var id: String {
+        let actionKey: String
+        switch action {
+        case .selectPlugin(let command):
+            actionKey = "select:\(command)"
+        case .runPluginAction(let identifier):
+            actionKey = "run:\(identifier)"
+        case nil:
+            actionKey = "none"
+        }
+        return [title, subtitle ?? "", iconName ?? "", actionKey].joined(separator: "|")
+    }
     var icon: NSImage? {
         // 根据 iconName 的类型返回对应的 NSImage
         if let iconName = iconName {

@@ -280,8 +280,6 @@ final class FileModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     private func showPathError(message: String) {
-        Task { @MainActor in
-            AlertService.shared.showWarning(title: "Path Access Error", message: message)
-        }
+        AlertService.shared.showWarning(title: "Path Access Error", message: message)
     }
 }
