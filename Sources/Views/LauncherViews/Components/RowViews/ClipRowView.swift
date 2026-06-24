@@ -7,17 +7,17 @@ struct ClipItemRowView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            switch item {
-            case .text(let str):
+            switch item.payload {
+            case .text:
                 Image(systemName: "doc.on.clipboard")
                     .foregroundColor(.accentColor)
-                Text(str)
+                Text(item.textValue ?? "")
                     .lineLimit(1)
                     .truncationMode(.tail)
-            case .file(let url):
+            case .file:
                 Image(systemName: "doc.fill")
                     .foregroundColor(.blue)
-                Text(url.lastPathComponent)
+                Text(item.fileURL?.lastPathComponent ?? "")
                     .lineLimit(1)
                     .truncationMode(.middle)
             }

@@ -67,10 +67,10 @@ class ClipboardManager {
                 as? [URL], !fileURLs.isEmpty
             {
                 for url in fileURLs {
-                    addToHistory(.file(url))
+                    addToHistory(ClipboardItem(fileURL: url))
                 }
             } else if let newString = pasteboard.string(forType: .string), !newString.isEmpty {
-                addToHistory(.text(newString))
+                addToHistory(ClipboardItem(text: newString))
             }
         }
     }
@@ -79,7 +79,7 @@ class ClipboardManager {
 
     /// 添加到历史记录
     private func addToHistory(_ item: ClipboardItem) {
-        if history.first != item {
+        if history.first?.hasSamePayload(as: item) != true {
             history.insert(item, at: 0)
 
             if history.count > maxHistoryCount {

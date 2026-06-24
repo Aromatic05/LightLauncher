@@ -100,16 +100,22 @@ struct ClipModeView: View {
     @ViewBuilder
     private func previewView(for item: any DisplayableItem) -> some View {
         if let clip = item as? ClipboardItem {
-            switch clip {
-            case .text(let str):
-                TextEditor(text: .constant(str))
+            switch clip.payload {
+            case .text:
+                TextEditor(text: .constant(clip.textValue ?? ""))
                     .font(.system(size: 15))
                     .padding(8)
                     .background(Color(.textBackgroundColor))
                     .cornerRadius(6)
                     .frame(minHeight: 200)
-            case .file(let url):
-                QuickLookPreview(url: url)
+            case .file:
+                if let url = clip.fileURL {
+                    QuickLookPreview(url: url)
+                } else {
+                    Text("文件预览不可用")
+                        .foregroundColor(.secondary)
+                        .padding()
+                }
             }
         } else if let snippet = item as? SnippetItem {
             VStack(alignment: .leading, spacing: 8) {

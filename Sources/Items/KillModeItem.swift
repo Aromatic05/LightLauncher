@@ -3,11 +3,12 @@ import SwiftUI
 
 // MARK: - 运行中应用信息结构
 struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
+    var id: pid_t { processIdentifier }
+
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         AnyView(RunningAppRowView(app: self, isSelected: isSelected, index: index))
     }
-    let id = UUID()
     let name: String
     let bundleIdentifier: String
     let processIdentifier: pid_t
@@ -26,11 +27,13 @@ struct RunningAppInfo: Identifiable, Hashable, DisplayableItem {
     var displayName: String { name }
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
+        hasher.combine(processIdentifier)
+        hasher.combine(bundleIdentifier)
     }
 
     static func == (lhs: RunningAppInfo, rhs: RunningAppInfo) -> Bool {
-        lhs.id == rhs.id
+        lhs.processIdentifier == rhs.processIdentifier
+            && lhs.bundleIdentifier == rhs.bundleIdentifier
     }
 
     @MainActor

@@ -2,107 +2,74 @@ import SwiftUI
 
 private func loadIcon(named iconName: String?) -> NSImage? {
     let fileAccess = FileAccessService.shared
+    let userIconsDirectory = fileAccess.homeDirectory.appendingPathComponent(
+        ".config/LightLauncher/icons",
+        isDirectory: true
+    )
 
-    // Return a sensible default early if no name provided
     guard let iconName = iconName, !iconName.isEmpty else {
         return NSImage(
             systemSymbolName: "magnifyingglass",
             accessibilityDescription: "Default search icon")
     }
 
-    // Helper to load from a resource URL safely. Use non-throwing APIs and try?
-    // so any IO/parsing errors are ignored and won't crash the app.
-    func image(from url: URL?) -> NSImage? {
-        guard let url = url else { return nil }
-
-        // If it's a file URL, try the convenient file-based initializers first.
+    func loadImage(from url: URL) -> NSImage? {
         if url.isFileURL {
-            if let img = NSImage(contentsOf: url) {
-                return img
-            }
-            // Fallback: try reading data safely and constructing image from data.
-            if let data = try? fileAccess.readData(from: url), let img = NSImage(data: data) {
-                return img
-            }
-            return nil
+            if let image = NSImage(contentsOf: url) { return image }
         }
 
-        // For non-file URLs, attempt to read data with try? and build image from data.
-        if let data = try? fileAccess.readData(from: url), let img = NSImage(data: data) {
-            return img
-        }
+        guard let data = try? fileAccess.readData(from: url) else { return nil }
+        return NSImage(data: data)
+    }
 
+    func firstAvailableImage(from candidates: [URL?]) -> NSImage? {
+        for case let url? in candidates {
+            if let image = loadImage(from: url) {
+                return image
+            }
+        }
         return nil
     }
 
-    // 1) Try SPM module bundle if available
-    #if SWIFT_PACKAGE
-        if let resourceURL = Bundle.module.url(
-            forResource: (iconName as NSString).deletingPathExtension,
-            withExtension: (iconName as NSString).pathExtension),
-            let bundleIcon = image(from: resourceURL)
-        {
-            return bundleIcon
-        }
-    #endif
-
-    // 2) Try main bundle (in case resources were copied into the app bundle)
-    if let resourceURL = Bundle.main.url(
-        forResource: (iconName as NSString).deletingPathExtension,
-        withExtension: (iconName as NSString).pathExtension),
-        let mainIcon = image(from: resourceURL)
-    {
-        return mainIcon
+    func bundleResourceURLs(baseName: String, extensionName: String) -> [URL?] {
+        var urls: [URL?] = []
+        #if SWIFT_PACKAGE
+            urls.append(Bundle.module.url(forResource: baseName, withExtension: extensionName))
+        #endif
+        urls.append(Bundle.main.url(forResource: baseName, withExtension: extensionName))
+        return urls
     }
 
-    // 3) If iconName looks like a file system path, try loading it directly
+    let pathName = iconName as NSString
+    let baseName = pathName.deletingPathExtension
+    let extensionName = pathName.pathExtension
+
+    var candidates = bundleResourceURLs(baseName: baseName, extensionName: extensionName)
+
     if iconName.hasPrefix("/") {
-        if let direct = NSImage(contentsOfFile: iconName) {
-            return direct
-        }
+        candidates.append(URL(fileURLWithPath: iconName))
     } else if let fileURL = URL(string: iconName), fileURL.isFileURL {
-        if let direct = image(from: fileURL) {
-            return direct
+        candidates.append(fileURL)
+    } else {
+        candidates.append(userIconsDirectory.appendingPathComponent(iconName))
+    }
+
+    if extensionName.isEmpty {
+        let commonExtensions = ["png", "jpg", "jpeg", "gif", "pdf"]
+        for extensionName in commonExtensions {
+            candidates.append(contentsOf: bundleResourceURLs(baseName: baseName, extensionName: extensionName))
+            candidates.append(
+                userIconsDirectory
+                    .appendingPathComponent(baseName)
+                    .appendingPathExtension(extensionName)
+            )
         }
     }
 
-    // 4) Try user-provided icons in ~/.config/LightLauncher/icons/
-    let home = FileAccessService.shared.homeDirectory
-    let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/")
-        .appendingPathComponent(iconName).path
-    if let userIcon = NSImage(contentsOfFile: iconFullPath) {
-        return userIcon
+    if let image = firstAvailableImage(from: candidates) {
+        return image
     }
 
-    // 5) If the passed name had no extension, attempt common extensions as a last resort.
-    let ext = (iconName as NSString).pathExtension
-    if ext.isEmpty {
-        let base = (iconName as NSString).deletingPathExtension
-        let commonExts = ["png", "jpg", "jpeg", "gif", "pdf"]
-        for e in commonExts {
-            #if SWIFT_PACKAGE
-                if let resourceURL = Bundle.module.url(forResource: base, withExtension: e),
-                    let img = image(from: resourceURL)
-                {
-                    return img
-                }
-            #endif
-
-            if let resourceURL = Bundle.main.url(forResource: base, withExtension: e),
-                let img = image(from: resourceURL)
-            {
-                return img
-            }
-
-            let candidate = home.appendingPathComponent(".config/LightLauncher/icons/")
-                .appendingPathComponent("\(base).\(e)").path
-            if let img = NSImage(contentsOfFile: candidate) {
-                return img
-            }
-        }
-    }
-
-    // Final fallback: system symbol
     return NSImage(
         systemSymbolName: "magnifyingglass",
         accessibilityDescription: "Default search icon")

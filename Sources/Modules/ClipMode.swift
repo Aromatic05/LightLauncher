@@ -66,13 +66,7 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
 
     // 2. 核心逻辑
     func handleInput(arguments: String) {
-        if isSnippetMode {
-            let items = filterSnippets(with: arguments)
-            self.displayableItems = items.map { $0 as any DisplayableItem }
-        } else {
-            let items = filterHistory(with: arguments)
-            self.displayableItems = items.map { $0 as any DisplayableItem }
-        }
+        displayableItems = displayableItems(for: arguments)
         if LauncherViewModel.shared.selectedIndex != 0 {
             LauncherViewModel.shared.selectedIndex = 0
         }
@@ -116,21 +110,13 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         guard index >= 0 && index < self.displayableItems.count else {
             return false
         }
-        let item = self.displayableItems[index]
-        if let clipItem = item as? ClipboardItem {
-            switch clipItem {
-            case .text(let str):
-                Self.simulateTextInput(str)
-                return true
-            case .file(let url):
-                Self.simulateTextInput(url.path)
-                return false
-            }
-        } else if let snippet = item as? SnippetItem {
-            Self.simulateTextInput(snippet.snippet)
-            return true
+
+        guard let text = directInputText(for: displayableItems[index]) else {
+            return false
         }
-        return false
+
+        Self.simulateTextInput(text)
+        return (displayableItems[index] as? ClipboardItem)?.payload != .file
     }
 
     /// 使用临时剪贴板和 Cmd+V 将文本直接粘贴到当前聚焦控件
@@ -183,26 +169,47 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
     }
 
     func getHelpText() -> [String] {
-        if isSnippetMode {
-            return [
-                "浏览并复制已保存的片段",
-                "按 Enter 将选中片段复制到剪贴板",
-                "按 Shift+Enter 直接粘贴选中片段",
-                "按 Option 切回剪贴板历史",
-                "输入关键词过滤片段，按 Esc 退出",
-            ]
-        }
+        let primaryLine = isSnippetMode ? "浏览并复制已保存的片段" : "浏览剪贴板历史"
+        let actionLine =
+            isSnippetMode
+            ? "按 Enter 将选中片段复制到剪贴板"
+            : "按 Enter 将选中项目复制到剪贴板"
+        let toggleLine =
+            isSnippetMode
+            ? "按 Option 切回剪贴板历史"
+            : "按 Option 在剪贴板历史和片段间切换"
+        let filterLine =
+            isSnippetMode
+            ? "输入关键词过滤片段，按 Esc 退出"
+            : "输入关键词过滤历史，按 Esc 退出"
 
         return [
-            "浏览剪贴板历史",
-            "按 Enter 将选中项目复制到剪贴板",
+            primaryLine,
+            actionLine,
             "按 Shift+Enter 直接粘贴选中项目",
-            "按 Option 在剪贴板历史和片段间切换",
-            "输入关键词过滤历史，按 Esc 退出",
+            toggleLine,
+            filterLine,
         ]
     }
 
     // MARK: - Private Helper Methods
+
+    private func displayableItems(for query: String) -> [any DisplayableItem] {
+        if isSnippetMode {
+            return filterSnippets(with: query).map { $0 as any DisplayableItem }
+        }
+        return filterHistory(with: query).map { $0 as any DisplayableItem }
+    }
+
+    private func directInputText(for item: any DisplayableItem) -> String? {
+        if let clipItem = item as? ClipboardItem {
+            return clipItem.directInputText
+        }
+        if let snippet = item as? SnippetItem {
+            return snippet.snippet
+        }
+        return nil
+    }
 
     private func filterHistory(with query: String) -> [ClipboardItem] {
         let allItems = ClipboardManager.shared.getHistory()
@@ -211,8 +218,9 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
         }
 
         let scoredItems = allItems.compactMap { item -> (ClipboardItem, Double)? in
-            switch item {
-            case .text(let str):
+            switch item.payload {
+            case .text:
+                guard let str = item.textValue else { return nil }
                 let scores: [Double?] = [
                     StringMatcher.calculateWordStartMatch(text: str, query: query),
                     StringMatcher.calculateSubsequenceMatch(text: str, query: query),
@@ -221,7 +229,8 @@ final class ClipModeController: NSObject, ModeStateController, ObservableObject 
                 if let bestScore = scores.compactMap({ $0 }).max() {
                     return (item, bestScore)
                 }
-            case .file(let url):
+            case .file:
+                guard let url = item.fileURL else { return nil }
                 if url.lastPathComponent.localizedCaseInsensitiveContains(query) {
                     return (item, 10.0)  // Give file matches a high score
                 }
