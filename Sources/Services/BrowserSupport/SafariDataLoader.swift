@@ -6,10 +6,10 @@ class SafariDataLoader: BrowserDataLoader {
     private static let database = DatabaseService.shared
 
     static func loadBookmarks() async -> [BrowserItem] {
-        let bookmarksPath = BrowserDataUtils.homeDirectory.appendingPathComponent(
+        let bookmarksPath = BrowserDataSupport.homeDirectory.appendingPathComponent(
             "Library/Safari/Bookmarks.plist")
 
-        guard BrowserDataUtils.fileExists(at: bookmarksPath.path) else {
+        guard BrowserDataSupport.fileExists(at: bookmarksPath) else {
             Logger.shared.info("Safari bookmarks file not found")
             return []
         }
@@ -32,15 +32,15 @@ class SafariDataLoader: BrowserDataLoader {
     }
 
     static func loadHistory() async -> [BrowserItem] {
-        let historyPath = BrowserDataUtils.homeDirectory.appendingPathComponent(
+        let historyPath = BrowserDataSupport.homeDirectory.appendingPathComponent(
             "Library/Safari/History.db")
 
-        guard BrowserDataUtils.fileExists(at: historyPath.path) else {
+        guard BrowserDataSupport.fileExists(at: historyPath) else {
             Logger.shared.info("Safari history database not found")
             return []
         }
 
-        return await loadHistoryFromDatabase(at: historyPath.path)
+        return await loadHistoryFromDatabase(at: historyPath)
     }
 
     // MARK: - Private Methods
@@ -75,7 +75,7 @@ class SafariDataLoader: BrowserDataLoader {
         return bookmarks
     }
 
-    private static func loadHistoryFromDatabase(at path: String) async -> [BrowserItem] {
+    private static func loadHistoryFromDatabase(at url: URL) async -> [BrowserItem] {
         let query = """
                 SELECT hv.title, hi.url, hv.visit_time, hi.visit_count
                 FROM history_visits hv
@@ -85,7 +85,7 @@ class SafariDataLoader: BrowserDataLoader {
                 LIMIT 500
             """
         let referenceDate = Date(timeIntervalSinceReferenceDate: 0)
-        return await database.readRows(at: URL(fileURLWithPath: path), query: query) { statement in
+        return await database.readRows(at: url, query: query) { statement in
             let visitTime = database.double(from: statement, at: 2)
             return BrowserItem(
                 title: database.string(from: statement, at: 0),

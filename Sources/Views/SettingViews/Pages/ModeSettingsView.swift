@@ -12,6 +12,35 @@ struct ModeSettingsView: View {
         )
     }
 
+    private var searchEngineBinding: Binding<String> {
+        Binding(
+            get: { configManager.config.modes.defaultSearchEngine },
+            set: { configManager.updateDefaultSearchEngine($0) }
+        )
+    }
+
+    private var preferredTerminalBinding: Binding<String> {
+        Binding(
+            get: { configManager.config.modes.preferredTerminal },
+            set: { configManager.updatePreferredTerminal($0) }
+        )
+    }
+
+    private func enabledBrowserBinding(_ browser: BrowserType) -> Binding<Bool> {
+        Binding(
+            get: { configManager.getEnabledBrowsers().contains(browser) },
+            set: { enabled in
+                var enabledBrowsers = configManager.getEnabledBrowsers()
+                if enabled {
+                    enabledBrowsers.insert(browser)
+                } else {
+                    enabledBrowsers.remove(browser)
+                }
+                configManager.updateEnabledBrowsers(enabledBrowsers)
+            }
+        )
+    }
+
     private func getTerminalDisplayName(_ terminal: String) -> String {
         switch terminal {
         case "ghostty": return "Ghostty"
@@ -37,6 +66,15 @@ struct ModeSettingsView: View {
         case .arc:
             return .purple
         }
+    }
+
+    private var searchEnginePicker: some View {
+        Picker("搜索引擎", selection: searchEngineBinding) {
+            Text("Google").tag("google")
+            Text("百度").tag("baidu")
+            Text("必应").tag("bing")
+        }
+        .pickerStyle(MenuPickerStyle())
     }
 
     var body: some View {
@@ -159,18 +197,7 @@ struct ModeSettingsView: View {
                             HStack {
                                 Text("默认搜索引擎：")
                                     .font(.subheadline)
-                                Picker(
-                                    "搜索引擎",
-                                    selection: Binding(
-                                        get: { configManager.config.modes.defaultSearchEngine },
-                                        set: { configManager.updateDefaultSearchEngine($0) }
-                                    )
-                                ) {
-                                    Text("Google").tag("google")
-                                    Text("百度").tag("baidu")
-                                    Text("必应").tag("bing")
-                                }
-                                .pickerStyle(MenuPickerStyle())
+                                searchEnginePicker
                             }
 
                             Text(
@@ -216,23 +243,7 @@ struct ModeSettingsView: View {
                                         HStack {
                                             Toggle(
                                                 browser.displayName,
-                                                isOn: Binding(
-                                                    get: {
-                                                        configManager.getEnabledBrowsers().contains(
-                                                            browser)
-                                                    },
-                                                    set: { enabled in
-                                                        var enabledBrowsers =
-                                                            configManager.getEnabledBrowsers()
-                                                        if enabled {
-                                                            enabledBrowsers.insert(browser)
-                                                        } else {
-                                                            enabledBrowsers.remove(browser)
-                                                        }
-                                                        configManager.updateEnabledBrowsers(
-                                                            enabledBrowsers)
-                                                    }
-                                                )
+                                                isOn: enabledBrowserBinding(browser)
                                             )
                                             .toggleStyle(SwitchToggleStyle())
 
@@ -265,10 +276,7 @@ struct ModeSettingsView: View {
                             HStack {
                                 Picker(
                                     "搜索引擎",
-                                    selection: Binding(
-                                        get: { configManager.config.modes.defaultSearchEngine },
-                                        set: { configManager.updateDefaultSearchEngine($0) }
-                                    )
+                                    selection: searchEngineBinding
                                 ) {
                                     Text("Google").tag("google")
                                     Text("百度").tag("baidu")
@@ -319,10 +327,7 @@ struct ModeSettingsView: View {
                                     .font(.subheadline)
                                 Picker(
                                     "终端应用",
-                                    selection: Binding(
-                                        get: { configManager.config.modes.preferredTerminal },
-                                        set: { configManager.updatePreferredTerminal($0) }
-                                    )
+                                    selection: preferredTerminalBinding
                                 ) {
                                     Text("自动检测").tag("auto")
                                     Text("Terminal.app").tag("terminal")
