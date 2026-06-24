@@ -7,11 +7,21 @@ struct KeywordSearchSettingsView: View {
     @State private var editingItem: KeywordSearchItem?
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "关键词搜索", subtitle: "管理自定义搜索引擎和快速搜索关键词")
-            KeywordSearchInfoCard()
-            Divider()
-            searchItemsSection
+        StandardSettingsPage(title: "关键词搜索", subtitle: "管理自定义搜索引擎和快速搜索关键词") {
+            StandardSettingsSection(title: "搜索项管理", icon: "magnifyingglass", iconColor: .blue) {
+                SettingsCard {
+                    HStack {
+                        Text("搜索项配置")
+                            .font(.headline)
+                        Spacer()
+                        AddButton(title: "添加搜索项", systemImage: "plus") {
+                            showingAddSheet = true
+                        }
+                    }
+                }
+
+                searchItemsSection
+            }
         }
         .sheet(isPresented: $showingAddSheet) {
             KeywordSearchItemEditView(
@@ -32,11 +42,7 @@ struct KeywordSearchSettingsView: View {
     }
 
     private var searchItemsSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            KeywordSearchListHeader {
-                showingAddSheet = true
-            }
-
+        Group {
             if configManager.config.modes.keywordModeConfig?.items.isEmpty ?? true {
                 KeywordSearchEmptyView()
             } else {

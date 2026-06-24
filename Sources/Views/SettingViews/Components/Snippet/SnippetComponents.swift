@@ -22,37 +22,21 @@ struct SnippetComponents {
     struct HeaderView: View {
         @Binding var searchText: String
         let hasSnippets: Bool
-        let onAddSnippet: () -> Void
         let onClearAll: () -> Void
 
         var body: some View {
-            VStack(spacing: 16) {
-                titleSection
-                searchSection
-            }
-            .padding(20)
-            .background(Color(NSColor.windowBackgroundColor))
-        }
-
-        private var titleSection: some View {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("代码片段管理")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                    Text("管理您的代码片段和文本模板")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+            SettingsCard {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("筛选与维护")
+                            .font(.headline)
+                        Text("统一搜索、筛选和清理当前片段")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
                 }
 
-                Spacer()
-
-                AddButton(title: "添加片段", systemImage: "plus", action: onAddSnippet)
-            }
-        }
-
-        private var searchSection: some View {
-            HStack {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)

@@ -52,23 +52,23 @@ struct DirectorySettingsView: View {
     }
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "搜索目录", subtitle: "配置应用程序搜索目录，支持 ~ 符号表示用户主目录")
-
+        StandardSettingsPage(title: "搜索目录", subtitle: "配置应用程序搜索目录，支持 ~ 符号表示用户主目录") {
+            StandardSettingsSection(title: "目录添加", icon: "plus.circle", iconColor: .blue) {
             AddDirectorySection(
                 newDirectory: $newDirectory,
                 showingDirectoryPicker: $showingDirectoryPicker
             ) {
                 addDirectory()
             }
+            }
 
-            VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(
+            StandardSettingsSection(
                     title: "当前搜索目录",
+                    icon: "folder",
+                    iconColor: .blue,
                     count: directoryCount,
                     countLabel: "个目录"
-                )
-
+            ) {
                 LazyVStack(spacing: 8) {
                     ForEach(searchDirectories) { directory in
                         DirectoryRow(directory: directory.path) {

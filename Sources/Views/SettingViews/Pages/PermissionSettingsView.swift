@@ -9,23 +9,11 @@ struct PermissionSettingsView: View {
     private let permissionSettingsService = PermissionSettingsService.shared
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "权限管理", subtitle: "管理应用所需的系统权限以确保功能正常运行")
-
+        StandardSettingsPage(title: "权限管理", subtitle: "管理应用所需的系统权限以确保功能正常运行") {
             if let summary = permissionSummary {
                 permissionOverview(summary: summary)
-
-                Divider()
-
                 permissionDetails(summary: summary)
-
-                Divider()
-
                 permissionActions(summary: summary)
-
-                Divider()
-
-                permissionInfo
             } else {
                 VStack(spacing: 20) {
                     ProgressView()
@@ -43,9 +31,7 @@ struct PermissionSettingsView: View {
     }
 
     private func permissionOverview(summary: AppPermissionSummary) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            SectionHeader(title: "权限状态概览", icon: "shield.checkered")
-
+        StandardSettingsSection(title: "权限状态概览", icon: "shield.checkered", iconColor: .blue, spacing: 20) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -93,9 +79,7 @@ struct PermissionSettingsView: View {
     }
 
     private func permissionDetails(summary: AppPermissionSummary) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            SectionHeader(title: "权限详情", icon: "list.bullet.clipboard")
-
+        StandardSettingsSection(title: "权限详情", icon: "list.bullet.clipboard", iconColor: .blue, spacing: 20) {
             VStack(spacing: 12) {
                 let requiredPermissions = permissionManager.getRequiredPermissions()
                 if !requiredPermissions.isEmpty {
@@ -143,9 +127,7 @@ struct PermissionSettingsView: View {
     }
 
     private func permissionActions(summary: AppPermissionSummary) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
-            SectionHeader(title: "权限管理操作", icon: "gear")
-
+        StandardSettingsSection(title: "权限管理操作", icon: "gear", iconColor: .orange, spacing: 20) {
             VStack(spacing: 12) {
                 if !summary.isFullyAuthorized {
                     HStack {
@@ -196,38 +178,6 @@ struct PermissionSettingsView: View {
                     }
                     .buttonStyle(.bordered)
                 }
-            }
-        }
-    }
-
-    private var permissionInfo: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SectionHeader(title: "权限说明", icon: "info.circle")
-
-            VStack(alignment: .leading, spacing: 12) {
-                PermissionInfoCard(
-                    title: "高风险权限",
-                    icon: "exclamationmark.shield",
-                    iconColor: .red,
-                    description: "这些权限提供对系统的深度访问，请谨慎授权",
-                    examples: ["辅助功能", "完全磁盘访问", "输入监控"]
-                )
-
-                PermissionInfoCard(
-                    title: "中等风险权限",
-                    icon: "shield.lefthalf.filled",
-                    iconColor: .orange,
-                    description: "这些权限访问特定功能，通常是安全的",
-                    examples: ["自动化", "文件访问", "屏幕录制"]
-                )
-
-                PermissionInfoCard(
-                    title: "低风险权限",
-                    icon: "shield",
-                    iconColor: .green,
-                    description: "这些权限对系统影响最小",
-                    examples: ["网络访问", "通知权限"]
-                )
             }
         }
     }
@@ -306,46 +256,6 @@ struct PermissionRowView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(NSColor.controlBackgroundColor).opacity(isGranted ? 0.3 : 0.6))
         )
-    }
-}
-
-// MARK: - 权限信息卡片
-struct PermissionInfoCard: View {
-    let title: String
-    let icon: String
-    let iconColor: Color
-    let description: String
-    let examples: [String]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .foregroundColor(iconColor)
-                    .font(.title3)
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                Spacer()
-            }
-
-            Text(description)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            HStack {
-                Text("包括：")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text(examples.joined(separator: "、"))
-                    .font(.caption)
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-        }
-        .padding(16)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-        .cornerRadius(12)
     }
 }
 

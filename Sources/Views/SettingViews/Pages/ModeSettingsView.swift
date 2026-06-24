@@ -78,29 +78,16 @@ struct ModeSettingsView: View {
     }
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "功能模式设置", subtitle: "启用或禁用特定功能模式，并配置相关设置")
-
-            VStack(spacing: 32) {
+        StandardSettingsPage(title: "功能模式设置", subtitle: "启用或禁用特定功能模式，并配置相关设置") {
+            StandardSettingsSection(title: "模式列表", icon: "slider.horizontal.3", iconColor: .accentColor, spacing: 32) {
                 ModeSettingSection(
                     title: KillModeController.shared.settingsTitle("结束进程"),
                     icon: "xmark.circle",
                     iconColor: .red,
                     description: "搜索并结束运行中的应用",
+                    showsContent: false,
                     isEnabled: modeBinding("kill")
-                ) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("在此模式下，你可以：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        BulletList(items: [
-                            "搜索并选择要结束的应用",
-                            "按 Option 在普通结束和强制结束间切换",
-                            "使用数字键 1-6 快速选择",
-                            "删除 \(KillModeController.shared.commandReference()) 前缀自动返回启动模式",
-                        ])
-                    }
-                }
+                ) {}
 
                 Divider()
 
@@ -109,14 +96,9 @@ struct ModeSettingsView: View {
                     icon: "doc.on.clipboard",
                     iconColor: .purple,
                     description: "管理剪贴板历史和片段，支持复制或直接粘贴",
+                    showsContent: false,
                     isEnabled: modeBinding("clip")
-                ) {
-                    BulletList(items: [
-                        "按 Enter 将选中项目复制到剪贴板",
-                        "按 Shift+Enter 直接粘贴选中项目",
-                        "按 Option 在剪贴板历史和片段间切换",
-                    ])
-                }
+                ) {}
 
                 Divider()
 
@@ -125,13 +107,9 @@ struct ModeSettingsView: View {
                     icon: "puzzlepiece.extension",
                     iconColor: .teal,
                     description: "输入插件命令，调用自定义插件能力",
+                    showsContent: false,
                     isEnabled: modeBinding("plugin")
-                ) {
-                    BulletList(items: [
-                        "输入 \(PluginModeController.shared.commandReference()) 查看可用插件",
-                        "选择插件后继续输入参数",
-                    ])
-                }
+                ) {}
 
                 Divider()
 
@@ -142,22 +120,10 @@ struct ModeSettingsView: View {
                     description: "使用默认搜索引擎搜索网络内容",
                     isEnabled: modeBinding("search")
                 ) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("搜索引擎设置：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-
-                        HStack {
-                            Text("默认搜索引擎：")
-                                .font(.subheadline)
-                            searchEnginePicker
-                        }
-
-                        Text(
-                            "输入 \(SearchModeController.shared.commandReference(includeTrailingSpace: true))后输入搜索关键词"
-                        )
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    HStack {
+                        Text("默认搜索引擎：")
+                            .font(.subheadline)
+                        searchEnginePicker
                     }
                 }
 
@@ -171,20 +137,9 @@ struct ModeSettingsView: View {
                     isEnabled: modeBinding("web")
                 ) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("支持的输入格式：")
+                        Text("浏览器数据源")
                             .font(.headline)
                             .fontWeight(.semibold)
-                        BulletList(items: [
-                            "完整 URL：https://example.com",
-                            "域名：example.com",
-                            "关键词：搜索关键词（自动跳转到搜索）",
-                            "书签和历史记录：自动匹配显示",
-                        ])
-
-                        Text("浏览器数据源：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .padding(.top, 8)
 
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(BrowserType.allCases, id: \.self) { browser in
@@ -215,31 +170,11 @@ struct ModeSettingsView: View {
                             }
                         }
 
-                        Text("默认搜索引擎：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .padding(.top, 8)
-
                         HStack {
-                            Picker(
-                                "搜索引擎",
-                                selection: searchEngineBinding
-                            ) {
-                                Text("Google").tag("google")
-                                Text("百度").tag("baidu")
-                                Text("必应").tag("bing")
-                            }
-                            .pickerStyle(MenuPickerStyle())
-
-                            Spacer()
+                            Text("默认搜索引擎：")
+                                .font(.subheadline)
+                            searchEnginePicker
                         }
-
-                        InfoCallout(
-                            icon: "info.circle",
-                            iconColor: .blue,
-                            text: "书签和历史记录会定期自动更新，支持智能搜索匹配"
-                        )
-                        .padding(.top, 8)
                     }
                 }
 
@@ -253,15 +188,6 @@ struct ModeSettingsView: View {
                     isEnabled: modeBinding("terminal")
                 ) {
                     VStack(alignment: .leading, spacing: 12) {
-                        BulletList(items: [
-                            "输入 \(TerminalModeController.shared.commandReference(includeTrailingSpace: true))后输入终端命令",
-                            "按 Enter 在终端中执行命令",
-                        ])
-
-                        Text("终端应用设置：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-
                         HStack {
                             Text("首选终端：")
                                 .font(.subheadline)
@@ -279,40 +205,6 @@ struct ModeSettingsView: View {
                             }
                             .pickerStyle(MenuPickerStyle())
                         }
-
-                        Text("执行优先级说明：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .padding(.top, 8)
-
-                        let terminal = configManager.config.modes.preferredTerminal
-                        if terminal == "auto" {
-                            BulletList(items: [
-                                "自动检测系统默认终端应用",
-                                "如果检测失败，按优先级尝试可用终端",
-                                "最后降级到后台直接执行",
-                            ])
-                        } else if terminal == "terminal" {
-                            BulletList(items: ["总是使用 Terminal.app"])
-                        } else if terminal == "iterm2" {
-                            BulletList(items: [
-                                "优先使用 iTerm2",
-                                "如果不可用则降级到系统默认",
-                            ])
-                        } else {
-                            BulletList(items: [
-                                "优先使用 \(getTerminalDisplayName(terminal))",
-                                "如果不可用则降级到系统默认",
-                            ])
-                        }
-
-                        InfoCallout(
-                            icon: "exclamationmark.triangle",
-                            iconColor: .orange,
-                            text: "注意：请谨慎执行终端命令",
-                            textColor: .orange
-                        )
-                        .padding(.top, 8)
                     }
                 }
 
@@ -326,32 +218,8 @@ struct ModeSettingsView: View {
                     isEnabled: modeBinding("file")
                 ) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("功能特点：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                        BulletList(items: [
-                            "可配置多个起始路径，快速访问常用目录",
-                            "按 Enter 打开文件或进入文件夹",
-                            "按 Space 在 Finder 中打开当前选择",
-                            "支持按名称过滤文件和目录",
-                            "显示文件大小和修改时间",
-                        ])
-
-                        Text("起始路径配置：")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .padding(.top, 8)
-
                         FileBrowserPathSettingsView(configManager: configManager)
                             .frame(maxHeight: 300)
-
-                        InfoCallout(
-                            icon: "info.circle",
-                            iconColor: .blue,
-                            text: "提示：启动文件模式时会显示配置的起始路径列表",
-                            textColor: .blue
-                        )
-                        .padding(.top, 8)
                     }
                 }
 

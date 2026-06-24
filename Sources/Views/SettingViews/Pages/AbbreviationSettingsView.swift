@@ -10,12 +10,8 @@ struct AbbreviationSettingsView: View {
     @State private var editingValues: String = ""
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "缩写匹配", subtitle: "配置应用程序缩写匹配规则，提高搜索效率")
-
-            VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(title: "添加新缩写")
-
+        StandardSettingsPage(title: "缩写匹配", subtitle: "配置应用程序缩写匹配规则，提高搜索效率") {
+            StandardSettingsSection(title: "添加新缩写", icon: "plus.circle", iconColor: .blue) {
                 VStack(spacing: 12) {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -51,13 +47,13 @@ struct AbbreviationSettingsView: View {
                 .settingsCard(opacity: 0.5)
             }
 
-            VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(
+            StandardSettingsSection(
                     title: "当前缩写规则",
+                    icon: "textformat.abc",
+                    iconColor: .accentColor,
                     count: configManager.config.commonAbbreviations.count,
                     countLabel: "项"
-                )
-
+            ) {
                 LazyVStack(spacing: 8) {
                     ForEach(
                         Array(configManager.config.commonAbbreviations.keys.sorted()),

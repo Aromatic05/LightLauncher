@@ -10,10 +10,8 @@ struct GeneralSettingsView: View {
     @State private var hotkey: HotKey = HotKey(keyCode: UInt32(kVK_Space), option: true)
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "通用设置", subtitle: "基础应用配置和快捷键设置")
-
-            VStack(spacing: 32) {
+        StandardSettingsPage(title: "通用设置", subtitle: "基础应用配置和快捷键设置") {
+            StandardSettingsSection(title: "应用行为", icon: "gear", iconColor: .green) {
                 SettingRow(
                     icon: "power",
                     iconColor: .green,
@@ -24,9 +22,9 @@ struct GeneralSettingsView: View {
                 ) {
                     settingsManager.toggleAutoStart()
                 }
+            }
 
-                Divider()
-
+            StandardSettingsSection(title: "快捷键设置", icon: "keyboard", iconColor: .blue) {
                 HotKeyCard(
                     title: "全局快捷键",
                     description: "设置全局快捷键来显示/隐藏启动器，在任何应用中都可以使用",
@@ -52,72 +50,8 @@ struct GeneralSettingsView: View {
                 .onChange(of: settingsManager.hotKey) { new in
                     hotkey = new
                 }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader(title: "支持的快捷键类型", icon: "info.circle")
-
-                    HStack(alignment: .top, spacing: 20) {
-                        HotKeyInfoCard(
-                            title: "修饰键组合",
-                            icon: "command",
-                            iconColor: .blue,
-                            examples: ["⌘ + 字母", "⌥ + 数字", "⌃ + 功能键", "多键组合"]
-                        )
-
-                        HotKeyInfoCard(
-                            title: "单独修饰键",
-                            icon: "option",
-                            iconColor: .purple,
-                            examples: ["右 Command", "右 Option", "左/右 Control", "Shift 键"]
-                        )
-
-                        HotKeyInfoCard(
-                            title: "功能键",
-                            icon: "f.cursive",
-                            iconColor: .orange,
-                            examples: ["F1 - F12", "Space", "Return", "Escape"]
-                        )
-                    }
-                }
             }
         }
     }
 
-}
-
-struct HotKeyInfoCard: View {
-    let title: String
-    let icon: String
-    let iconColor: Color
-    let examples: [String]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .foregroundColor(iconColor)
-                    .font(.title3)
-                Text(title)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(examples, id: \.self) { example in
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(iconColor.opacity(0.6))
-                            .frame(width: 4, height: 4)
-                        Text(example)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-        }
-        .padding(16)
-        .settingsCard()
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
 }

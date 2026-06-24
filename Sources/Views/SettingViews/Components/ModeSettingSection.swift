@@ -5,6 +5,7 @@ struct ModeSettingSection<Content: View>: View {
     let icon: String
     let iconColor: Color
     let description: String
+    var showsContent: Bool = true
     @Binding var isEnabled: Bool
     @ViewBuilder let content: Content
 
@@ -28,7 +29,7 @@ struct ModeSettingSection<Content: View>: View {
                 Toggle("", isOn: $isEnabled)
                     .scaleEffect(1.2)
             }
-            if isEnabled {
+            if isEnabled && showsContent {
                 content
                     .padding(20)
                     .background(Color(NSColor.controlBackgroundColor).opacity(0.3))

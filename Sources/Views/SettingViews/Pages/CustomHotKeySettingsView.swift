@@ -7,11 +7,21 @@ struct CustomHotKeySettingsView: View {
     @State private var editingHotKey: CustomHotKeyConfig?
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "自定义快捷键", subtitle: "设置全局快捷键来快速输入文本或执行命令")
-            CustomHotKeyInfoCard()
-            Divider()
-            hotKeysSection
+        StandardSettingsPage(title: "自定义快捷键", subtitle: "设置全局快捷键来快速输入文本或执行命令") {
+            StandardSettingsSection(title: "快捷键管理", icon: "command", iconColor: .purple) {
+                SettingsCard {
+                    HStack {
+                        Text("快捷键配置")
+                            .font(.headline)
+                        Spacer()
+                        AddButton(title: "添加快捷键", systemImage: "plus") {
+                            showingAddSheet = true
+                        }
+                    }
+                }
+
+                hotKeysSection
+            }
         }
         .sheet(isPresented: $showingAddSheet) {
             CustomHotKeyEditView(
@@ -34,19 +44,7 @@ struct CustomHotKeySettingsView: View {
     }
 
     private var hotKeysSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text("快捷键配置")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                Spacer()
-
-                AddButton(title: "添加快捷键", systemImage: "plus") {
-                    showingAddSheet = true
-                }
-            }
-
+        Group {
             if configManager.config.customHotKeys.isEmpty {
                 EmptyStatePlaceholder(
                     icon: "command.circle",
@@ -96,35 +94,5 @@ struct CustomHotKeySettingsView: View {
         config.customHotKeys.removeAll { $0.id == hotKey.id }
         configManager.config = config
         configManager.saveConfig()
-    }
-}
-
-struct CustomHotKeyInfoCard: View {
-    var body: some View {
-        SettingsCard {
-            HStack {
-                Image(systemName: "command")
-                    .foregroundColor(.purple)
-                Text("快捷键功能")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("功能说明：")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                Text("• 设置全局快捷键来快速输入预设文本")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("• 可用于邮箱地址、常用短语、代码片段等")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Text("• 在任何应用中都可以使用")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.leading, 20)
-        }
     }
 }

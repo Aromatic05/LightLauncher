@@ -1,57 +1,89 @@
 import SwiftUI
 
-struct PageHeader: View {
+struct StandardSettingsPage<Content: View>: View {
     let title: String
     let subtitle: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.title)
-                .fontWeight(.bold)
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
-struct SectionHeader: View {
-    let title: String
-    var icon: String? = nil
-    var iconColor: Color = .blue
-    var count: Int? = nil
-    var countLabel: String = ""
-
-    var body: some View {
-        HStack {
-            if let icon = icon {
-                Image(systemName: icon)
-                    .foregroundColor(iconColor)
-            }
-            Text(title)
-                .font(.title2)
-                .fontWeight(.semibold)
-            Spacer()
-            if let count = count {
-                Text("\(count) \(countLabel)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
-}
-
-struct SettingsPage<Content: View>: View {
+    var contentSpacing: CGFloat
     @ViewBuilder let content: Content
+
+    init(
+        title: String,
+        subtitle: String,
+        contentSpacing: CGFloat = 32,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.contentSpacing = contentSpacing
+        self.content = content()
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
+            VStack(alignment: .leading, spacing: contentSpacing) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title)
+                        .font(.title)
+                        .fontWeight(.bold)
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
                 content
-                Spacer()
+                Spacer(minLength: 0)
             }
             .padding(32)
+        }
+    }
+}
+
+struct StandardSettingsSection<Content: View>: View {
+    let title: String
+    var icon: String?
+    var iconColor: Color
+    var count: Int?
+    var countLabel: String
+    var spacing: CGFloat
+    @ViewBuilder let content: Content
+
+    init(
+        title: String,
+        icon: String? = nil,
+        iconColor: Color = .blue,
+        count: Int? = nil,
+        countLabel: String = "",
+        spacing: CGFloat = 16,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.icon = icon
+        self.iconColor = iconColor
+        self.count = count
+        self.countLabel = countLabel
+        self.spacing = spacing
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: spacing) {
+            HStack(alignment: .center, spacing: 12) {
+                HStack(spacing: 8) {
+                    if let icon = icon {
+                        Image(systemName: icon)
+                            .foregroundColor(iconColor)
+                    }
+                    Text(title)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                }
+
+                if let count = count {
+                    Text("\(count) \(countLabel)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            content
         }
     }
 }
@@ -61,40 +93,6 @@ extension View {
         self
             .background(Color(NSColor.controlBackgroundColor).opacity(opacity))
             .cornerRadius(cornerRadius)
-    }
-}
-
-struct BulletList: View {
-    let items: [String]
-    var font: Font = .subheadline
-    var color: Color = .secondary
-    var spacing: CGFloat = 6
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: spacing) {
-            ForEach(items, id: \.self) { item in
-                Text("• \(item)")
-            }
-        }
-        .font(font)
-        .foregroundColor(color)
-    }
-}
-
-struct InfoCallout: View {
-    let icon: String
-    let iconColor: Color
-    let text: String
-    var textColor: Color? = nil
-
-    var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(iconColor)
-            Text(text)
-                .font(.caption)
-                .foregroundColor(textColor ?? .secondary)
-        }
     }
 }
 
@@ -270,5 +268,3 @@ struct SidebarActionButton: View {
         .controlSize(.small)
     }
 }
-
-

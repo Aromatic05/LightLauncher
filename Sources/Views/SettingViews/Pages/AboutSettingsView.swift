@@ -22,10 +22,8 @@ struct AboutSettingsView: View {
     }
 
     var body: some View {
-        SettingsPage {
-            PageHeader(title: "关于 LightLauncher", subtitle: "轻量级应用启动器")
-
-            VStack(alignment: .leading, spacing: 20) {
+        StandardSettingsPage(title: "关于 LightLauncher", subtitle: "轻量级应用启动器") {
+            StandardSettingsSection(title: "产品信息", icon: "rocket", iconColor: .accentColor, spacing: 20) {
                 HStack {
                     Image(systemName: "rocket.fill")
                         .font(.system(size: 64))
@@ -44,25 +42,9 @@ struct AboutSettingsView: View {
                 }
                 .padding(24)
                 .settingsCard(opacity: 0.5, cornerRadius: 16)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionHeader(title: "功能特性")
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        FeatureItem(icon: "magnifyingglass", text: "快速应用搜索和启动")
-                        FeatureItem(icon: "keyboard", text: "支持自定义快捷键（包括左右修饰键）")
-                        FeatureItem(icon: "textformat.abc", text: "智能缩写匹配")
-                        FeatureItem(icon: "folder", text: "可配置搜索目录")
-                        FeatureItem(icon: "doc.text", text: "YAML 配置文件管理")
-                    }
-                }
-                .padding(20)
-                .settingsCard()
             }
 
-            VStack(alignment: .leading, spacing: 16) {
-                SectionHeader(title: "配置文件管理")
-
+            StandardSettingsSection(title: "配置文件管理", icon: "doc.text", iconColor: .blue) {
                 VStack(spacing: 12) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
@@ -104,9 +86,7 @@ struct AboutSettingsView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeader(title: "日志管理")
-
+            StandardSettingsSection(title: "日志管理", icon: "scroll", iconColor: .orange, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     Toggle(
                         isOn: loggingBinding(\.printToTerminal)

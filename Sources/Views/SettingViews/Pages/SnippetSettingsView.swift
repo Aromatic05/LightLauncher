@@ -15,17 +15,41 @@ struct SnippetSettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            SnippetComponents.HeaderView(
-                searchText: $searchText,
-                hasSnippets: !snippetManager.snippets.isEmpty,
-                onAddSnippet: { showingAddSnippet = true },
-                onClearAll: { snippetManager.clearSnippets() }
-            )
-            Divider()
-            contentView
+        StandardSettingsPage(title: "代码片段", subtitle: "统一管理您的文本模板和代码片段") {
+            StandardSettingsSection(title: "片段管理", icon: "slider.horizontal.3", iconColor: .blue) {
+                SettingsCard {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("片段操作")
+                                .font(.headline)
+                            Text("新增片段并维护当前片段集合")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        AddButton(title: "添加片段", systemImage: "plus") {
+                            showingAddSnippet = true
+                        }
+                    }
+                }
+
+                SnippetComponents.HeaderView(
+                    searchText: $searchText,
+                    hasSnippets: !snippetManager.snippets.isEmpty,
+                    onClearAll: { snippetManager.clearSnippets() }
+                )
+            }
+
+            StandardSettingsSection(
+                title: "当前片段",
+                icon: "doc.text",
+                iconColor: .blue,
+                count: displayedSnippets.count,
+                countLabel: "项"
+            ) {
+                contentView
+            }
         }
-        .background(Color(NSColor.windowBackgroundColor))
         .sheet(isPresented: $showingAddSnippet) {
             SnippetEditView(snippet: nil) { newSnippet in
                 snippetManager.addSnippet(newSnippet)
@@ -41,100 +65,25 @@ struct SnippetSettingsView: View {
     private var contentView: some View {
         Group {
             if displayedSnippets.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: searchText.isEmpty ? "doc.text" : "magnifyingglass")
-                        .font(.system(size: 48))
-                        .foregroundColor(.secondary)
-
-                    VStack(spacing: 8) {
-                        Text(searchText.isEmpty ? "暂无代码片段" : "未找到匹配的片段")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-
-                        Text(searchText.isEmpty ? "点击上方按钮添加您的第一个代码片段" : "尝试其他搜索关键词或添加新片段")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    if searchText.isEmpty {
-                        Button("添加片段") {
-                            showingAddSnippet = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .padding(40)
+                SnippetComponents.EmptyStateView(
+                    searchText: searchText,
+                    onAddSnippet: { showingAddSnippet = true }
+                )
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 8) {
-                        ForEach(displayedSnippets, id: \.id) { snippet in
-                            SnippetRow(
-                                snippet: snippet,
-                                onEdit: { editingSnippet = snippet },
-                                onDelete: {
-                                    if let index = snippetManager.snippets.firstIndex(of: snippet) {
-                                        snippetManager.removeSnippet(at: index)
-                                    }
+                LazyVStack(spacing: 8) {
+                    ForEach(displayedSnippets, id: \.id) { snippet in
+                        SnippetItemRow(
+                            snippet: snippet,
+                            onEdit: { editingSnippet = snippet },
+                            onDelete: {
+                                if let index = snippetManager.snippets.firstIndex(of: snippet) {
+                                    snippetManager.removeSnippet(at: index)
                                 }
-                            )
-                        }
+                            }
+                        )
                     }
-                    .padding(20)
                 }
             }
-        }
-    }
-}
-
-// MARK: - 简化的片段行视图
-private struct SnippetRow: View {
-    let snippet: SnippetItem
-    let onEdit: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 16) {
-            snippetInfo
-            actionButtons
-        }
-        .padding(16)
-        .settingsCard(opacity: 1.0)
-    }
-
-    private var snippetInfo: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(snippet.name)
-                    .font(.headline)
-                    .fontWeight(.medium)
-
-                if !snippet.keyword.isEmpty {
-                    Badge(text: snippet.keyword, color: .blue)
-                }
-
-                Spacer()
-            }
-
-            Text(snippet.snippet)
-                .font(.body)
-                .foregroundColor(.secondary)
-                .lineLimit(3)
-                .multilineTextAlignment(.leading)
-        }
-    }
-
-    private var actionButtons: some View {
-        VStack(spacing: 8) {
-            Button("编辑", action: onEdit)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-
-            Button("删除", action: onDelete)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .foregroundColor(.red)
         }
     }
 }
@@ -172,36 +121,14 @@ struct SnippetEditView: View {
             Divider()
 
             Form {
-                Section("基本信息") {
-                    TextField("片段名称", text: $name)
-                    TextField("关键词", text: $keyword)
-                }
-
-                Section("内容") {
-                    VStack(alignment: .leading) {
-                        Text("片段内容")
-                            .font(.headline)
-                        TextEditor(text: $snippetText)
-                            .font(.system(.body, design: .monospaced))
-                            .frame(minHeight: 150)
-                    }
-                }
-
-                if isValid {
-                    Section("预览") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(name).fontWeight(.medium)
-                                Badge(text: keyword, color: .blue)
-                                Spacer()
-                            }
-                            Text(snippetText)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(3)
-                        }
-                    }
-                }
+                SnippetEditForms.BasicInfoForm(name: $name, keyword: $keyword)
+                SnippetEditForms.ContentForm(snippetText: $snippetText)
+                SnippetEditForms.PreviewCard(
+                    isValid: isValid,
+                    name: name,
+                    keyword: keyword,
+                    snippetText: snippetText
+                )
             }
             .padding()
         }
