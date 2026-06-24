@@ -111,7 +111,7 @@ final class LaunchModeController: NSObject, ModeStateController, ObservableObjec
     private(set) var allPanes: [PreferencePaneItem] = []
     private var appUsageCount: [String: Int] = [:]
     private let appScanner = AppScanner.shared
-    private let paneScanner = PreferencePaneScanner()
+    private let paneScanner = PreferencePaneScanner.shared
     private let userDefaults = UserDefaults.standard
     private var cancellables = Set<AnyCancellable>()
 

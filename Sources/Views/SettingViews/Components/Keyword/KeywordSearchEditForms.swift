@@ -7,6 +7,7 @@ struct KeywordSearchBasicForm: View {
     @Binding var icon: String
     @State private var isFileImporterPresented = false
     @State private var selectedIconName: String = ""
+    private let fileAccess = FileAccessService.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -59,21 +60,13 @@ struct KeywordSearchBasicForm: View {
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    let fileManager = FileManager.default
-                    let homeDir = fileManager.homeDirectoryForCurrentUser
-                    let iconsDir = homeDir.appendingPathComponent(
+                    let iconsDir = fileAccess.homeDirectory.appendingPathComponent(
                         ".config/LightLauncher/icons", isDirectory: true)
                     do {
-                        if !fileManager.fileExists(atPath: iconsDir.path) {
-                            try fileManager.createDirectory(
-                                at: iconsDir, withIntermediateDirectories: true)
-                        }
+                        try fileAccess.ensureDirectory(iconsDir)
                         let destURL = iconsDir.appendingPathComponent(url.lastPathComponent)
-                        // 覆盖同名文件
-                        if fileManager.fileExists(atPath: destURL.path) {
-                            try fileManager.removeItem(at: destURL)
-                        }
-                        try fileManager.copyItem(at: url, to: destURL)
+                        try fileAccess.removeItemIfExists(at: destURL)
+                        try fileAccess.copyItem(at: url, to: destURL)
                         icon = url.lastPathComponent
                         selectedIconName = url.lastPathComponent
                     } catch {

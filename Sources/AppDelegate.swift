@@ -3,6 +3,7 @@ import SwiftUI
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private let fileAccess = FileAccessService.shared
     private var viewModel: LauncherViewModel?
     private var settingsManager = SettingsManager.shared
     private var configManager = ConfigManager.shared
@@ -85,7 +86,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if config.type == "open" {
                 let filePath = (config.text as NSString).expandingTildeInPath
                 let fileURL = URL(fileURLWithPath: filePath)
-                if FileManager.default.fileExists(atPath: fileURL.path) {
+                if fileAccess.fileExists(at: fileURL) {
                     NSWorkspace.shared.open(fileURL)
                     return
                 }

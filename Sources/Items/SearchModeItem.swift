@@ -65,7 +65,7 @@ private func loadIcon(named iconName: String?) -> NSImage? {
     }
 
     // 4) Try user-provided icons in ~/.config/LightLauncher/icons/
-    let home = FileManager.default.homeDirectoryForCurrentUser
+    let home = FileAccessService.shared.homeDirectory
     let iconFullPath = home.appendingPathComponent(".config/LightLauncher/icons/")
         .appendingPathComponent(iconName).path
     if let userIcon = NSImage(contentsOfFile: iconFullPath) {

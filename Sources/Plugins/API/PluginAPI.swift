@@ -8,6 +8,7 @@ import UserNotifications
 final class PluginAPI {
     private weak var pluginInstance: PluginInstance?
     private let permissionManager: PluginPermissionManager
+    private let fileAccess = FileAccessService.shared
 
     init(pluginInstance: PluginInstance, permissionManager: PluginPermissionManager) {
         self.pluginInstance = pluginInstance
@@ -90,9 +91,9 @@ final class PluginAPI {
     // MARK: - Data path helpers
     func getPluginDataPath() -> String {
         guard let plugin = pluginInstance?.plugin else { return "" }
-        let homeDir = URL(fileURLWithPath: NSHomeDirectory())
+        let homeDir = fileAccess.homeDirectory
         let dataDir = homeDir.appendingPathComponent(".config/LightLauncher/data/\(plugin.name)")
-        try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+        try? fileAccess.ensureDirectory(dataDir)
         return dataDir.path
     }
 
@@ -116,7 +117,7 @@ final class PluginAPI {
         }
 
         do {
-            return try String(contentsOfFile: path, encoding: .utf8)
+            return try fileAccess.readString(from: URL(fileURLWithPath: path))
         } catch {
             Logger.shared.warning("读取文件失败: \(error.localizedDescription)", owner: self)
             return nil
@@ -140,17 +141,12 @@ final class PluginAPI {
         if path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return false }
 
         let url = URL(fileURLWithPath: path)
-        let parent = url.deletingLastPathComponent()
-
-        var isDir: ObjCBool = false
-        if FileManager.default.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
+        if fileAccess.directoryExists(atPath: path) {
             return false
         }
 
         do {
-            try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
-            guard let data = content.data(using: .utf8) else { return false }
-            try data.write(to: url, options: .atomic)
+            try fileAccess.writeString(content, to: url)
             return true
         } catch {
             Logger.shared.warning("写入文件失败: \(error.localizedDescription)", owner: self)

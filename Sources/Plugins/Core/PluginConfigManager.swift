@@ -7,18 +7,18 @@ class PluginConfigManager {
     static let shared = PluginConfigManager()
 
     private let configDirectory: URL
+    private let fileAccess = FileAccessService.shared
     // 使用 actor 隔离或 @MainActor 保护缓存
     private var configCache: [String: PluginConfig] = [:]
 
     private init() {
         // 使用 ~/.config/LightLauncher/configs 目录，与文档保持一致
-        let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
+        let homeDirectory = fileAccess.homeDirectory
         let configRoot = homeDirectory.appendingPathComponent(".config/LightLauncher")
         configDirectory = configRoot.appendingPathComponent("configs")
 
         // 确保配置目录存在
-        try? FileManager.default.createDirectory(
-            at: configDirectory, withIntermediateDirectories: true)
+        try? fileAccess.ensureDirectory(configDirectory)
     }
 
     /// 为插件确保配置文件存在
@@ -27,7 +27,7 @@ class PluginConfigManager {
         let configPath = getConfigPath(for: plugin.name)
 
         // 如果配置文件不存在，创建默认配置
-        if !FileManager.default.fileExists(atPath: configPath.path) {
+        if !fileAccess.fileExists(at: configPath) {
             createDefaultConfig(for: plugin)
         }
     }
@@ -44,8 +44,7 @@ class PluginConfigManager {
         let configPath = getConfigPath(for: pluginName)
 
         do {
-            let configData = try Data(contentsOf: configPath)
-            let configString = String(data: configData, encoding: .utf8) ?? ""
+            let configString = try fileAccess.readString(from: configPath)
 
             let yaml = try Yams.load(yaml: configString)
             let config = parseConfig(from: yaml)
@@ -77,7 +76,7 @@ class PluginConfigManager {
             let encoder = YAMLEncoder()
             let yamlString = try encoder.encode(config)
 
-            try yamlString.write(to: configPath, atomically: true, encoding: .utf8)
+            try fileAccess.writeString(yamlString, to: configPath)
 
             // 更新缓存
             configCache[pluginName] = config
@@ -162,7 +161,7 @@ class PluginConfigManager {
         let configPath = getConfigPath(for: pluginName)
 
         do {
-            try FileManager.default.removeItem(at: configPath)
+            try fileAccess.removeItem(at: configPath)
             configCache.removeValue(forKey: pluginName)
             Logger.shared.info("插件配置已删除: \(pluginName)", owner: self)
             return true
@@ -177,9 +176,7 @@ class PluginConfigManager {
     /// - Returns: 配置文件名数组
     func getAllConfigNames() -> [String] {
         do {
-            let contents = try FileManager.default.contentsOfDirectory(
-                at: configDirectory,
-                includingPropertiesForKeys: nil)
+            let contents = try fileAccess.contentsOfDirectory(at: configDirectory)
             return
                 contents
                 .filter { $0.pathExtension == "yaml" }

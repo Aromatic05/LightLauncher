@@ -15,6 +15,11 @@ final class FileAccessService: @unchecked Sendable {
         fileManager.urls(for: .documentDirectory, in: .userDomainMask).first ?? homeDirectory
     }
 
+    var applicationSupportDirectory: URL {
+        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? homeDirectory.appendingPathComponent("Library/Application Support", isDirectory: true)
+    }
+
     func fileExists(atPath path: String) -> Bool {
         fileManager.fileExists(atPath: path)
     }
@@ -61,6 +66,20 @@ final class FileAccessService: @unchecked Sendable {
         try String(contentsOf: url, encoding: encoding)
     }
 
+    func readPropertyList(from url: URL) -> [String: Any]? {
+        guard let data = try? readData(from: url) else { return nil }
+        guard
+            let propertyList = try? PropertyListSerialization.propertyList(
+                from: data,
+                options: [],
+                format: nil
+            ) as? [String: Any]
+        else {
+            return nil
+        }
+        return propertyList
+    }
+
     func writeString(
         _ content: String,
         to url: URL,
@@ -89,6 +108,22 @@ final class FileAccessService: @unchecked Sendable {
 
     func contentsOfDirectory(atPath path: String) throws -> [String] {
         try fileManager.contentsOfDirectory(atPath: path)
+    }
+
+    func enumeratedURLs(
+        at url: URL,
+        includingPropertiesForKeys keys: [URLResourceKey]? = nil,
+        options: FileManager.DirectoryEnumerationOptions = []
+    ) -> [URL] {
+        guard let enumerator = fileManager.enumerator(
+            at: url,
+            includingPropertiesForKeys: keys,
+            options: options
+        )
+        else {
+            return []
+        }
+        return enumerator.compactMap { $0 as? URL }
     }
 
     func removeItem(at url: URL) throws {

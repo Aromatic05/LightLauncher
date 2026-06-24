@@ -4,6 +4,7 @@ import Yams
 /// 插件加载器 - 负责单个插件的加载与初始化
 class PluginLoader {
     @MainActor static let shared = PluginLoader()
+    private let fileAccess = FileAccessService.shared
 
     private init() {}
 
@@ -13,7 +14,7 @@ class PluginLoader {
     /// - Throws: PluginError 相关错误
     func load(from directory: URL) throws -> Plugin {
         // 1. 验证目录存在
-        guard FileManager.default.fileExists(atPath: directory.path) else {
+        guard fileAccess.directoryExists(at: directory) else {
             throw PluginError.loadFailed("插件目录不存在: \(directory.path)")
         }
 
@@ -44,13 +45,12 @@ class PluginLoader {
     private func loadManifest(from directory: URL) throws -> PluginManifest {
         let manifestURL = directory.appendingPathComponent("manifest.yaml")
 
-        guard FileManager.default.fileExists(atPath: manifestURL.path) else {
+        guard fileAccess.fileExists(at: manifestURL) else {
             throw PluginError.invalidManifest("找不到 manifest.yaml 文件")
         }
 
         do {
-            let manifestData = try Data(contentsOf: manifestURL)
-            let manifestString = String(data: manifestData, encoding: .utf8) ?? ""
+            let manifestString = try fileAccess.readString(from: manifestURL)
 
             let decoder = YAMLDecoder()
             let manifest = try decoder.decode(PluginManifest.self, from: manifestString)
@@ -79,12 +79,12 @@ class PluginLoader {
         let mainFile = manifest.main ?? "main.js"
         let scriptURL = directory.appendingPathComponent(mainFile)
 
-        guard FileManager.default.fileExists(atPath: scriptURL.path) else {
+        guard fileAccess.fileExists(at: scriptURL) else {
             throw PluginError.missingMainFile("找不到主脚本文件: \(mainFile)")
         }
 
         do {
-            let script = try String(contentsOf: scriptURL, encoding: .utf8)
+            let script = try fileAccess.readString(from: scriptURL)
             if script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 throw PluginError.invalidScript("主脚本文件为空")
             }
@@ -99,13 +99,12 @@ class PluginLoader {
         let configURL = directory.appendingPathComponent("config.yaml")
 
         // 配置文件是可选的
-        guard FileManager.default.fileExists(atPath: configURL.path) else {
+        guard fileAccess.fileExists(at: configURL) else {
             return [:]
         }
 
         do {
-            let configData = try Data(contentsOf: configURL)
-            let configString = String(data: configData, encoding: .utf8) ?? ""
+            let configString = try fileAccess.readString(from: configURL)
 
             let yaml = try Yams.load(yaml: configString)
 
@@ -194,25 +193,20 @@ class PluginLoader {
     /// - Parameter directory: 要扫描的目录
     /// - Returns: 所有有效插件目录的 URL 数组
     func scanPluginDirectories(in directory: URL) -> [URL] {
-        guard FileManager.default.fileExists(atPath: directory.path) else {
+        guard fileAccess.directoryExists(at: directory) else {
             return []
         }
 
         do {
-            let contents = try FileManager.default.contentsOfDirectory(
+            let contents = try fileAccess.contentsOfDirectory(
                 at: directory,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
             )
 
             return contents.filter { url in
-                var isDirectory: ObjCBool = false
-                FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
-
-                // 检查是否是目录且包含 manifest.yaml
-                return isDirectory.boolValue
-                    && FileManager.default.fileExists(
-                        atPath: url.appendingPathComponent("manifest.yaml").path)
+                fileAccess.directoryExists(at: url)
+                    && fileAccess.fileExists(at: url.appendingPathComponent("manifest.yaml"))
             }
         } catch {
             Logger.shared.error("扫描插件目录失败: \(error.localizedDescription)", owner: self)

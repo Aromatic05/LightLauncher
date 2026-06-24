@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 class PluginPermissionManager {
     static let shared = PluginPermissionManager()
-    private let fileManager = FileManager.default
+    private let fileAccess = FileAccessService.shared
 
     private init() {}
 
@@ -138,12 +138,12 @@ class PluginPermissionManager {
         var missingComponents: [String] = []
         var currentURL = url
 
-        while currentURL.path != "/", !fileManager.fileExists(atPath: currentURL.path) {
+        while currentURL.path != "/", !fileAccess.fileExists(at: currentURL) {
             missingComponents.append(currentURL.lastPathComponent)
             currentURL.deleteLastPathComponent()
         }
 
-        let resolvedBase = currentURL.resolvingSymlinksInPath().standardizedFileURL
+        let resolvedBase = fileAccess.resolveSymlinks(for: currentURL).standardizedFileURL
         return missingComponents.reversed().reduce(resolvedBase) { partialURL, component in
             partialURL.appendingPathComponent(component)
         }

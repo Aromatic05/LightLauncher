@@ -12,7 +12,7 @@ class PluginManager: ObservableObject {
     @Published private(set) var loadingProgress: Double = 0.0
 
     private let loader = PluginLoader.shared
-    private let fileManager = FileManager.default
+    private let fileAccess = FileAccessService.shared
 
     private init() {}
 
@@ -194,18 +194,14 @@ class PluginManager: ObservableObject {
         // }
 
         // 1. 用户插件目录
-        let homeDir = URL(fileURLWithPath: NSHomeDirectory())
+        let homeDir = fileAccess.homeDirectory
         let userPluginsDir = homeDir.appendingPathComponent(".config/LightLauncher/plugins")
         directories.append(userPluginsDir)
 
         // 2. 应用程序支持目录
-        if let appSupportDir = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first {
-            let pluginsDir = appSupportDir.appendingPathComponent("LightLauncher/plugins")
-            directories.append(pluginsDir)
-        }
+        let pluginsDir = fileAccess.applicationSupportDirectory.appendingPathComponent(
+            "LightLauncher/plugins")
+        directories.append(pluginsDir)
 
         return directories
     }

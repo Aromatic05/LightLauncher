@@ -16,13 +16,15 @@ enum BrowserType: String, CaseIterable {
 
     var displayName: String { self.rawValue }
     var isInstalled: Bool {
+        let fileAccess = FileAccessService.shared
         let appPaths = [
             "/Applications/\(self.rawValue).app", "/System/Applications/\(self.rawValue).app",
         ]
         switch self {
         case .edge:
-            return FileManager.default.fileExists(atPath: "/Applications/Microsoft Edge.app")
-        default: return appPaths.contains { FileManager.default.fileExists(atPath: $0) }
+            return fileAccess.fileExists(atPath: "/Applications/Microsoft Edge.app")
+        default:
+            return appPaths.contains { fileAccess.fileExists(atPath: $0) }
         }
     }
 }
