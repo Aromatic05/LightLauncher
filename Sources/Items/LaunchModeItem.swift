@@ -5,7 +5,7 @@ import SwiftUI
 struct AppInfo: Identifiable, Hashable, DisplayableItem {
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
+        AnyView(AppRowView(app: self, isSelected: isSelected, index: index, mode: .launch))
     }
     let name: String
     let url: URL
@@ -42,16 +42,16 @@ struct AppInfo: Identifiable, Hashable, DisplayableItem {
 }
 
 struct SystemCommandItem: DisplayableItem {
-    let id = UUID()
     let title: String  // 用于查找（英文）
     let displayName: String  // 用于界面显示（中文）
     let subtitle: String?
     let icon: NSImage?
     let action: () -> Void
+    var id: String { title }
 
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(SystemCommandRowView(command: self, isSelected: isSelected, index: index))
+        AnyView(SystemCommandRowView(command: self, isSelected: isSelected, index: index))
     }
 
     // Hashable/Equatable 实现，使用 id 唯一
@@ -70,11 +70,11 @@ struct SystemCommandItem: DisplayableItem {
 }
 
 struct PreferencePaneItem: DisplayableItem {
-    let id: UUID = UUID()
     let title: String
     let subtitle: String?
     let icon: NSImage?
     let url: URL
+    var id: String { url.path }
 
     // 只用路径做哈希和判等，保证唯一
     func hash(into hasher: inout Hasher) {
@@ -86,7 +86,7 @@ struct PreferencePaneItem: DisplayableItem {
 
     @ViewBuilder @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(PreferencePaneRowView(pane: self, isSelected: isSelected, index: index))
+        AnyView(PreferencePaneRowView(pane: self, isSelected: isSelected, index: index))
     }
 
     @MainActor

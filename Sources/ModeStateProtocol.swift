@@ -16,11 +16,6 @@ protocol DisplayableItem: Hashable, Identifiable {
 
 extension DisplayableItem {
     var icon: NSImage? { nil }
-
-    @MainActor
-    func erasedRowView<Content: View>(_ view: Content) -> AnyView {
-        AnyView(view)
-    }
 }
 
 // MARK: - 模式状态控制器协议（清晰版）

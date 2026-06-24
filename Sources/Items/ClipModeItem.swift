@@ -99,7 +99,7 @@ struct ClipboardItem: Codable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(ClipItemRowView(item: self, isSelected: isSelected, index: index))
+        AnyView(ClipItemRowView(item: self, isSelected: isSelected, index: index))
     }
 
     @MainActor
@@ -155,7 +155,7 @@ struct SnippetItem: Codable, Equatable, DisplayableItem, Identifiable {
     var subtitle: String? { keyword.isEmpty ? nil : keyword }
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(SnippetItemRowView(item: self, isSelected: isSelected, index: index))
+        AnyView(SnippetItemRowView(item: self, isSelected: isSelected, index: index))
     }
 
     @MainActor

@@ -13,10 +13,10 @@ struct TerminalHistoryItem: Codable, Identifiable, Hashable, DisplayableItem {
     @MainActor
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
         if index == 0 {
-            return erasedRowView(
+            return AnyView(
                 TerminalCurrentCommandRowView(command: command, isSelected: isSelected))
         } else {
-            return erasedRowView(
+            return AnyView(
                 TerminalHistoryRowView(
                     item: self, isSelected: isSelected, index: index,
                     onDelete: {

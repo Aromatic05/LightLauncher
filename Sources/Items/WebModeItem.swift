@@ -31,7 +31,6 @@ enum BrowserType: String, CaseIterable {
 
 // MARK: - 浏览器数据项 (无变动)
 struct BrowserItem: Identifiable, Hashable, DisplayableItem {
-    let id = UUID()
     let title: String
     let url: String
     let type: BrowserItemType
@@ -41,6 +40,7 @@ struct BrowserItem: Identifiable, Hashable, DisplayableItem {
     let subtitle: String?
     let iconName: String?
     let actionHint: String?
+    var id: String { "\(source.rawValue)|\(type)|\(url)" }
     var displaySubtitle: String? { subtitle ?? url }
 
     init(
@@ -61,11 +61,11 @@ struct BrowserItem: Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(BrowserItemRowView(item: self, isSelected: isSelected, index: index))
+        AnyView(BrowserItemRowView(item: self, isSelected: isSelected, index: index))
     }
 
     @MainActor
     func executeAction() -> Bool {
-        return WebUtils.openWebURL(self.url)
+        WebUtils.openWebURL(self.url)
     }
 }

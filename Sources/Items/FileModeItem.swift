@@ -4,12 +4,17 @@ import SwiftUI
 
 // MARK: - 文件信息结构
 struct FileItem: Identifiable, Hashable, DisplayableItem {
-    let id = UUID()
     let name: String
     let url: URL
     let isDirectory: Bool
     let size: Int64?
     let modificationDate: Date?
+    var id: String {
+        if name == ".." {
+            return "parent:\(url.standardizedFileURL.path)"
+        }
+        return url.standardizedFileURL.path
+    }
 
     // DisplayableItem 协议实现
     var title: String { name }
@@ -34,7 +39,7 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(FileRowView(file: self, isSelected: isSelected, index: index))
+        AnyView(FileRowView(file: self, isSelected: isSelected, index: index))
     }
 
     func hash(into hasher: inout Hasher) {
@@ -62,9 +67,9 @@ struct FileItem: Identifiable, Hashable, DisplayableItem {
 
 // MARK: - 文件浏览器起始路径结构
 struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
-    let id = UUID()
     let name: String
     let path: String
+    var id: String { path }
 
     var icon: NSImage? {
         if #available(macOS 12.0, *) {
@@ -106,7 +111,7 @@ struct FileBrowserStartPath: Identifiable, Hashable, DisplayableItem {
 
     @ViewBuilder
     func makeRowView(isSelected: Bool, index: Int) -> AnyView {
-        erasedRowView(StartPathRowView(startPath: self, isSelected: isSelected, index: index))
+        AnyView(StartPathRowView(startPath: self, isSelected: isSelected, index: index))
     }
 
     func hash(into hasher: inout Hasher) {
