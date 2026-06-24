@@ -27,6 +27,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 预热单例服务
         _ = ClipboardManager.shared
         _ = PermissionManager.shared
+        _ = SnippetManager.shared
+        _ = SearchHistoryManager.shared
 
         viewModel = LauncherViewModel.shared
         LauncherViewModel.shared.switchController(from: nil, to: .launch)
