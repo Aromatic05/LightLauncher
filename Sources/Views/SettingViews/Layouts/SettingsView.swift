@@ -20,6 +20,18 @@ struct SettingsView: View {
     @ObservedObject var configManager = ConfigManager.shared
     @State private var selectedTab: SettingsTab = .general
     @Environment(\.dismiss) private var dismiss
+    private let tabs: [(SettingsTab, String, String)] = [
+        (.general, "通用", "gear"),
+        (.permissions, "权限管理", "shield.checkered"),
+        (.modes, "功能模式", "slider.horizontal.3"),
+        (.directories, "搜索目录", "folder"),
+        (.abbreviations, "缩写匹配", "textformat.abc"),
+        (.keywordSearch, "关键词搜索", "magnifyingglass"),
+        (.customHotKeys, "自定义快捷键", "command"),
+        (.snippets, "代码片段", "doc.text"),
+        (.plugins, "插件管理", "puzzlepiece.extension"),
+        (.about, "关于", "info.circle"),
+    ]
 
     var body: some View {
         HStack(spacing: 0) {
@@ -47,84 +59,10 @@ struct SettingsView: View {
                 // 选项卡列表
                 ScrollView {
                     VStack(spacing: 4) {
-                        TabButton(
-                            title: "通用",
-                            icon: "gear",
-                            isSelected: selectedTab == .general
-                        ) {
-                            selectedTab = .general
-                        }
-
-                        TabButton(
-                            title: "权限管理",
-                            icon: "shield.checkered",
-                            isSelected: selectedTab == .permissions
-                        ) {
-                            selectedTab = .permissions
-                        }
-
-                        TabButton(
-                            title: "功能模式",
-                            icon: "slider.horizontal.3",
-                            isSelected: selectedTab == .modes
-                        ) {
-                            selectedTab = .modes
-                        }
-
-                        TabButton(
-                            title: "搜索目录",
-                            icon: "folder",
-                            isSelected: selectedTab == .directories
-                        ) {
-                            selectedTab = .directories
-                        }
-
-                        TabButton(
-                            title: "缩写匹配",
-                            icon: "textformat.abc",
-                            isSelected: selectedTab == .abbreviations
-                        ) {
-                            selectedTab = .abbreviations
-                        }
-
-                        TabButton(
-                            title: "关键词搜索",
-                            icon: "magnifyingglass",
-                            isSelected: selectedTab == .keywordSearch
-                        ) {
-                            selectedTab = .keywordSearch
-                        }
-
-                        TabButton(
-                            title: "自定义快捷键",
-                            icon: "command",
-                            isSelected: selectedTab == .customHotKeys
-                        ) {
-                            selectedTab = .customHotKeys
-                        }
-
-                        TabButton(
-                            title: "代码片段",
-                            icon: "doc.text",
-                            isSelected: selectedTab == .snippets
-                        ) {
-                            selectedTab = .snippets
-                        }
-
-                        TabButton(
-                            title: "插件管理",
-                            icon: "puzzlepiece.extension",
-                            isSelected: selectedTab == .plugins
-                        ) {
-                            selectedTab = .plugins
-                        }
-
-                        TabButton(
-                            title: "关于",
-                            icon: "info.circle",
-                            isSelected: selectedTab == .about
-                        ) {
-                            selectedTab = .about
+                        ForEach(Array(tabs.enumerated()), id: \.offset) { _, tab in
+                            TabButton(title: tab.1, icon: tab.2, isSelected: selectedTab == tab.0) {
+                                selectedTab = tab.0
+                            }
                         }
                     }
                     .padding(.horizontal, 12)
