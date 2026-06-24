@@ -40,7 +40,7 @@ struct BrowserItem: Identifiable, Hashable, DisplayableItem {
     let subtitle: String?
     let iconName: String?
     let actionHint: String?
-    var id: String { "\(source.rawValue)|\(type)|\(url)" }
+    var id: String { Self.stableID(source, type, url) }
     var displaySubtitle: String? { subtitle ?? url }
 
     init(

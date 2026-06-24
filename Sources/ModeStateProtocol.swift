@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CryptoKit
 import Foundation
 import SwiftUI
 
@@ -16,6 +17,16 @@ protocol DisplayableItem: Hashable, Identifiable {
 
 extension DisplayableItem {
     var icon: NSImage? { nil }
+
+    static func stableID(_ components: Any?...) -> String {
+        SHA256.hash(data: Data(components.map(serializeStableIDComponent).joined(separator: "\u{1F}").utf8)
+        ).map { String(format: "%02x", $0) }.joined()
+    }
+
+    private static func serializeStableIDComponent(_ component: Any?) -> String {
+        guard let component else { return "nil" }
+        return "\(String(reflecting: type(of: component))):\(String(reflecting: component))"
+    }
 }
 
 // MARK: - 模式状态控制器协议（清晰版）
