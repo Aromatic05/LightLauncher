@@ -4,10 +4,10 @@ import SwiftUI
 // MARK: - 插件设置视图
 struct PluginSettingsView: View {
     @State private var selectedPlugin: Plugin?
-    @State private var showingPluginFolder = false
-    @State private var refreshTrigger = false
     @State private var allPlugins: [Plugin] = []
     private let fileAccess = FileAccessService.shared
+    private let pluginManager = PluginManager.shared
+    private let pluginModeController = PluginModeController.shared
 
     private var pluginsDirectoryURL: URL {
         fileAccess.homeDirectory.appendingPathComponent(".config/LightLauncher/plugins")
@@ -28,15 +28,7 @@ struct PluginSettingsView: View {
         }
         .onAppear {
             Task {
-                await loadPlugins()
-                if selectedPlugin == nil && !allPlugins.isEmpty {
-                    selectedPlugin = allPlugins.first
-                }
-            }
-        }
-        .onChange(of: refreshTrigger) { _ in
-            if let currentName = selectedPlugin?.name {
-                selectedPlugin = allPlugins.first { $0.name == currentName }
+                await refreshPlugins()
             }
         }
     }
@@ -69,9 +61,8 @@ struct PluginSettingsView: View {
     private var refreshButton: some View {
         Button(action: {
             Task {
-                await loadPlugins()
+                await refreshPlugins()
             }
-            refreshTrigger.toggle()
         }) {
             Image(systemName: "arrow.clockwise")
                 .font(.system(size: 16))
@@ -138,7 +129,9 @@ struct PluginSettingsView: View {
                                     selectedPlugin = plugin
                                 },
                                 onToggle: { enabled in
-                                    plugin.isEnabled = enabled
+                                    Task {
+                                        await setPluginEnabled(plugin.name, enabled: enabled)
+                                    }
                                 }
                             )
                         }
@@ -152,7 +145,12 @@ struct PluginSettingsView: View {
 
             // 右侧插件详情和配置
             if let plugin = selectedPlugin {
-                PluginDetailView(plugin: plugin)
+                PluginDetailView(
+                    plugin: plugin,
+                    onReload: {
+                        await refreshPlugins(reloadingPlugins: true)
+                    }
+                )
             } else {
                 VStack(spacing: 16) {
                     Image(systemName: "puzzlepiece.extension")
@@ -186,10 +184,37 @@ struct PluginSettingsView: View {
     }
 
     @MainActor
-    private func loadPlugins() async {
-        let pluginManager = PluginManager.shared
-        await pluginManager.loadAllPlugins()
+    private func refreshPlugins(reloadingPlugins: Bool = true) async {
+        let selectedPluginName = selectedPlugin?.name
+
+        if reloadingPlugins {
+            await pluginModeController.reloadPlugins()
+        } else {
+            await pluginManager.loadAllPlugins()
+        }
+
         allPlugins = pluginManager.getLoadedPlugins()
+        selectedPlugin = resolveSelection(previousPluginName: selectedPluginName)
+    }
+
+    @MainActor
+    private func setPluginEnabled(_ pluginName: String, enabled: Bool) async {
+        if enabled {
+            pluginModeController.enablePlugin(pluginName)
+        } else {
+            pluginModeController.disablePlugin(pluginName)
+        }
+
+        allPlugins = pluginManager.getLoadedPlugins()
+        selectedPlugin = resolveSelection(previousPluginName: pluginName)
+    }
+
+    private func resolveSelection(previousPluginName: String?) -> Plugin? {
+        if let previousPluginName {
+            return allPlugins.first { $0.name == previousPluginName } ?? allPlugins.first
+        }
+
+        return allPlugins.first
     }
 }
 

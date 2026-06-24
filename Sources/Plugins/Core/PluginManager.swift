@@ -13,6 +13,7 @@ class PluginManager: ObservableObject {
 
     private let loader = PluginLoader.shared
     private let fileAccess = FileAccessService.shared
+    private let configManager = ConfigManager.shared
 
     private init() {}
 
@@ -48,6 +49,7 @@ class PluginManager: ObservableObject {
         for pluginDirectory in allPluginDirs {
             do {
                 let plugin = try loader.load(from: pluginDirectory)
+                syncPluginConfiguration(for: plugin)
                 // 检查是否已存在同名插件
                 if let existingPlugin = plugins[plugin.name] {
                     Logger.shared.warning("警告: 插件 '\(plugin.name)' 已存在，将被替换", owner: self)
@@ -135,6 +137,7 @@ class PluginManager: ObservableObject {
         if let plugin = plugins[name] {
             plugin.isEnabled = true
             plugins[name] = plugin
+            configManager.enablePlugin(name)
             // ✅ 新增：启用插件时，向注册表添加其命令
             commandRegistry.register(plugin: plugin, with: PluginModeController.shared)
             Logger.shared.info("插件已启用: \(name)", owner: self)
@@ -147,6 +150,7 @@ class PluginManager: ObservableObject {
         if let plugin = plugins[name] {
             plugin.isEnabled = false
             plugins[name] = plugin
+            configManager.disablePlugin(name)
             // ✅ 新增：禁用插件时，从注册表移除其命令
             commandRegistry.unregister(prefix: plugin.command)
             Logger.shared.info("插件已禁用: \(name)", owner: self)
@@ -204,6 +208,23 @@ class PluginManager: ObservableObject {
         directories.append(pluginsDir)
 
         return directories
+    }
+
+    private func syncPluginConfiguration(for plugin: Plugin) {
+        let existingMeta = configManager.pluginsConfig.plugins.first { $0.name == plugin.name }
+        plugin.isEnabled = existingMeta?.enabled ?? plugin.isEnabled
+
+        let meta = PluginMeta(
+            name: plugin.name,
+            enabled: plugin.isEnabled,
+            command: plugin.command,
+            version: plugin.version,
+            description: plugin.description.isEmpty ? nil : plugin.description,
+            path: plugin.url.path
+        )
+
+        guard existingMeta != meta else { return }
+        configManager.addOrUpdatePlugin(meta)
     }
 
     /// 清理所有插件

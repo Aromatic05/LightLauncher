@@ -152,7 +152,7 @@ struct SearchDirectory: Identifiable, Codable, Hashable {
 }
 
 // 插件元数据结构
-struct PluginMeta: Codable, Identifiable {
+struct PluginMeta: Codable, Identifiable, Equatable {
     var id: String { name }
     let name: String
     var enabled: Bool

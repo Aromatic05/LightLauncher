@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PluginDetailView: View {
     let plugin: Plugin
+    let onReload: @MainActor () async -> Void
     @State private var configData: [String: Any] = [:]
     @State private var hasConfig = false
 
@@ -172,7 +173,7 @@ struct PluginDetailView: View {
                 .buttonStyle(.bordered)
                 Button("重新加载插件") {
                     Task {
-                        await PluginManager.shared.reloadPlugins()
+                        await onReload()
                     }
                 }
                 .frame(maxWidth: .infinity)
