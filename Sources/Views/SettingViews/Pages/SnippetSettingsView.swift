@@ -6,24 +6,12 @@ struct SnippetSettingsView: View {
     @State private var showingAddSnippet = false
     @State private var editingSnippet: SnippetItem?
     @State private var searchText = ""
-    @State private var filteredSnippets: [SnippetItem] = []
-    @State private var searchTask: Task<Void, Never>?
 
-    private func updateFilteredSnippets() {
-        searchTask?.cancel()
-        searchTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 300_000_000)
-            guard !Task.isCancelled else { return }
-            doUpdateFilteredSnippets()
-        }
-    }
-
-    private func doUpdateFilteredSnippets() {
+    private var displayedSnippets: [SnippetItem] {
         if searchText.isEmpty {
-            filteredSnippets = snippetManager.snippets
-        } else {
-            filteredSnippets = snippetManager.searchSnippets(query: searchText)
+            return snippetManager.snippets
         }
+        return snippetManager.searchSnippets(query: searchText)
     }
 
     var body: some View {
@@ -38,18 +26,6 @@ struct SnippetSettingsView: View {
             contentView
         }
         .background(Color(NSColor.windowBackgroundColor))
-        .onAppear {
-            doUpdateFilteredSnippets()  // 直接更新，不需要延迟
-        }
-        .onChange(of: searchText) { _ in
-            updateFilteredSnippets()  // 使用去抖动
-        }
-        .onChange(of: snippetManager.snippets) { _ in
-            doUpdateFilteredSnippets()  // 数据变化时立即更新
-        }
-        .onDisappear {
-            searchTask?.cancel()
-        }
         .sheet(isPresented: $showingAddSnippet) {
             SnippetEditView(snippet: nil) { newSnippet in
                 snippetManager.addSnippet(newSnippet)
@@ -64,7 +40,7 @@ struct SnippetSettingsView: View {
 
     private var contentView: some View {
         Group {
-            if filteredSnippets.isEmpty {
+            if displayedSnippets.isEmpty {
                 VStack(spacing: 16) {
                     Image(systemName: searchText.isEmpty ? "doc.text" : "magnifyingglass")
                         .font(.system(size: 48))
@@ -93,7 +69,7 @@ struct SnippetSettingsView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 8) {
-                        ForEach(filteredSnippets, id: \.id) { snippet in
+                        ForEach(displayedSnippets, id: \.id) { snippet in
                             SnippetRow(
                                 snippet: snippet,
                                 onEdit: { editingSnippet = snippet },
