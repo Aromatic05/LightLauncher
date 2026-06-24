@@ -5,23 +5,11 @@ struct SearchHistoryView: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            // 历史记录标题和清空按钮
-            HStack {
-                Text("搜索历史")
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                Spacer()
-                if !(ModeRegistry.shared[SearchModeController.self]?.searchHistory.isEmpty ?? true) {
-                    Button("清空") {
-                        ModeRegistry.shared[SearchModeController.self]?.clearSearchHistory()
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .foregroundColor(.blue)
-                    .font(.caption)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+            HistoryHeader(
+                title: "搜索历史",
+                canClear: !(ModeRegistry.shared[SearchModeController.self]?.searchHistory.isEmpty ?? true),
+                onClear: { ModeRegistry.shared[SearchModeController.self]?.clearSearchHistory() }
+            )
 
             ResultsListView(viewModel: viewModel)
         }

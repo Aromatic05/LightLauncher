@@ -65,7 +65,7 @@ struct BrowserItemRowView: View {
                                         .cornerRadius(4)
                                 }
                                 if let lastVisited = item.lastVisited {
-                                    Text(formatRelativeDate(lastVisited))
+                                    Text(DateFormatting.relativeTime(lastVisited))
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
@@ -98,25 +98,6 @@ struct BrowserItemRowView: View {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 1)
         )
-    }
-
-    private func formatRelativeDate(_ date: Date) -> String {
-        let now = Date()
-        let interval = now.timeIntervalSince(date)
-        if interval < 3600 {
-            let minutes = Int(interval / 60)
-            return "\(minutes)分钟前"
-        } else if interval < 86400 {
-            let hours = Int(interval / 3600)
-            return "\(hours)小时前"
-        } else if interval < 2_592_000 {
-            let days = Int(interval / 86400)
-            return "\(days)天前"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            return formatter.string(from: date)
-        }
     }
 
     private func browserSourceColor(_ source: BrowserType) -> Color {
