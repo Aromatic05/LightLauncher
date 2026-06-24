@@ -6,7 +6,6 @@ struct ModeSettingSection<Content: View>: View {
     let iconColor: Color
     let description: String
     @Binding var isEnabled: Bool
-    let onToggle: () -> Void
     @ViewBuilder let content: Content
 
     var body: some View {
@@ -27,9 +26,6 @@ struct ModeSettingSection<Content: View>: View {
                 }
                 Spacer()
                 Toggle("", isOn: $isEnabled)
-                    .onChange(of: isEnabled) { _ in
-                        onToggle()
-                    }
                     .scaleEffect(1.2)
             }
             if isEnabled {

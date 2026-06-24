@@ -5,6 +5,13 @@ struct ModeSettingsView: View {
     @ObservedObject var settingsManager: SettingsManager
     @ObservedObject var configManager: ConfigManager
 
+    private func modeBinding(_ key: String) -> Binding<Bool> {
+        Binding(
+            get: { settingsManager.isModeEnabled(key) },
+            set: { settingsManager.setMode(key, enabled: $0) }
+        )
+    }
+
     private func getTerminalDisplayName(_ terminal: String) -> String {
         switch terminal {
         case "ghostty": return "Ghostty"
@@ -53,16 +60,7 @@ struct ModeSettingsView: View {
                         icon: "xmark.circle",
                         iconColor: .red,
                         description: "搜索并结束运行中的应用",
-                        isEnabled: Binding(
-                            get: { settingsManager.modeEnabled["kill"] ?? true },
-                            set: {
-                                settingsManager.modeEnabled["kill"] = $0
-                                settingsManager.toggleMode("kill")
-                            }
-                        ),
-                        onToggle: {
-                            settingsManager.toggleMode("kill")
-                        }
+                        isEnabled: modeBinding("kill")
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("在此模式下，你可以：")
@@ -89,16 +87,7 @@ struct ModeSettingsView: View {
                         icon: "doc.on.clipboard",
                         iconColor: .purple,
                         description: "管理剪贴板历史和片段，支持复制或直接粘贴",
-                        isEnabled: Binding(
-                            get: { settingsManager.modeEnabled["clip"] ?? true },
-                            set: {
-                                settingsManager.modeEnabled["clip"] = $0
-                                settingsManager.toggleMode("clip")
-                            }
-                        ),
-                        onToggle: {
-                            settingsManager.toggleMode("clip")
-                        }
+                        isEnabled: modeBinding("clip")
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -140,16 +129,7 @@ struct ModeSettingsView: View {
                         icon: "puzzlepiece.extension",
                         iconColor: .teal,
                         description: "输入插件命令，调用自定义插件能力",
-                        isEnabled: Binding(
-                            get: { settingsManager.modeEnabled["plugin"] ?? true },
-                            set: {
-                                settingsManager.modeEnabled["plugin"] = $0
-                                settingsManager.toggleMode("plugin")
-                            }
-                        ),
-                        onToggle: {
-                            settingsManager.toggleMode("plugin")
-                        }
+                        isEnabled: modeBinding("plugin")
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -169,16 +149,7 @@ struct ModeSettingsView: View {
                         icon: "globe",
                         iconColor: .blue,
                         description: "使用默认搜索引擎搜索网络内容",
-                        isEnabled: Binding(
-                            get: { settingsManager.modeEnabled["search"] ?? true },
-                            set: {
-                                settingsManager.modeEnabled["search"] = $0
-                                settingsManager.toggleMode("search")
-                            }
-                        ),
-                        onToggle: {
-                            settingsManager.toggleMode("search")
-                        }
+                        isEnabled: modeBinding("search")
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("搜索引擎设置：")
@@ -218,16 +189,7 @@ struct ModeSettingsView: View {
                         icon: "safari",
                         iconColor: .green,
                         description: "快速打开网站或 URL，支持书签和历史记录",
-                        isEnabled: Binding(
-                            get: { settingsManager.modeEnabled["web"] ?? true },
-                            set: {
-                                settingsManager.modeEnabled["web"] = $0
-                                settingsManager.toggleMode("web")
-                            }
-                        ),
-                        onToggle: {
-                            settingsManager.toggleMode("web")
-                        }
+                        isEnabled: modeBinding("web")
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("支持的输入格式：")
@@ -336,16 +298,7 @@ struct ModeSettingsView: View {
                         icon: "terminal",
                         iconColor: .orange,
                         description: "输入终端命令，并在所选终端应用中执行",
-                        isEnabled: Binding(
-                            get: { settingsManager.modeEnabled["terminal"] ?? true },
-                            set: {
-                                settingsManager.modeEnabled["terminal"] = $0
-                                settingsManager.toggleMode("terminal")
-                            }
-                        ),
-                        onToggle: {
-                            settingsManager.toggleMode("terminal")
-                        }
+                        isEnabled: modeBinding("terminal")
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -425,16 +378,7 @@ struct ModeSettingsView: View {
                         icon: "folder",
                         iconColor: .blue,
                         description: "浏览文件和文件夹，支持自定义起始路径",
-                        isEnabled: Binding(
-                            get: { settingsManager.modeEnabled["file"] ?? true },
-                            set: {
-                                settingsManager.modeEnabled["file"] = $0
-                                settingsManager.toggleMode("file")
-                            }
-                        ),
-                        onToggle: {
-                            settingsManager.toggleMode("file")
-                        }
+                        isEnabled: modeBinding("file")
                     ) {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("功能特点：")

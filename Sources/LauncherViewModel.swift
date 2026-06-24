@@ -23,15 +23,16 @@ class LauncherViewModel: ObservableObject {
             setupControllerSubscription()
             let rules = activeController?.interceptedKeys ?? []
             KeyboardEventHandler.shared.updateInterceptionRules(for: rules)
-            refreshID = UUID()
+            syncVisibleState()
         }
     }
 
-    @Published private var refreshID = UUID()
+    // Forces SwiftUI to refresh when the active controller updates a computed view state.
+    @Published private var viewSyncToken = 0
     private var controllerCancellable: AnyCancellable?
     var cancellables = Set<AnyCancellable>()
     private var previousSearchText = ""
-    private var debounceWorkItem: DispatchWorkItem?
+    private var fileSearchTask: Task<Void, Never>?
     let focusSearchField = PassthroughSubject<Void, Never>()
 
     var displayableItems: [any DisplayableItem] {
@@ -139,25 +140,18 @@ class LauncherViewModel: ObservableObject {
     }
 
     private func handleSearchTextChange(newText: String, oldText: String) {
-        if self.mode == .file {
-            debounceWorkItem?.cancel()
+        fileSearchTask?.cancel()
 
-            let work = DispatchWorkItem { [weak self] in
-                guard let self = self else { return }
-                self.updateCommandSuggestions(for: newText, oldText: oldText)
-                self.processInput(newText)
-                // 只有在实际处理后才更新 previousSearchText，避免竞态
-                self.previousSearchText = newText
+        if mode == .file {
+            fileSearchTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                guard !Task.isCancelled, let self else { return }
+                self.applySearchTextChange(newText: newText, oldText: oldText)
             }
-
-            debounceWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100), execute: work)
-        } else {
-            debounceWorkItem?.cancel()
-            self.updateCommandSuggestions(for: newText, oldText: oldText)
-            self.processInput(newText)
-            self.previousSearchText = newText
+            return
         }
+
+        applySearchTextChange(newText: newText, oldText: oldText)
     }
 
     private func processInput(_ text: String) {
@@ -212,8 +206,19 @@ class LauncherViewModel: ObservableObject {
         controllerCancellable = controller.dataDidChange
             .receive(on: RunLoop.main)
             .sink { [weak self] in
-                self?.refreshID = UUID()
+                self?.syncVisibleState()
             }
+    }
+
+    private func applySearchTextChange(newText: String, oldText: String) {
+        updateCommandSuggestions(for: newText, oldText: oldText)
+        processInput(newText)
+        // Only update after handling to keep command completion and file mode debouncing in sync.
+        previousSearchText = newText
+    }
+
+    private func syncVisibleState() {
+        viewSyncToken &+= 1
     }
 
     func updateQuery(newQuery text: String) {

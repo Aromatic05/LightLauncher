@@ -105,7 +105,11 @@ class SettingsManager: ObservableObject {
 
     // MARK: - 模式设置
     func toggleMode(_ key: String) {
-        modeEnabled[key]?.toggle()
+        setMode(key, enabled: !(modeEnabled[key] ?? true))
+    }
+
+    func setMode(_ key: String, enabled: Bool) {
+        modeEnabled[key] = enabled
         saveSettings()
         Task { @MainActor in
             ConfigManager.shared.updateModeSettings()
