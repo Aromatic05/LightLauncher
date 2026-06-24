@@ -9,9 +9,7 @@ struct PluginSettingsView: View {
     private let pluginManager = PluginManager.shared
     private let pluginModeController = PluginModeController.shared
 
-    private var pluginsDirectoryURL: URL {
-        fileAccess.homeDirectory.appendingPathComponent(".config/LightLauncher/plugins")
-    }
+    private var pluginsDirectoryURL: URL { fileAccess.homeDirectory.appendingPathComponent(".config/LightLauncher/plugins") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -26,11 +24,7 @@ struct PluginSettingsView: View {
                 pluginListView
             }
         }
-        .onAppear {
-            Task {
-                await refreshPlugins()
-            }
-        }
+        .task { await refreshPlugins() }
     }
 
     private var headerView: some View {
@@ -60,9 +54,7 @@ struct PluginSettingsView: View {
 
     private var refreshButton: some View {
         Button(action: {
-            Task {
-                await refreshPlugins()
-            }
+            Task { await refreshPlugins() }
         }) {
             Image(systemName: "arrow.clockwise")
                 .font(.system(size: 16))
@@ -73,9 +65,7 @@ struct PluginSettingsView: View {
     }
 
     private var openFolderButton: some View {
-        Button(action: {
-            NSWorkspace.shared.open(pluginsDirectoryURL)
-        }) {
+        Button(action: { openPluginsDirectory() }) {
             Image(systemName: "folder")
                 .font(.system(size: 16))
         }
@@ -102,8 +92,7 @@ struct PluginSettingsView: View {
             }
 
             Button("打开插件文件夹") {
-                try? fileAccess.ensureDirectory(pluginsDirectoryURL)
-                NSWorkspace.shared.open(pluginsDirectoryURL)
+                openPluginsDirectory(ensureDirectory: true)
             }
             .buttonStyle(.borderedProminent)
         }
@@ -128,11 +117,7 @@ struct PluginSettingsView: View {
                                 onSelect: {
                                     selectedPlugin = plugin
                                 },
-                                onToggle: { enabled in
-                                    Task {
-                                        await setPluginEnabled(plugin.name, enabled: enabled)
-                                    }
-                                }
+                                onToggle: { enabled in Task { await setPluginEnabled(plugin.name, enabled: enabled) } }
                             )
                         }
                     }
@@ -186,35 +171,21 @@ struct PluginSettingsView: View {
     @MainActor
     private func refreshPlugins(reloadingPlugins: Bool = true) async {
         let selectedPluginName = selectedPlugin?.name
-
-        if reloadingPlugins {
-            await pluginModeController.reloadPlugins()
-        } else {
-            await pluginManager.loadAllPlugins()
-        }
-
+        if reloadingPlugins { await pluginModeController.reloadPlugins() } else { await pluginManager.loadAllPlugins() }
         allPlugins = pluginManager.getLoadedPlugins()
-        selectedPlugin = resolveSelection(previousPluginName: selectedPluginName)
+        selectedPlugin = allPlugins.first { $0.name == selectedPluginName } ?? allPlugins.first
     }
 
     @MainActor
     private func setPluginEnabled(_ pluginName: String, enabled: Bool) async {
-        if enabled {
-            pluginModeController.enablePlugin(pluginName)
-        } else {
-            pluginModeController.disablePlugin(pluginName)
-        }
-
+        if enabled { pluginModeController.enablePlugin(pluginName) } else { pluginModeController.disablePlugin(pluginName) }
         allPlugins = pluginManager.getLoadedPlugins()
-        selectedPlugin = resolveSelection(previousPluginName: pluginName)
+        selectedPlugin = allPlugins.first { $0.name == pluginName } ?? allPlugins.first
     }
 
-    private func resolveSelection(previousPluginName: String?) -> Plugin? {
-        if let previousPluginName {
-            return allPlugins.first { $0.name == previousPluginName } ?? allPlugins.first
-        }
-
-        return allPlugins.first
+    private func openPluginsDirectory(ensureDirectory: Bool = false) {
+        if ensureDirectory { try? fileAccess.ensureDirectory(pluginsDirectoryURL) }
+        NSWorkspace.shared.open(pluginsDirectoryURL)
     }
 }
 
